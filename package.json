@@ -51,7 +51,7 @@
     "node-appwrite": "^19.0.0",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
-    "cmdk": "^0.2.1",
+    "cmdk": "^1.1.1",
     "embla-carousel-react": "^8.3.0",
     "framer-motion": "^12.23.6",
     "global": "^4.4.0",
