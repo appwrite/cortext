@@ -9,7 +9,9 @@
     "typecheck": "tsr generate && tsc -b --noEmit",
     "lint": "tsr generate && eslint .",
     "preview": "tsr generate && vite preview",
-    "generate:routes": "tsr generate"
+    "generate:routes": "tsr generate",
+    "setup:appwrite": "node scripts/setup-appwrite.js",
+    "deploy": "npm run setup:appwrite && npm run build"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.9.0",
@@ -46,6 +48,7 @@
     "@tanstack/react-router-devtools": "^1.130.13",
     "@vitejs/plugin-react-swc": "^3.10.2",
     "appwrite": "^20.1.0",
+    "node-appwrite": "^19.0.0",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "cmdk": "^0.2.1",
@@ -83,6 +86,7 @@
     "eslint-plugin-react-hooks": "^5.2.0",
     "eslint-plugin-react-refresh": "^0.4.20",
     "globals": "^16.2.0",
+    "tsx": "^4.19.2",
     "tw-animate-css": "^1.3.4",
     "typescript": "~5.8.3",
     "typescript-eslint": "^8.34.1",
