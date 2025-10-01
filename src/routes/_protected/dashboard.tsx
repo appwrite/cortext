@@ -12,13 +12,35 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { toast } from '@/hooks/use-toast'
-import { Image as ImageIcon, Plus, Trash2, Save, Video, MapPin, Type as TypeIcon, Upload, ArrowLeft, LogOut, GripVertical, Brain, Loader2, Heading1, Quote, Pin as PinIcon } from 'lucide-react'
+import { Image as ImageIcon, Plus, Trash2, Save, Video, MapPin, Type as TypeIcon, Upload, ArrowLeft, LogOut, GripVertical, Brain, Loader2, Heading1, Quote, Pin as PinIcon, FileText, Quote as QuoteIcon } from 'lucide-react'
 import { AgentChat } from '@/components/agent/agent-chat'
 import { AuthorSelector } from '@/components/author'
+import { ImageGallery } from '@/components/image'
 
 export const Route = createFileRoute('/_protected/dashboard')({
     component: RouteComponent,
 })
+
+// Helper function to get section type icon
+function getSectionTypeIcon(type: string) {
+    switch (type) {
+        case 'title':
+            return <Heading1 className="h-4 w-4" />
+        case 'text':
+        case 'paragraph':
+            return <FileText className="h-4 w-4" />
+        case 'quote':
+            return <QuoteIcon className="h-4 w-4" />
+        case 'image':
+            return <ImageIcon className="h-4 w-4" />
+        case 'video':
+            return <Video className="h-4 w-4" />
+        case 'map':
+            return <MapPin className="h-4 w-4" />
+        default:
+            return <TypeIcon className="h-4 w-4" />
+    }
+}
 
 function RouteComponent() {
     const { user, signOut } = useAuth()
@@ -38,7 +60,7 @@ function RouteComponent() {
 
 function Header({ onSignOut }: { onSignOut: () => void }) {
     return (
-        <header className="sticky top-0 z-10 border-b bg-background/80 backdrop-blur supports-[backdrop-filter]:bg-background/70">
+        <header className="sticky top-0 z-20 border-b bg-background/80 backdrop-blur supports-[backdrop-filter]:bg-background/70">
             <div className="px-6 h-16 flex items-center justify-between">
                 <div className="flex items-center gap-3">
                     <Link to="/" className="font-semibold tracking-tight inline-flex items-center gap-2">
@@ -533,9 +555,9 @@ function ArticleEditor({ articleId, userId, onBack }: { articleId: string; userI
                                 <TableHeader>
                                     <TableRow>
                                         <TableHead className="w-[50px]">Order</TableHead>
-                                        <TableHead>Type</TableHead>
+                                        <TableHead></TableHead>
                                         <TableHead>Content</TableHead>
-                                        <TableHead className="text-right">Actions</TableHead>
+                                        <TableHead className="text-right"></TableHead>
                                     </TableRow>
                                 </TableHeader>
                                 <TableBody>
@@ -561,7 +583,11 @@ function ArticleEditor({ articleId, userId, onBack }: { articleId: string; userI
                                                         <GripVertical className="h-4 w-4" />
                                                     </button>
                                                 </TableCell>
-                                                <TableCell className="capitalize">{s.type}</TableCell>
+                                                <TableCell>
+                                                    <div className="mt-1">
+                                                        {getSectionTypeIcon(s.type)}
+                                                    </div>
+                                                </TableCell>
                                                 <TableCell>
                                                     <SectionEditor
                                                         section={s}
@@ -703,69 +729,32 @@ function TextEditor({ section, onLocalChange }: { section: any; onLocalChange: (
 }
 
 function ImageEditor({ section, onLocalChange }: { section: any; onLocalChange: (data: Partial<any>) => void }) {
-    const [uploading, setUploading] = useState(false)
-    const [dragOver, setDragOver] = useState(false)
-    const previewUrl = section.mediaId ? String(files.getPreview(section.mediaId, 480, 0)) : null
-
-    const handleFile = async (file?: File) => {
-        if (!file) return
-        setUploading(true)
-        try {
-            const res = await files.upload(file, file.name)
-            onLocalChange({ mediaId: res.$id })
-        } catch (e) {
-            toast({ title: 'Upload failed' })
-        } finally {
-            setUploading(false)
-        }
-    }
-
-    const onDrop = (e: React.DragEvent<HTMLDivElement>) => {
-        e.preventDefault()
-        e.stopPropagation()
-        setDragOver(false)
-        const file = e.dataTransfer.files?.[0]
-        if (file) handleFile(file)
+    // Convert mediaId to array format for ImageGallery, also check for imageIds
+    const selectedImageIds = section.imageIds || (section.mediaId ? [section.mediaId] : [])
+    
+    const handleImagesChange = (imageIds: string[]) => {
+        // Store all selected images
+        onLocalChange({ 
+            imageIds: imageIds,
+            // For backward compatibility, we'll use the first selected image as mediaId
+            mediaId: imageIds.length > 0 ? imageIds[0] : null
+        })
     }
 
     return (
-        <div className="space-y-2">
-            <div className="space-y-1">
-                <Label htmlFor={`file-${section.id}`}>Image</Label>
-                <div className="flex items-start gap-3">
-                    {previewUrl && (
-                        <img src={previewUrl} alt="" className="max-h-32 rounded border" />
-                    )}
-                    <div className="flex-1">
-                        <div
-                            onDragOver={(e) => { e.preventDefault(); setDragOver(true) }}
-                            onDragLeave={() => setDragOver(false)}
-                            onDrop={onDrop}
-                            className={`relative rounded-md border border-dashed h-24 flex items-center justify-center text-xs text-muted-foreground cursor-pointer ${dragOver ? 'bg-accent/40' : 'bg-transparent'}`}
-                            onClick={() => (document.getElementById(`file-${section.id}`) as HTMLInputElement | null)?.click()}
-                            role="button"
-                            aria-label="Upload image"
-                        >
-                            {uploading ? 'Uploading…' : 'Drag & drop image or click to upload'}
-                            <input
-                                id={`file-${section.id}`}
-                                type="file"
-                                accept="image/*"
-                                className="hidden"
-                                onChange={(e) => handleFile(e.target.files?.[0] || undefined)}
-                            />
-                        </div>
-                        {section.mediaId && (
-                            <div className="mt-2">
-                                <Button size="sm" variant="secondary" onClick={() => onLocalChange({ mediaId: null })} className="cursor-pointer">Remove</Button>
-                            </div>
-                        )}
-                    </div>
-                </div>
-            </div>
+        <div className="space-y-4">
+            <ImageGallery 
+                selectedImageIds={selectedImageIds}
+                onImagesChange={handleImagesChange}
+            />
             <div className="space-y-1">
                 <Label htmlFor={`caption-${section.id}`}>Caption</Label>
-                <Input id={`caption-${section.id}`} value={section.caption ?? ''} onChange={(e) => onLocalChange({ caption: e.target.value })} placeholder="Caption (optional)" />
+                <Input 
+                    id={`caption-${section.id}`} 
+                    value={section.caption ?? ''} 
+                    onChange={(e) => onLocalChange({ caption: e.target.value })} 
+                    placeholder="Caption (optional)" 
+                />
             </div>
         </div>
     )
@@ -787,7 +776,7 @@ function VideoEditor({ section, onLocalChange }: { section: any; onLocalChange: 
             </div>
             {embed && (
                 <div className="aspect-video w-full">
-                    <iframe className="w-full h-full rounded border" src={embed} allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowFullScreen title="YouTube preview" />
+                    <iframe className="w-full h-full rounded-lg border" src={embed} allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowFullScreen title="YouTube preview" />
                 </div>
             )}
             <div className="space-y-1">
