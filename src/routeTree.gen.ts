@@ -12,13 +12,10 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as ProtectedRouteImport } from './routes/_protected'
 import { Route as AuthRouteImport } from './routes/_auth'
 import { Route as IndexRouteImport } from './routes/index'
-import { Route as ProtectedDashboardOldRouteImport } from './routes/_protected/dashboard-old'
 import { Route as ProtectedDashboardRouteImport } from './routes/_protected/dashboard'
 import { Route as AuthSignUpRouteImport } from './routes/_auth/sign-up'
 import { Route as AuthSignOutRouteImport } from './routes/_auth/sign-out'
 import { Route as AuthSignInRouteImport } from './routes/_auth/sign-in'
-import { Route as ProtectedDashboardArticleIdOldRouteImport } from './routes/_protected/dashboard.$articleId-old'
-import { Route as ProtectedDashboardArticleIdNewRouteImport } from './routes/_protected/dashboard.$articleId-new'
 import { Route as ProtectedDashboardArticleIdRouteImport } from './routes/_protected/dashboard.$articleId'
 
 const ProtectedRoute = ProtectedRouteImport.update({
@@ -33,11 +30,6 @@ const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => rootRouteImport,
-} as any)
-const ProtectedDashboardOldRoute = ProtectedDashboardOldRouteImport.update({
-  id: '/dashboard-old',
-  path: '/dashboard-old',
-  getParentRoute: () => ProtectedRoute,
 } as any)
 const ProtectedDashboardRoute = ProtectedDashboardRouteImport.update({
   id: '/dashboard',
@@ -59,18 +51,6 @@ const AuthSignInRoute = AuthSignInRouteImport.update({
   path: '/sign-in',
   getParentRoute: () => AuthRoute,
 } as any)
-const ProtectedDashboardArticleIdOldRoute =
-  ProtectedDashboardArticleIdOldRouteImport.update({
-    id: '/$articleId-old',
-    path: '/$articleId-old',
-    getParentRoute: () => ProtectedDashboardRoute,
-  } as any)
-const ProtectedDashboardArticleIdNewRoute =
-  ProtectedDashboardArticleIdNewRouteImport.update({
-    id: '/$articleId-new',
-    path: '/$articleId-new',
-    getParentRoute: () => ProtectedDashboardRoute,
-  } as any)
 const ProtectedDashboardArticleIdRoute =
   ProtectedDashboardArticleIdRouteImport.update({
     id: '/$articleId',
@@ -84,10 +64,7 @@ export interface FileRoutesByFullPath {
   '/sign-out': typeof AuthSignOutRoute
   '/sign-up': typeof AuthSignUpRoute
   '/dashboard': typeof ProtectedDashboardRouteWithChildren
-  '/dashboard-old': typeof ProtectedDashboardOldRoute
   '/dashboard/$articleId': typeof ProtectedDashboardArticleIdRoute
-  '/dashboard/$articleId-new': typeof ProtectedDashboardArticleIdNewRoute
-  '/dashboard/$articleId-old': typeof ProtectedDashboardArticleIdOldRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -95,10 +72,7 @@ export interface FileRoutesByTo {
   '/sign-out': typeof AuthSignOutRoute
   '/sign-up': typeof AuthSignUpRoute
   '/dashboard': typeof ProtectedDashboardRouteWithChildren
-  '/dashboard-old': typeof ProtectedDashboardOldRoute
   '/dashboard/$articleId': typeof ProtectedDashboardArticleIdRoute
-  '/dashboard/$articleId-new': typeof ProtectedDashboardArticleIdNewRoute
-  '/dashboard/$articleId-old': typeof ProtectedDashboardArticleIdOldRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -109,10 +83,7 @@ export interface FileRoutesById {
   '/_auth/sign-out': typeof AuthSignOutRoute
   '/_auth/sign-up': typeof AuthSignUpRoute
   '/_protected/dashboard': typeof ProtectedDashboardRouteWithChildren
-  '/_protected/dashboard-old': typeof ProtectedDashboardOldRoute
   '/_protected/dashboard/$articleId': typeof ProtectedDashboardArticleIdRoute
-  '/_protected/dashboard/$articleId-new': typeof ProtectedDashboardArticleIdNewRoute
-  '/_protected/dashboard/$articleId-old': typeof ProtectedDashboardArticleIdOldRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -122,10 +93,7 @@ export interface FileRouteTypes {
     | '/sign-out'
     | '/sign-up'
     | '/dashboard'
-    | '/dashboard-old'
     | '/dashboard/$articleId'
-    | '/dashboard/$articleId-new'
-    | '/dashboard/$articleId-old'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -133,10 +101,7 @@ export interface FileRouteTypes {
     | '/sign-out'
     | '/sign-up'
     | '/dashboard'
-    | '/dashboard-old'
     | '/dashboard/$articleId'
-    | '/dashboard/$articleId-new'
-    | '/dashboard/$articleId-old'
   id:
     | '__root__'
     | '/'
@@ -146,10 +111,7 @@ export interface FileRouteTypes {
     | '/_auth/sign-out'
     | '/_auth/sign-up'
     | '/_protected/dashboard'
-    | '/_protected/dashboard-old'
     | '/_protected/dashboard/$articleId'
-    | '/_protected/dashboard/$articleId-new'
-    | '/_protected/dashboard/$articleId-old'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -181,13 +143,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/_protected/dashboard-old': {
-      id: '/_protected/dashboard-old'
-      path: '/dashboard-old'
-      fullPath: '/dashboard-old'
-      preLoaderRoute: typeof ProtectedDashboardOldRouteImport
-      parentRoute: typeof ProtectedRoute
-    }
     '/_protected/dashboard': {
       id: '/_protected/dashboard'
       path: '/dashboard'
@@ -216,20 +171,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthSignInRouteImport
       parentRoute: typeof AuthRoute
     }
-    '/_protected/dashboard/$articleId-old': {
-      id: '/_protected/dashboard/$articleId-old'
-      path: '/$articleId-old'
-      fullPath: '/dashboard/$articleId-old'
-      preLoaderRoute: typeof ProtectedDashboardArticleIdOldRouteImport
-      parentRoute: typeof ProtectedDashboardRoute
-    }
-    '/_protected/dashboard/$articleId-new': {
-      id: '/_protected/dashboard/$articleId-new'
-      path: '/$articleId-new'
-      fullPath: '/dashboard/$articleId-new'
-      preLoaderRoute: typeof ProtectedDashboardArticleIdNewRouteImport
-      parentRoute: typeof ProtectedDashboardRoute
-    }
     '/_protected/dashboard/$articleId': {
       id: '/_protected/dashboard/$articleId'
       path: '/$articleId'
@@ -256,14 +197,10 @@ const AuthRouteWithChildren = AuthRoute._addFileChildren(AuthRouteChildren)
 
 interface ProtectedDashboardRouteChildren {
   ProtectedDashboardArticleIdRoute: typeof ProtectedDashboardArticleIdRoute
-  ProtectedDashboardArticleIdNewRoute: typeof ProtectedDashboardArticleIdNewRoute
-  ProtectedDashboardArticleIdOldRoute: typeof ProtectedDashboardArticleIdOldRoute
 }
 
 const ProtectedDashboardRouteChildren: ProtectedDashboardRouteChildren = {
   ProtectedDashboardArticleIdRoute: ProtectedDashboardArticleIdRoute,
-  ProtectedDashboardArticleIdNewRoute: ProtectedDashboardArticleIdNewRoute,
-  ProtectedDashboardArticleIdOldRoute: ProtectedDashboardArticleIdOldRoute,
 }
 
 const ProtectedDashboardRouteWithChildren =
@@ -271,12 +208,10 @@ const ProtectedDashboardRouteWithChildren =
 
 interface ProtectedRouteChildren {
   ProtectedDashboardRoute: typeof ProtectedDashboardRouteWithChildren
-  ProtectedDashboardOldRoute: typeof ProtectedDashboardOldRoute
 }
 
 const ProtectedRouteChildren: ProtectedRouteChildren = {
   ProtectedDashboardRoute: ProtectedDashboardRouteWithChildren,
-  ProtectedDashboardOldRoute: ProtectedDashboardOldRoute,
 }
 
 const ProtectedRouteWithChildren = ProtectedRoute._addFileChildren(
