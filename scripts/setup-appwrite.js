@@ -1,10 +1,8 @@
 #!/usr/bin/env node
 
-const sdk = require('node-appwrite');
-const { readFileSync } = require('fs');
-const { join } = require('path');
-
-const { Client, Databases, Storage, ID, Permission, Role, Query } = sdk;
+import { Client, Databases, Storage, ID, Permission, Role, Query } from 'node-appwrite';
+import { readFileSync } from 'fs';
+import { join } from 'path';
 
 // Configuration
 const APPWRITE_ENDPOINT = process.env.APPWRITE_ENDPOINT || 'https://stage.cloud.appwrite.io/v1';
@@ -353,8 +351,8 @@ async function setupAppwrite() {
 }
 
 // Run the setup
-if (require.main === module) {
+if (import.meta.url === `file://${process.argv[1]}`) {
   setupAppwrite();
 }
 
-module.exports = { setupAppwrite };
+export { setupAppwrite };
