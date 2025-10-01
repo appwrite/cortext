@@ -4,10 +4,38 @@ import { Client, Databases, Storage, ID, Permission, Role, Query } from 'node-ap
 import { readFileSync } from 'fs';
 import { join } from 'path';
 
+/**
+ * INDEX LENGTH STRATEGY:
+ * 
+ * Database indexes have a maximum length of 767 bytes. For UTF-8 strings, this means:
+ * - Safe for indexing: ≤ 191 characters (191 × 4 bytes = 764 bytes)
+ * - Large fields that need indexing: Use lengths: [191] parameter
+ * 
+ * Large fields (> 767 bytes when indexed):
+ * - title (1024 chars) → indexed with lengths: [191] ✅
+ * - subtitle (2048 chars) → not indexed, but use lengths: [191] if indexed later
+ * - body (200000 chars) → not indexed, but use lengths: [191] if indexed later  
+ * - biography (2048 chars) → not indexed, but use lengths: [191] if indexed later
+ * - description (2048 chars) → not indexed, but use lengths: [191] if indexed later
+ * - caption (2048 chars) → not indexed, but use lengths: [191] if indexed later
+ * 
+ * Medium fields (500-512 chars) are safe for full indexing.
+ */
+
 // Configuration
-const APPWRITE_ENDPOINT = process.env.APPWRITE_ENDPOINT || 'https://stage.cloud.appwrite.io/v1';
-const APPWRITE_PROJECT_ID = process.env.APPWRITE_PROJECT_ID || '68af6eea000565837b93';
+const APPWRITE_ENDPOINT = process.env.APPWRITE_ENDPOINT;
+const APPWRITE_PROJECT_ID = process.env.APPWRITE_PROJECT_ID;
 const APPWRITE_API_KEY = process.env.APPWRITE_API_KEY;
+
+if (!APPWRITE_ENDPOINT) {
+  console.error('❌ APPWRITE_ENDPOINT environment variable is required');
+  process.exit(1);
+}
+
+if (!APPWRITE_PROJECT_ID) {
+  console.error('❌ APPWRITE_PROJECT_ID environment variable is required');
+  process.exit(1);
+}
 
 if (!APPWRITE_API_KEY) {
   console.error('❌ APPWRITE_API_KEY environment variable is required');
@@ -54,7 +82,8 @@ const COLLECTIONS = {
       { key: 'status', type: 'key', attributes: ['status'] },
       { key: 'live', type: 'key', attributes: ['live'] },
       { key: 'pinned', type: 'key', attributes: ['pinned'] },
-      { key: 'title', type: 'key', attributes: ['title'] },
+      { key: 'title', type: 'key', attributes: ['title'], lengths: [191] },
+      // Note: subtitle, body are large fields (2048+ chars) - if indexed in future, use lengths: [191]
     ],
   },
   authors: {
@@ -82,6 +111,7 @@ const COLLECTIONS = {
       { key: 'firstname', type: 'key', attributes: ['firstname'] },
       { key: 'lastname', type: 'key', attributes: ['lastname'] },
       { key: 'email', type: 'unique', attributes: ['email'] },
+      // Note: biography is large field (2048 chars) - if indexed in future, use lengths: [191]
     ],
   },
   categories: {
@@ -100,6 +130,7 @@ const COLLECTIONS = {
     indexes: [
       { key: 'name', type: 'key', attributes: ['name'] },
       { key: 'slug', type: 'unique', attributes: ['slug'] },
+      // Note: description is large field (2048 chars) - if indexed in future, use lengths: [191]
     ],
   },
   images: {
@@ -117,6 +148,7 @@ const COLLECTIONS = {
     ],
     indexes: [
       { key: 'file', type: 'key', attributes: ['file'] },
+      // Note: caption is large field (2048 chars) - if indexed in future, use lengths: [191]
     ],
   },
 };
@@ -251,26 +283,20 @@ async function ensureIndex(collectionId, index) {
       log(`Creating index '${index.key}'...`, 'info');
       
       const createIndex = async () => {
-        switch (index.type) {
-          case 'key':
-            return databases.createIndex(
-              DATABASE_ID,
-              collectionId,
-              index.key,
-              index.type,
-              index.attributes
-            );
-          case 'unique':
-            return databases.createIndex(
-              DATABASE_ID,
-              collectionId,
-              index.key,
-              index.type,
-              index.attributes
-            );
-          default:
-            throw new Error(`Unsupported index type: ${index.type}`);
+        const indexParams = {
+          databaseId: DATABASE_ID,
+          collectionId: collectionId,
+          key: index.key,
+          type: index.type,
+          attributes: index.attributes
+        };
+        
+        // Add lengths parameter if specified
+        if (index.lengths) {
+          indexParams.lengths = index.lengths;
         }
+        
+        return databases.createIndex(indexParams);
       };
 
       await createIndex();
