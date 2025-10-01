@@ -103,12 +103,12 @@ export function AgentChat({
             className="fixed left-0 z-10 flex w-72 md:w-80 lg:w-96 flex-col border-r bg-background"
             style={{ top: topOffset, bottom: 0 }}
         >
-            <header className="h-10 px-3 border-b flex items-center">
+            <header className="h-16 px-6 border-b flex items-center">
                 <div className="text-xs font-medium">Conversation</div>
             </header>
 
             <ScrollArea className="flex-1">
-                <div className="px-3 py-3 space-y-2">
+                <div className="px-6 py-6 space-y-2">
                     {messages.map((m) => (
                         <div key={m.id} className={m.role === 'assistant' ? 'flex gap-2 items-start' : 'flex justify-end'}>
                             {m.role === 'assistant' && (
@@ -131,7 +131,7 @@ export function AgentChat({
                 </div>
             </ScrollArea>
 
-            <div className="p-3 space-y-2">
+            <div className="px-6 py-6 space-y-2">
                 <div className="flex gap-2">
                     <Button variant="secondary" size="sm" className="gap-1 h-7 px-2 text-[11px] cursor-pointer" onClick={applyPunchierTitle}>
                         <Sparkles className="h-3.5 w-3.5" /> Punchier title

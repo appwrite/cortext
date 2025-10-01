@@ -222,7 +222,7 @@ function ArticleEditor({ articleId, userId }: { articleId: string; userId: strin
         onSetTitle={setTitle}
         onSetSubtitle={setExcerpt}
       />
-      <div className="px-6 py-6 space-y-8 pb-24 ml-72 md:ml-80 lg:ml-96 max-w-6xl mx-auto">
+      <div className="px-6 pt-2 pb-8 ml-72 md:ml-80 lg:ml-96">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
             <Link to="/dashboard">
@@ -230,6 +230,8 @@ function ArticleEditor({ articleId, userId }: { articleId: string; userId: strin
             </Link>
           </div>
         </div>
+      </div>
+      <div className="px-6 py-6 space-y-8 pb-24 ml-72 md:ml-80 lg:ml-96 max-w-6xl mx-auto">
 
         <section className="space-y-4">
           <div>

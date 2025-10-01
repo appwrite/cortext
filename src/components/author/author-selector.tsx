@@ -1,8 +1,8 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { db } from '@/lib/appwrite/db'
 import type { Authors } from '@/lib/appwrite/appwrite.types'
-import { type Models } from 'appwrite'
+import { type Models, Query } from 'appwrite'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -12,7 +12,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { Skeleton } from '@/components/ui/skeleton'
-import { Check, ChevronsUpDown, Plus, X, Settings } from 'lucide-react'
+import { Check, ChevronsUpDown, Plus, X, Settings, Loader2 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { toast } from '@/hooks/use-toast'
 
@@ -28,30 +28,59 @@ export function AuthorSelector({ selectedAuthorIds, onAuthorsChange }: AuthorSel
   const [editingAuthor, setEditingAuthor] = useState<Authors | null>(null)
   const qc = useQueryClient()
 
-  // Fetch all authors
-  const { data: authorsData, isPending } = useQuery({
+  // Debounced search value for server-side search
+  const [debouncedSearchValue, setDebouncedSearchValue] = useState('')
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedSearchValue(searchValue)
+    }, 300)
+    return () => clearTimeout(timer)
+  }, [searchValue])
+
+  // Fetch all authors once and cache them (this should not change during search)
+  const { data: allAuthorsData, isPending, error } = useQuery({
     queryKey: ['authors'],
-    queryFn: () => db.authors.list(),
+    queryFn: () => {
+      console.log('Fetching all authors')
+      return db.authors.list()
+    },
+    staleTime: 10 * 60 * 1000, // Cache for 10 minutes
   })
 
-  const authors = authorsData?.documents || []
+  const allAuthors = allAuthorsData?.documents || []
+  
+  // Debug logging
+  console.log('Authors query result:', { isPending, error, allAuthorsData, allAuthors })
 
-  // Get selected authors for display
-  const selectedAuthors = authors.filter(author => selectedAuthorIds.includes(author.$id))
+  // Memoize selected authors to prevent unnecessary re-renders
+  // This should only change when selectedAuthorIds changes, not during search
+  const selectedAuthors = useMemo(() => {
+    return allAuthors.filter(author => selectedAuthorIds.includes(author.$id))
+  }, [allAuthors, selectedAuthorIds])
 
-  // Loading skeleton for author tags
-  const AuthorTagsSkeleton = () => (
-    <div className="flex flex-wrap gap-2">
-      <Skeleton className="h-6 w-20 rounded-full" />
-      <Skeleton className="h-6 w-24 rounded-full" />
-    </div>
-  )
+  // Memoize filtered authors for search (only changes when search term changes)
+  const filteredAuthors = useMemo(() => {
+    if (!debouncedSearchValue.trim()) return allAuthors
+    
+    return allAuthors.filter(author => {
+      const fullName = `${author.firstname || ''} ${author.lastname || ''}`.toLowerCase()
+      const searchTerm = debouncedSearchValue.toLowerCase()
+      return fullName.includes(searchTerm) || 
+             (author.title && author.title.toLowerCase().includes(searchTerm))
+    })
+  }, [allAuthors, debouncedSearchValue])
 
-  // Filter authors based on search
-  const filteredAuthors = authors.filter(author => {
-    const fullName = `${author.firstname || ''} ${author.lastname || ''}`.toLowerCase()
-    return fullName.includes(searchValue.toLowerCase())
-  })
+  // Memoize loading skeleton to prevent unnecessary re-renders
+  const AuthorTagsSkeleton = useMemo(() => {
+    return (
+      <div className="flex flex-wrap gap-2">
+        <Skeleton className="h-6 w-20 rounded-full" />
+        <Skeleton className="h-6 w-24 rounded-full" />
+      </div>
+    )
+  }, [])
+
 
   const handleAuthorSelect = (authorId: string) => {
     if (selectedAuthorIds.includes(authorId)) {
@@ -65,14 +94,53 @@ export function AuthorSelector({ selectedAuthorIds, onAuthorsChange }: AuthorSel
     onAuthorsChange(selectedAuthorIds.filter(id => id !== authorId))
   }
 
-  return (
-    <div className="space-y-2">
-      <Label>Authors</Label>
-      
-      {/* Selected authors display */}
-      {isPending ? (
-        <AuthorTagsSkeleton />
-      ) : selectedAuthors.length > 0 ? (
+  // Memoize the author list items to prevent unnecessary re-renders
+  const authorListItems = useMemo(() => {
+    return filteredAuthors.map(author => (
+      <CommandItem
+        key={author.$id}
+        value={author.$id}
+        onSelect={() => handleAuthorSelect(author.$id)}
+        className="flex items-center justify-between group"
+      >
+        <div className="flex items-center">
+          <Check
+            className={cn(
+              "mr-2 h-4 w-4",
+              selectedAuthorIds.includes(author.$id) ? "opacity-100" : "opacity-0"
+            )}
+          />
+          <span>{author.firstname} {author.lastname}</span>
+          {author.title && (
+            <span className="ml-2 text-sm text-muted-foreground">
+              - {author.title}
+            </span>
+          )}
+        </div>
+        <Button
+          variant="ghost"
+          size="sm"
+          className="h-6 w-6 p-0 cursor-pointer hover:bg-accent"
+          onClick={(e) => {
+            e.stopPropagation()
+            setEditingAuthor(author)
+            setOpen(false)
+          }}
+        >
+          <Settings className="h-3 w-3" />
+        </Button>
+      </CommandItem>
+    ))
+  }, [filteredAuthors, selectedAuthorIds])
+
+  // Memoize the selected authors display to prevent re-renders during search
+  const selectedAuthorsDisplay = useMemo(() => {
+    if (isPending) {
+      return AuthorTagsSkeleton
+    }
+    
+    if (selectedAuthors.length > 0) {
+      return (
         <div className="flex flex-wrap gap-2">
           {selectedAuthors.map(author => (
             <Badge key={author.$id} variant="secondary" className="flex items-center gap-1">
@@ -86,7 +154,18 @@ export function AuthorSelector({ selectedAuthorIds, onAuthorsChange }: AuthorSel
             </Badge>
           ))}
         </div>
-      ) : null}
+      )
+    }
+    
+    return null
+  }, [isPending, selectedAuthors, AuthorTagsSkeleton])
+
+  return (
+    <div className="space-y-2">
+      <Label>Authors</Label>
+      
+      {/* Selected authors display */}
+      {selectedAuthorsDisplay}
 
       {/* Author selection popover */}
       <Popover open={open} onOpenChange={setOpen}>
@@ -111,14 +190,24 @@ export function AuthorSelector({ selectedAuthorIds, onAuthorsChange }: AuthorSel
           </Button>
         </PopoverTrigger>
         <PopoverContent className="w-full p-0" style={{ width: 'var(--radix-popover-trigger-width)' }}>
-          <Command>
-            <CommandInput 
-              placeholder="Search authors..." 
-              value={searchValue}
-              onValueChange={setSearchValue}
-              className="w-full"
-            />
-            <CommandList>
+          <Command shouldFilter={false}>
+            <div className="relative">
+              <CommandInput 
+                placeholder="Search authors..." 
+                value={searchValue}
+                onValueChange={(value) => {
+                  console.log('CommandInput onValueChange:', value)
+                  setSearchValue(value)
+                }}
+                className="w-full pr-8"
+              />
+              {isPending && (
+                <div className="absolute right-2 top-1/2 transform -translate-y-1/2">
+                  <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+                </div>
+              )}
+            </div>
+            <CommandList className="min-h-[200px]">
               {isPending ? (
                 <div className="p-2">
                   {Array.from({ length: 3 }).map((_, i) => (
@@ -129,72 +218,37 @@ export function AuthorSelector({ selectedAuthorIds, onAuthorsChange }: AuthorSel
                     </div>
                   ))}
                 </div>
+              ) : filteredAuthors.length === 0 ? (
+                <div className="text-center py-6">
+                  <p className="text-sm text-muted-foreground mb-2">
+                    {debouncedSearchValue.trim() ? 'No authors found' : 'No authors available'}
+                  </p>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => {
+                      setOpen(false)
+                      setShowNewAuthorModal(true)
+                    }}
+                  >
+                    <Plus className="h-4 w-4 mr-1" />
+                    Add new author
+                  </Button>
+                </div>
               ) : (
-                <>
-                  <CommandEmpty>
-                    <div className="text-center py-6">
-                      <p className="text-sm text-muted-foreground mb-2">No authors found</p>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => {
-                          setOpen(false)
-                          setShowNewAuthorModal(true)
-                        }}
-                      >
-                        <Plus className="h-4 w-4 mr-1" />
-                        Add new author
-                      </Button>
-                    </div>
-                  </CommandEmpty>
-                  <CommandGroup>
-                    {filteredAuthors.map(author => (
-                      <CommandItem
-                        key={author.$id}
-                        value={author.$id}
-                        onSelect={() => handleAuthorSelect(author.$id)}
-                        className="flex items-center justify-between group"
-                      >
-                        <div className="flex items-center">
-                          <Check
-                            className={cn(
-                              "mr-2 h-4 w-4",
-                              selectedAuthorIds.includes(author.$id) ? "opacity-100" : "opacity-0"
-                            )}
-                          />
-                          <span>{author.firstname} {author.lastname}</span>
-                          {author.title && (
-                            <span className="ml-2 text-sm text-muted-foreground">
-                              - {author.title}
-                            </span>
-                          )}
-                        </div>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          className="h-6 w-6 p-0 cursor-pointer hover:bg-accent"
-                          onClick={(e) => {
-                            e.stopPropagation()
-                            setEditingAuthor(author)
-                            setOpen(false)
-                          }}
-                        >
-                          <Settings className="h-3 w-3" />
-                        </Button>
-                      </CommandItem>
-                    ))}
-                    <CommandItem
-                      onSelect={() => {
-                        setOpen(false)
-                        setShowNewAuthorModal(true)
-                      }}
-                      className="text-primary"
-                    >
-                      <Plus className="mr-2 h-4 w-4" />
-                      Add new author
-                    </CommandItem>
-                  </CommandGroup>
-                </>
+                <CommandGroup>
+                  {authorListItems}
+                  <CommandItem
+                    onSelect={() => {
+                      setOpen(false)
+                      setShowNewAuthorModal(true)
+                    }}
+                    className="text-primary"
+                  >
+                    <Plus className="mr-2 h-4 w-4" />
+                    Add new author
+                  </CommandItem>
+                </CommandGroup>
               )}
             </CommandList>
           </Command>
@@ -242,6 +296,7 @@ function NewAuthorModal({ open, onOpenChange, onAuthorCreated }: NewAuthorModalP
     picture: '',
     facebook: '',
     twitter: '',
+    googleplus: '',
     instagram: '',
     pinterest: '',
   })
@@ -250,7 +305,13 @@ function NewAuthorModal({ open, onOpenChange, onAuthorCreated }: NewAuthorModalP
 
   const createAuthor = useMutation({
     mutationFn: async (data: Omit<Authors, keyof Models.Document>) => {
-      return db.authors.create(data)
+      console.log('Creating author with data:', data)
+      // Ensure no ID is accidentally passed
+      const cleanData = { ...data }
+      delete (cleanData as any).$id
+      delete (cleanData as any).id
+      console.log('Clean data for creation:', cleanData)
+      return db.authors.create(cleanData)
     },
     onSuccess: (newAuthor) => {
       qc.invalidateQueries({ queryKey: ['authors'] })
@@ -265,12 +326,26 @@ function NewAuthorModal({ open, onOpenChange, onAuthorCreated }: NewAuthorModalP
         picture: '',
         facebook: '',
         twitter: '',
+        googleplus: '',
         instagram: '',
         pinterest: '',
       })
     },
-    onError: () => {
-      toast({ title: 'Failed to create author', variant: 'destructive' })
+    onError: (error: any) => {
+      console.error('Author creation error:', error)
+      if (error.code === 409) {
+        toast({ 
+          title: 'Email already exists', 
+          description: 'An author with this email address already exists. Please use a different email or leave it empty.',
+          variant: 'destructive' 
+        })
+      } else {
+        toast({ 
+          title: 'Failed to create author', 
+          description: error.message || 'An unexpected error occurred',
+          variant: 'destructive' 
+        })
+      }
     },
   })
 
@@ -280,7 +355,23 @@ function NewAuthorModal({ open, onOpenChange, onAuthorCreated }: NewAuthorModalP
       toast({ title: 'First name and last name are required', variant: 'destructive' })
       return
     }
-    createAuthor.mutate(formData)
+    
+    // Clean up empty strings to avoid unique constraint conflicts
+    const cleanedData = {
+      ...formData,
+      email: formData.email.trim() || null,
+      facebook: formData.facebook.trim() || null,
+      twitter: formData.twitter.trim() || null,
+      googleplus: formData.googleplus.trim() || null,
+      instagram: formData.instagram.trim() || null,
+      pinterest: formData.pinterest.trim() || null,
+      picture: formData.picture.trim() || null,
+      title: formData.title.trim() || null,
+      biography: formData.biography.trim() || null,
+    }
+    
+    console.log('Form data before submission:', cleanedData)
+    createAuthor.mutate(cleanedData)
   }
 
   return (
@@ -334,16 +425,19 @@ function NewAuthorModal({ open, onOpenChange, onAuthorCreated }: NewAuthorModalP
             />
           </div>
 
-          <div>
-            <Label htmlFor="email">Email</Label>
-            <Input
-              id="email"
-              type="email"
-              value={formData.email}
-              onChange={(e) => setFormData(prev => ({ ...prev, email: e.target.value }))}
-              placeholder="author@example.com"
-            />
-          </div>
+            <div>
+              <Label htmlFor="email">Email</Label>
+              <Input
+                id="email"
+                type="email"
+                value={formData.email}
+                onChange={(e) => setFormData(prev => ({ ...prev, email: e.target.value }))}
+                placeholder="author@example.com"
+              />
+              <p className="text-xs text-muted-foreground mt-1">
+                Email must be unique. Leave empty if not needed.
+              </p>
+            </div>
 
           <div>
             <Label htmlFor="picture">Profile Picture URL</Label>
@@ -428,6 +522,7 @@ function EditAuthorModal({ author, open, onOpenChange, onAuthorUpdated }: EditAu
     picture: author.picture || '',
     facebook: author.facebook || '',
     twitter: author.twitter || '',
+    googleplus: author.googleplus || '',
     instagram: author.instagram || '',
     pinterest: author.pinterest || '',
   })
@@ -443,8 +538,21 @@ function EditAuthorModal({ author, open, onOpenChange, onAuthorUpdated }: EditAu
       toast({ title: 'Author updated successfully' })
       onAuthorUpdated()
     },
-    onError: () => {
-      toast({ title: 'Failed to update author', variant: 'destructive' })
+    onError: (error: any) => {
+      console.error('Author update error:', error)
+      if (error.code === 409) {
+        toast({ 
+          title: 'Email already exists', 
+          description: 'An author with this email address already exists. Please use a different email or leave it empty.',
+          variant: 'destructive' 
+        })
+      } else {
+        toast({ 
+          title: 'Failed to update author', 
+          description: error.message || 'An unexpected error occurred',
+          variant: 'destructive' 
+        })
+      }
     },
   })
 
@@ -454,7 +562,22 @@ function EditAuthorModal({ author, open, onOpenChange, onAuthorUpdated }: EditAu
       toast({ title: 'First name and last name are required', variant: 'destructive' })
       return
     }
-    updateAuthor.mutate(formData)
+    
+    // Clean up empty strings to avoid unique constraint conflicts
+    const cleanedData = {
+      ...formData,
+      email: formData.email.trim() || null,
+      facebook: formData.facebook.trim() || null,
+      twitter: formData.twitter.trim() || null,
+      googleplus: formData.googleplus.trim() || null,
+      instagram: formData.instagram.trim() || null,
+      pinterest: formData.pinterest.trim() || null,
+      picture: formData.picture.trim() || null,
+      title: formData.title.trim() || null,
+      biography: formData.biography.trim() || null,
+    }
+    
+    updateAuthor.mutate(cleanedData)
   }
 
   return (
@@ -517,6 +640,9 @@ function EditAuthorModal({ author, open, onOpenChange, onAuthorUpdated }: EditAu
               onChange={(e) => setFormData(prev => ({ ...prev, email: e.target.value }))}
               placeholder="author@example.com"
             />
+            <p className="text-xs text-muted-foreground mt-1">
+              Email must be unique. Leave empty if not needed.
+            </p>
           </div>
 
           <div>
