@@ -317,17 +317,18 @@ async function ensureStorageBucket(bucketId, config) {
   } catch (error) {
     if (error.code === 404) {
       log(`Creating storage bucket '${config.name}'...`, 'info');
-      await storage.createBucket(
-        bucketId,
-        config.name,
-        config.permissions,
-        config.fileSecurity,
-        config.allowedFileExtensions,
-        config.maxFileSize,
-        config.encryption,
-        config.antivirus,
-        config.compression
-      );
+      await storage.createBucket({
+        bucketId: bucketId,
+        name: config.name,
+        permissions: config.permissions,
+        fileSecurity: config.fileSecurity,
+        allowedFileExtensions: config.allowedFileExtensions,
+        maxFileSize: config.maxFileSize,
+        encryption: config.encryption,
+        antivirus: config.antivirus,
+        compression: config.compression,
+        enabled: true
+      });
       log(`Storage bucket '${config.name}' created successfully`, 'success');
     } else {
       throw error;
