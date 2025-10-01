@@ -767,7 +767,7 @@ function VideoEditor({ section, onLocalChange }: { section: any; onLocalChange: 
                 <Input id={`video-url-${section.id}`} value={url} onChange={(e) => setUrl(e.target.value)} placeholder="Paste YouTube URL" />
             </div>
             {embed && (
-                <div className="aspect-video w-full max-w-md">
+                <div className="aspect-video w-full">
                     <iframe className="w-full h-full rounded border" src={embed} allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowFullScreen title="YouTube preview" />
                 </div>
             )}
