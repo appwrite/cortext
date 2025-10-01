@@ -77,6 +77,10 @@ const COLLECTIONS = {
       { key: 'pinned', type: 'boolean', required: false, array: false, default: false },
       { key: 'redirect', type: 'string', size: 500, required: false, array: false, default: null },
       { key: 'categories', type: 'string', size: 512, required: false, array: true, default: null },
+      { key: 'createdBy', type: 'string', size: 255, required: false, array: false, default: null },
+      { key: 'published', type: 'boolean', required: false, array: false, default: false },
+      { key: 'slug', type: 'string', size: 255, required: false, array: false, default: null },
+      { key: 'publishedAt', type: 'datetime', required: false, array: false, default: null },
     ],
     indexes: [
       { key: 'status', type: 'key', attributes: ['status'] },

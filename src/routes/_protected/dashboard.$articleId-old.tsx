@@ -4,7 +4,7 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { db } from '@/lib/appwrite/db'
 import { files } from '@/lib/appwrite/storage'
-import type { Articles, ArticleSections } from '@/lib/appwrite/appwrite.types'
+import type { Articles, any } from '@/lib/appwrite/appwrite.types'
 import { Query, type Models } from 'appwrite'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -82,7 +82,7 @@ function ArticleEditor({ articleId, userId }: { articleId: string; userId: strin
     },
   })
 
-  const [localSections, setLocalSections] = useState<ArticleSections[]>([])
+  const [localSections, setLocalSections] = useState<any[]>([])
 
   useEffect(() => {
     if (sectionsData) {
@@ -105,7 +105,7 @@ function ArticleEditor({ articleId, userId }: { articleId: string; userId: strin
 
   const createSection = useMutation({
     mutationFn: async (type: string) => {
-      const payload: Omit<ArticleSections, keyof Models.Document> = {
+      const payload: Omit<any, keyof Models.Document> = {
         createdBy: userId,
         articleId,
         type,
@@ -125,7 +125,7 @@ function ArticleEditor({ articleId, userId }: { articleId: string; userId: strin
   })
 
   const updateSection = useMutation({
-    mutationFn: async ({ id, data }: { id: string, data: Partial<Omit<ArticleSections, keyof Models.Document>> }) => {
+    mutationFn: async ({ id, data }: { id: string, data: Partial<Omit<any, keyof Models.Document>> }) => {
       const current = await db.articleSections.get(id)
       if (current.createdBy !== userId) throw new Error('Forbidden')
       return db.articleSections.update(id, sanitizeSectionUpdate(data))
@@ -167,7 +167,7 @@ function ArticleEditor({ articleId, userId }: { articleId: string; userId: strin
     e.dataTransfer.dropEffect = 'move'
   }
 
-  const persistOrder = async (next: ArticleSections[]) => {
+  const persistOrder = async (next: any[]) => {
     const changes = next
       .map((s, i) => ({ id: s.$id, position: i, prev: s.position }))
       .filter((s) => s.position !== s.prev)
@@ -207,20 +207,20 @@ function ArticleEditor({ articleId, userId }: { articleId: string; userId: strin
   }
 
   const [title, setTitle] = useState('')
-  const [excerpt, setExcerpt] = useState('')
+  const [subtitle, setExcerpt] = useState('')
   const [saving, setSaving] = useState(false)
 
   useMemo(() => {
     if (article) {
       setTitle(article.title ?? '')
-      setExcerpt(article.excerpt ?? '')
+      setExcerpt(article.subtitle ?? '')
     }
   }, [article])
 
   const handleMainSave = async () => {
     try {
       setSaving(true)
-      await updateArticle.mutateAsync({ title, slug: slugify(title), excerpt })
+      await updateArticle.mutateAsync({ title, slug: slugify(title), subtitle })
 
       const originals = sectionsData || []
       const changed = localSections.filter((loc) => {
@@ -280,8 +280,8 @@ function ArticleEditor({ articleId, userId }: { articleId: string; userId: strin
             <Input id="title" value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Article title" />
           </div>
           <div>
-            <Label htmlFor="excerpt">Excerpt</Label>
-            <Input id="excerpt" value={excerpt} onChange={(e) => setExcerpt(e.target.value)} placeholder="Short summary (optional)" />
+            <Label htmlFor="subtitle">Excerpt</Label>
+            <Input id="subtitle" value={subtitle} onChange={(e) => setExcerpt(e.target.value)} placeholder="Short summary (optional)" />
           </div>
           <div className="text-xs text-muted-foreground flex items-center gap-2">
             <span>Status:</span>
@@ -342,7 +342,7 @@ function ArticleEditor({ articleId, userId }: { articleId: string; userId: strin
                         <TableCell>
                           <SectionEditor
                             section={s}
-                            onLocalChange={(patch) => setLocalSections((prev) => prev.map((it) => it.$id === s.$id ? { ...it, ...patch } as ArticleSections : it))}
+                            onLocalChange={(patch) => setLocalSections((prev) => prev.map((it) => it.$id === s.$id ? { ...it, ...patch } as any : it))}
                           />
                         </TableCell>
                         <TableCell className="text-right">
@@ -379,7 +379,7 @@ function ArticleEditor({ articleId, userId }: { articleId: string; userId: strin
   )
 }
 
-function SectionEditor({ section, onLocalChange }: { section: ArticleSections; onLocalChange: (data: Partial<ArticleSections>) => void }) {
+function SectionEditor({ section, onLocalChange }: { section: any; onLocalChange: (data: Partial<any>) => void }) {
   if (section.type === 'text' || section.type === 'paragraph') {
     return <TextEditor section={section} onLocalChange={onLocalChange} />
   }
@@ -398,7 +398,7 @@ function SectionEditor({ section, onLocalChange }: { section: ArticleSections; o
   return <span className="text-sm text-muted-foreground">Unsupported section</span>
 }
 
-function TextEditor({ section, onLocalChange }: { section: ArticleSections; onLocalChange: (data: Partial<ArticleSections>) => void }) {
+function TextEditor({ section, onLocalChange }: { section: any; onLocalChange: (data: Partial<any>) => void }) {
   const [value, setValue] = useState(section.content ?? '')
   const ref = useRef<HTMLTextAreaElement | null>(null)
 
@@ -429,7 +429,7 @@ function TextEditor({ section, onLocalChange }: { section: ArticleSections; onLo
   )
 }
 
-function QuoteEditor({ section, onLocalChange }: { section: ArticleSections; onLocalChange: (data: Partial<ArticleSections>) => void }) {
+function QuoteEditor({ section, onLocalChange }: { section: any; onLocalChange: (data: Partial<any>) => void }) {
   const [content, setContent] = useState(section.content ?? '')
   const [speaker, setSpeaker] = useState((section as any).speaker ?? '')
 
@@ -451,7 +451,7 @@ function QuoteEditor({ section, onLocalChange }: { section: ArticleSections; onL
   )
 }
 
-function ImageEditor({ section, onLocalChange }: { section: ArticleSections; onLocalChange: (data: Partial<ArticleSections>) => void }) {
+function ImageEditor({ section, onLocalChange }: { section: any; onLocalChange: (data: Partial<any>) => void }) {
   const [uploading, setUploading] = useState(false)
   const previewUrl = section.mediaId ? String(files.getPreview(section.mediaId, 480, 0)) : null
 
@@ -505,7 +505,7 @@ function ImageEditor({ section, onLocalChange }: { section: ArticleSections; onL
   )
 }
 
-function VideoEditor({ section, onLocalChange }: { section: ArticleSections; onLocalChange: (data: Partial<ArticleSections>) => void }) {
+function VideoEditor({ section, onLocalChange }: { section: any; onLocalChange: (data: Partial<any>) => void }) {
   const [url, setUrl] = useState(section.embedUrl ?? '')
   const embed = toYouTubeEmbed(url)
 
@@ -532,7 +532,7 @@ function VideoEditor({ section, onLocalChange }: { section: ArticleSections; onL
   )
 }
 
-function MapEditor({ section, onLocalChange }: { section: ArticleSections; onLocalChange: (data: Partial<ArticleSections>) => void }) {
+function MapEditor({ section, onLocalChange }: { section: any; onLocalChange: (data: Partial<any>) => void }) {
   const initial = parseLatLng(section.data)
   const [lat, setLat] = useState<string | number>(initial?.lat ?? '')
   const [lng, setLng] = useState<string | number>(initial?.lng ?? '')
@@ -569,7 +569,7 @@ function MapEditor({ section, onLocalChange }: { section: ArticleSections; onLoc
   )
 }
 
-function hasSectionChanged(a: ArticleSections, b: ArticleSections) {
+function hasSectionChanged(a: any, b: any) {
   return (
     a.type !== b.type ||
     (a.content ?? null) !== (b.content ?? null) ||
@@ -595,7 +595,7 @@ function sanitizeArticleUpdate(data: Partial<Omit<Articles, keyof Models.Documen
   return rest
 }
 
-function sanitizeSectionUpdate(data: Partial<Omit<ArticleSections, keyof Models.Document>>) {
+function sanitizeSectionUpdate(data: Partial<Omit<any, keyof Models.Document>>) {
   const { createdBy, articleId, ...rest } = data as any
   return rest
 }

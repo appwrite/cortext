@@ -12,6 +12,10 @@ export type Articles = Models.Document & {
     pinned: boolean;
     redirect: string | null;
     categories: string[] | null;
+    createdBy: string | null;
+    published: boolean;
+    slug: string | null;
+    publishedAt: string | null;
 }
 
 export type Authors = Models.Document & {
@@ -39,3 +43,4 @@ export type Images = Models.Document & {
     caption: string | null;
     credits: string | null;
 }
+

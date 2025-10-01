@@ -19,6 +19,7 @@ export const Route = createFileRoute('/_protected/dashboard')({
 
 function RouteComponent() {
     const { user, signOut } = useAuth()
+    const navigate = useNavigate()
     const userId = user?.$id
 
     if (!userId) {
