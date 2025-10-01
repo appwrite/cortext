@@ -10,7 +10,7 @@ import { Textarea } from '@/components/ui/textarea'
 import { toast } from '@/hooks/use-toast'
 import { ArrowLeft, LogOut, Brain, Loader2, Pin as PinIcon } from 'lucide-react'
 
-export const Route = createFileRoute('/_protected/dashboard/$articleId')({
+export const Route = createFileRoute('/_protected/dashboard/$articleId-new')({
   component: RouteComponent,
 })
 

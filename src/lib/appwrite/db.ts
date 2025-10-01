@@ -1,5 +1,5 @@
 import { Client, Databases, ID, type Models } from 'appwrite';
-import type { Articles, ArticleSections } from './appwrite.types';
+import type { Articles, Authors, Categories, Images } from './appwrite.types';
 
 const client = new Client();
 const databases = new Databases(client);
@@ -21,17 +21,41 @@ export const db = {
     list: (queries?: string[]) => 
       databases.listDocuments<Articles>('imagine-project-db', 'articles', queries),
   },
-  articleSections: {
-    create: (data: Omit<ArticleSections, keyof Models.Document>) => 
-      databases.createDocument<ArticleSections>('imagine-project-db', 'article_sections', ID.unique(), data),
+  authors: {
+    create: (data: Omit<Authors, keyof Models.Document>) => 
+      databases.createDocument<Authors>('imagine-project-db', 'authors', ID.unique(), data),
     get: (id: string) => 
-      databases.getDocument<ArticleSections>('imagine-project-db', 'article_sections', id),
-    update: (id: string, data: Partial<Omit<ArticleSections, keyof Models.Document>>) => 
-      databases.updateDocument<ArticleSections>('imagine-project-db', 'article_sections', id, data),
+      databases.getDocument<Authors>('imagine-project-db', 'authors', id),
+    update: (id: string, data: Partial<Omit<Authors, keyof Models.Document>>) => 
+      databases.updateDocument<Authors>('imagine-project-db', 'authors', id, data),
     delete: (id: string) => 
-      databases.deleteDocument('imagine-project-db', 'article_sections', id),
+      databases.deleteDocument('imagine-project-db', 'authors', id),
     list: (queries?: string[]) => 
-      databases.listDocuments<ArticleSections>('imagine-project-db', 'article_sections', queries),
+      databases.listDocuments<Authors>('imagine-project-db', 'authors', queries),
+  },
+  categories: {
+    create: (data: Omit<Categories, keyof Models.Document>) => 
+      databases.createDocument<Categories>('imagine-project-db', 'categories', ID.unique(), data),
+    get: (id: string) => 
+      databases.getDocument<Categories>('imagine-project-db', 'categories', id),
+    update: (id: string, data: Partial<Omit<Categories, keyof Models.Document>>) => 
+      databases.updateDocument<Categories>('imagine-project-db', 'categories', id, data),
+    delete: (id: string) => 
+      databases.deleteDocument('imagine-project-db', 'categories', id),
+    list: (queries?: string[]) => 
+      databases.listDocuments<Categories>('imagine-project-db', 'categories', queries),
+  },
+  images: {
+    create: (data: Omit<Images, keyof Models.Document>) => 
+      databases.createDocument<Images>('imagine-project-db', 'images', ID.unique(), data),
+    get: (id: string) => 
+      databases.getDocument<Images>('imagine-project-db', 'images', id),
+    update: (id: string, data: Partial<Omit<Images, keyof Models.Document>>) => 
+      databases.updateDocument<Images>('imagine-project-db', 'images', id, data),
+    delete: (id: string) => 
+      databases.deleteDocument('imagine-project-db', 'images', id),
+    list: (queries?: string[]) => 
+      databases.listDocuments<Images>('imagine-project-db', 'images', queries),
   }
 };
 
