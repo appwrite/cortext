@@ -357,17 +357,18 @@ function NewAuthorModal({ open, onOpenChange, onAuthorCreated }: NewAuthorModalP
     }
     
     // Clean up empty strings to avoid unique constraint conflicts
-    const cleanedData = {
-      ...formData,
+    const cleanedData: Omit<Authors, keyof Models.Document> = {
+      firstname: formData.firstname.trim() || null,
+      lastname: formData.lastname.trim() || null,
+      title: formData.title.trim() || null,
+      biography: formData.biography.trim() || null,
       email: formData.email.trim() || null,
+      picture: formData.picture.trim() || null,
       facebook: formData.facebook.trim() || null,
       twitter: formData.twitter.trim() || null,
       googleplus: formData.googleplus.trim() || null,
       instagram: formData.instagram.trim() || null,
       pinterest: formData.pinterest.trim() || null,
-      picture: formData.picture.trim() || null,
-      title: formData.title.trim() || null,
-      biography: formData.biography.trim() || null,
     }
     
     console.log('Form data before submission:', cleanedData)
@@ -564,17 +565,18 @@ function EditAuthorModal({ author, open, onOpenChange, onAuthorUpdated }: EditAu
     }
     
     // Clean up empty strings to avoid unique constraint conflicts
-    const cleanedData = {
-      ...formData,
+    const cleanedData: Partial<Omit<Authors, keyof Models.Document>> = {
+      firstname: formData.firstname.trim() || null,
+      lastname: formData.lastname.trim() || null,
+      title: formData.title.trim() || null,
+      biography: formData.biography.trim() || null,
       email: formData.email.trim() || null,
+      picture: formData.picture.trim() || null,
       facebook: formData.facebook.trim() || null,
       twitter: formData.twitter.trim() || null,
       googleplus: formData.googleplus.trim() || null,
       instagram: formData.instagram.trim() || null,
       pinterest: formData.pinterest.trim() || null,
-      picture: formData.picture.trim() || null,
-      title: formData.title.trim() || null,
-      biography: formData.biography.trim() || null,
     }
     
     updateAuthor.mutate(cleanedData)
