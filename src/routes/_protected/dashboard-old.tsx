@@ -251,6 +251,10 @@ function CreateArticleView({ userId, onDone, onCancel }: { userId: string; onDon
                 pinned: false,
                 redirect: null,
                 categories: null,
+                createdBy: userId,
+                published: false,
+                slug: null,
+                publishedAt: null,
             }
             return db.articles.create(payload)
         },

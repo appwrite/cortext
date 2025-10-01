@@ -31,10 +31,11 @@ The script uses the `node-appwrite` package for server-side operations with API 
 Create a `.env` file in your project root:
 
 ```bash
-# Appwrite Configuration
+# Appwrite Configuration (ALL REQUIRED - NO FALLBACKS)
 APPWRITE_ENDPOINT=https://stage.cloud.appwrite.io/v1
-APPWRITE_PROJECT_ID=68af6eea000565837b93
+APPWRITE_PROJECT_ID=your-project-id-here
 APPWRITE_API_KEY=your-api-key-here
+APPWRITE_DATABASE_ID=your-database-id-here
 
 # For production, use:
 # APPWRITE_ENDPOINT=https://cloud.appwrite.io/v1
@@ -80,7 +81,7 @@ npm run deploy
 ## What Gets Created
 
 ### Database
-- **Database ID**: `imagine-project-db`
+- **Database ID**: Set via `APPWRITE_DATABASE_ID` environment variable
 - **Name**: "Imagine Project Database"
 
 ### Collections

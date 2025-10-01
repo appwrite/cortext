@@ -78,10 +78,10 @@ function Dashboard({ userId }: { userId: string }) {
         return <CreateArticleView userId={userId} onDone={(id) => navigate({ to: '/dashboard', search: { articleId: id } })} onCancel={() => navigate({ to: '/dashboard', search: {} })} />
     }
 
-    return <ArticlesList userId={userId} />
+    return <ArticlesList userId={userId} navigate={navigate} />
 }
 
-function ArticlesList({ userId }: { userId: string }) {
+function ArticlesList({ userId, navigate }: { userId: string; navigate: any }) {
     const qc = useQueryClient()
 
     const { data: articleList, isPending: loadingArticles } = useQuery({
@@ -254,6 +254,10 @@ function CreateArticleView({ userId, onDone, onCancel }: { userId: string; onDon
                 pinned: false,
                 redirect: null,
                 categories: null,
+                createdBy: userId,
+                published: false,
+                slug: null,
+                publishedAt: null,
             }
             return db.articles.create(payload)
         },

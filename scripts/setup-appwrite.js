@@ -26,6 +26,7 @@ import { join } from 'path';
 const APPWRITE_ENDPOINT = process.env.APPWRITE_ENDPOINT;
 const APPWRITE_PROJECT_ID = process.env.APPWRITE_PROJECT_ID;
 const APPWRITE_API_KEY = process.env.APPWRITE_API_KEY;
+const APPWRITE_DATABASE_ID = process.env.APPWRITE_DATABASE_ID;
 
 if (!APPWRITE_ENDPOINT) {
   console.error('❌ APPWRITE_ENDPOINT environment variable is required');
@@ -42,6 +43,11 @@ if (!APPWRITE_API_KEY) {
   process.exit(1);
 }
 
+if (!APPWRITE_DATABASE_ID) {
+  console.error('❌ APPWRITE_DATABASE_ID environment variable is required');
+  process.exit(1);
+}
+
 // Initialize Appwrite client
 const client = new Client()
   .setEndpoint(APPWRITE_ENDPOINT)
@@ -52,7 +58,7 @@ const databases = new Databases(client);
 const storage = new Storage(client);
 
 // Database configuration
-const DATABASE_ID = 'imagine-project-db';
+const DATABASE_ID = APPWRITE_DATABASE_ID;
 const DATABASE_NAME = 'Imagine Project Database';
 
 // Collections configuration
