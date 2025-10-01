@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { db } from '@/lib/appwrite/db'
 import type { Authors } from '@/lib/appwrite/appwrite.types'
+import { type Models } from 'appwrite'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -248,7 +249,7 @@ function NewAuthorModal({ open, onOpenChange, onAuthorCreated }: NewAuthorModalP
   const qc = useQueryClient()
 
   const createAuthor = useMutation({
-    mutationFn: async (data: Omit<Authors, keyof any>) => {
+    mutationFn: async (data: Omit<Authors, keyof Models.Document>) => {
       return db.authors.create(data)
     },
     onSuccess: (newAuthor) => {
@@ -434,7 +435,7 @@ function EditAuthorModal({ author, open, onOpenChange, onAuthorUpdated }: EditAu
   const qc = useQueryClient()
 
   const updateAuthor = useMutation({
-    mutationFn: async (data: Partial<Omit<Authors, keyof any>>) => {
+    mutationFn: async (data: Partial<Omit<Authors, keyof Models.Document>>) => {
       return db.authors.update(author.$id, data)
     },
     onSuccess: () => {
