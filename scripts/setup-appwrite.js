@@ -40,25 +40,27 @@ const COLLECTIONS = {
       Permission.delete(Role.user()),
     ],
     attributes: [
-      { key: 'createdBy', type: 'string', size: 255, required: true, array: false, default: null },
-      { key: 'title', type: 'string', size: 255, required: true, array: false, default: null },
-      { key: 'slug', type: 'string', size: 255, required: false, array: false, default: null },
-      { key: 'excerpt', type: 'string', size: 1000, required: false, array: false, default: null },
-      { key: 'coverImageId', type: 'string', size: 255, required: false, array: false, default: null },
-      { key: 'published', type: 'boolean', required: true, array: false, default: false },
-      { key: 'publishedAt', type: 'integer', required: false, array: false, default: null },
-      { key: 'pinned', type: 'boolean', required: true, array: false, default: false },
+      { key: 'trailer', type: 'string', size: 512, required: false, array: false, default: null },
+      { key: 'title', type: 'string', size: 1024, required: false, array: false, default: null },
+      { key: 'status', type: 'string', size: 50, required: false, array: false, default: 'unpublished' },
+      { key: 'subtitle', type: 'string', size: 2048, required: false, array: false, default: null },
+      { key: 'images', type: 'string', size: 512, required: false, array: true, default: null },
+      { key: 'body', type: 'string', size: 200000, required: false, array: false, default: null },
+      { key: 'authors', type: 'string', size: 512, required: false, array: true, default: null },
+      { key: 'live', type: 'boolean', required: false, array: false, default: false },
+      { key: 'pinned', type: 'boolean', required: false, array: false, default: false },
+      { key: 'redirect', type: 'string', size: 500, required: false, array: false, default: null },
+      { key: 'categories', type: 'string', size: 512, required: false, array: true, default: null },
     ],
     indexes: [
-      { key: 'createdBy', type: 'key', attributes: ['createdBy'] },
-      { key: 'published', type: 'key', attributes: ['published'] },
+      { key: 'status', type: 'key', attributes: ['status'] },
+      { key: 'live', type: 'key', attributes: ['live'] },
       { key: 'pinned', type: 'key', attributes: ['pinned'] },
-      { key: 'publishedAt', type: 'key', attributes: ['publishedAt'] },
-      { key: 'slug', type: 'unique', attributes: ['slug'] },
+      { key: 'title', type: 'key', attributes: ['title'] },
     ],
   },
-  article_sections: {
-    name: 'Article Sections',
+  authors: {
+    name: 'Authors',
     permissions: [
       Permission.read(Role.any()),
       Permission.create(Role.user()),
@@ -66,31 +68,65 @@ const COLLECTIONS = {
       Permission.delete(Role.user()),
     ],
     attributes: [
-      { key: 'createdBy', type: 'string', size: 255, required: true, array: false, default: null },
-      { key: 'articleId', type: 'string', size: 255, required: true, array: false, default: null },
-      { key: 'type', type: 'string', size: 50, required: true, array: false, default: 'text' },
-      { key: 'position', type: 'integer', required: true, array: false, default: 0 },
-      { key: 'content', type: 'string', size: 10000, required: false, array: false, default: null },
-      { key: 'mediaId', type: 'string', size: 255, required: false, array: false, default: null },
-      { key: 'embedUrl', type: 'string', size: 500, required: false, array: false, default: null },
-      { key: 'data', type: 'string', size: 5000, required: false, array: false, default: null },
-      { key: 'caption', type: 'string', size: 500, required: false, array: false, default: null },
-      { key: 'speaker', type: 'string', size: 255, required: false, array: false, default: null },
+      { key: 'firstname', type: 'string', size: 255, required: false, array: false, default: null },
+      { key: 'lastname', type: 'string', size: 255, required: false, array: false, default: null },
+      { key: 'title', type: 'string', size: 255, required: false, array: false, default: null },
+      { key: 'biography', type: 'string', size: 2048, required: false, array: false, default: null },
+      { key: 'picture', type: 'string', size: 255, required: false, array: false, default: null },
+      { key: 'email', type: 'string', size: 255, required: false, array: false, default: null },
+      { key: 'facebook', type: 'string', size: 255, required: false, array: false, default: null },
+      { key: 'twitter', type: 'string', size: 255, required: false, array: false, default: null },
+      { key: 'googleplus', type: 'string', size: 255, required: false, array: false, default: null },
+      { key: 'instagram', type: 'string', size: 255, required: false, array: false, default: null },
+      { key: 'pinterest', type: 'string', size: 255, required: false, array: false, default: null },
     ],
     indexes: [
-      { key: 'createdBy', type: 'key', attributes: ['createdBy'] },
-      { key: 'articleId', type: 'key', attributes: ['articleId'] },
-      { key: 'type', type: 'key', attributes: ['type'] },
-      { key: 'position', type: 'key', attributes: ['position'] },
-      { key: 'articleId_position', type: 'key', attributes: ['articleId', 'position'] },
+      { key: 'firstname', type: 'key', attributes: ['firstname'] },
+      { key: 'lastname', type: 'key', attributes: ['lastname'] },
+      { key: 'email', type: 'unique', attributes: ['email'] },
+    ],
+  },
+  categories: {
+    name: 'Categories',
+    permissions: [
+      Permission.read(Role.any()),
+      Permission.create(Role.user()),
+      Permission.update(Role.user()),
+      Permission.delete(Role.user()),
+    ],
+    attributes: [
+      { key: 'name', type: 'string', size: 255, required: false, array: false, default: null },
+      { key: 'slug', type: 'string', size: 255, required: false, array: false, default: null },
+      { key: 'description', type: 'string', size: 2048, required: false, array: false, default: null },
+    ],
+    indexes: [
+      { key: 'name', type: 'key', attributes: ['name'] },
+      { key: 'slug', type: 'unique', attributes: ['slug'] },
+    ],
+  },
+  images: {
+    name: 'Images',
+    permissions: [
+      Permission.read(Role.any()),
+      Permission.create(Role.user()),
+      Permission.update(Role.user()),
+      Permission.delete(Role.user()),
+    ],
+    attributes: [
+      { key: 'file', type: 'string', size: 256, required: true, array: false, default: null },
+      { key: 'caption', type: 'string', size: 2048, required: false, array: false, default: null },
+      { key: 'credits', type: 'string', size: 256, required: false, array: false, default: null },
+    ],
+    indexes: [
+      { key: 'file', type: 'key', attributes: ['file'] },
     ],
   },
 };
 
 // Storage configuration
 const STORAGE_BUCKETS = {
-  'media-bucket': {
-    name: 'Media Bucket',
+  'images': {
+    name: 'Images',
     permissions: [
       Permission.read(Role.any()),
       Permission.create(Role.user()),
@@ -98,7 +134,7 @@ const STORAGE_BUCKETS = {
       Permission.delete(Role.user()),
     ],
     fileSecurity: true,
-    allowedFileExtensions: ['jpg', 'jpeg', 'png', 'gif', 'webp', 'svg', 'mp4', 'mov', 'avi', 'mkv', 'pdf', 'doc', 'docx', 'txt', 'md'],
+    allowedFileExtensions: ['jpg', 'jpeg', 'png', 'gif', 'webp', 'svg', 'bmp', 'tiff'],
     maxFileSize: 10485760, // 10MB
     encryption: true,
     antivirus: true,
