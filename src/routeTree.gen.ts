@@ -13,7 +13,6 @@ import { Route as ProtectedRouteImport } from './routes/_protected'
 import { Route as AuthRouteImport } from './routes/_auth'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as ProtectedDashboardOldRouteImport } from './routes/_protected/dashboard-old'
-import { Route as ProtectedDashboardNewRouteImport } from './routes/_protected/dashboard-new'
 import { Route as ProtectedDashboardRouteImport } from './routes/_protected/dashboard'
 import { Route as AuthSignUpRouteImport } from './routes/_auth/sign-up'
 import { Route as AuthSignOutRouteImport } from './routes/_auth/sign-out'
@@ -38,11 +37,6 @@ const IndexRoute = IndexRouteImport.update({
 const ProtectedDashboardOldRoute = ProtectedDashboardOldRouteImport.update({
   id: '/dashboard-old',
   path: '/dashboard-old',
-  getParentRoute: () => ProtectedRoute,
-} as any)
-const ProtectedDashboardNewRoute = ProtectedDashboardNewRouteImport.update({
-  id: '/dashboard-new',
-  path: '/dashboard-new',
   getParentRoute: () => ProtectedRoute,
 } as any)
 const ProtectedDashboardRoute = ProtectedDashboardRouteImport.update({
@@ -90,7 +84,6 @@ export interface FileRoutesByFullPath {
   '/sign-out': typeof AuthSignOutRoute
   '/sign-up': typeof AuthSignUpRoute
   '/dashboard': typeof ProtectedDashboardRouteWithChildren
-  '/dashboard-new': typeof ProtectedDashboardNewRoute
   '/dashboard-old': typeof ProtectedDashboardOldRoute
   '/dashboard/$articleId': typeof ProtectedDashboardArticleIdRoute
   '/dashboard/$articleId-new': typeof ProtectedDashboardArticleIdNewRoute
@@ -102,7 +95,6 @@ export interface FileRoutesByTo {
   '/sign-out': typeof AuthSignOutRoute
   '/sign-up': typeof AuthSignUpRoute
   '/dashboard': typeof ProtectedDashboardRouteWithChildren
-  '/dashboard-new': typeof ProtectedDashboardNewRoute
   '/dashboard-old': typeof ProtectedDashboardOldRoute
   '/dashboard/$articleId': typeof ProtectedDashboardArticleIdRoute
   '/dashboard/$articleId-new': typeof ProtectedDashboardArticleIdNewRoute
@@ -117,7 +109,6 @@ export interface FileRoutesById {
   '/_auth/sign-out': typeof AuthSignOutRoute
   '/_auth/sign-up': typeof AuthSignUpRoute
   '/_protected/dashboard': typeof ProtectedDashboardRouteWithChildren
-  '/_protected/dashboard-new': typeof ProtectedDashboardNewRoute
   '/_protected/dashboard-old': typeof ProtectedDashboardOldRoute
   '/_protected/dashboard/$articleId': typeof ProtectedDashboardArticleIdRoute
   '/_protected/dashboard/$articleId-new': typeof ProtectedDashboardArticleIdNewRoute
@@ -131,7 +122,6 @@ export interface FileRouteTypes {
     | '/sign-out'
     | '/sign-up'
     | '/dashboard'
-    | '/dashboard-new'
     | '/dashboard-old'
     | '/dashboard/$articleId'
     | '/dashboard/$articleId-new'
@@ -143,7 +133,6 @@ export interface FileRouteTypes {
     | '/sign-out'
     | '/sign-up'
     | '/dashboard'
-    | '/dashboard-new'
     | '/dashboard-old'
     | '/dashboard/$articleId'
     | '/dashboard/$articleId-new'
@@ -157,7 +146,6 @@ export interface FileRouteTypes {
     | '/_auth/sign-out'
     | '/_auth/sign-up'
     | '/_protected/dashboard'
-    | '/_protected/dashboard-new'
     | '/_protected/dashboard-old'
     | '/_protected/dashboard/$articleId'
     | '/_protected/dashboard/$articleId-new'
@@ -198,13 +186,6 @@ declare module '@tanstack/react-router' {
       path: '/dashboard-old'
       fullPath: '/dashboard-old'
       preLoaderRoute: typeof ProtectedDashboardOldRouteImport
-      parentRoute: typeof ProtectedRoute
-    }
-    '/_protected/dashboard-new': {
-      id: '/_protected/dashboard-new'
-      path: '/dashboard-new'
-      fullPath: '/dashboard-new'
-      preLoaderRoute: typeof ProtectedDashboardNewRouteImport
       parentRoute: typeof ProtectedRoute
     }
     '/_protected/dashboard': {
@@ -290,13 +271,11 @@ const ProtectedDashboardRouteWithChildren =
 
 interface ProtectedRouteChildren {
   ProtectedDashboardRoute: typeof ProtectedDashboardRouteWithChildren
-  ProtectedDashboardNewRoute: typeof ProtectedDashboardNewRoute
   ProtectedDashboardOldRoute: typeof ProtectedDashboardOldRoute
 }
 
 const ProtectedRouteChildren: ProtectedRouteChildren = {
   ProtectedDashboardRoute: ProtectedDashboardRouteWithChildren,
-  ProtectedDashboardNewRoute: ProtectedDashboardNewRoute,
   ProtectedDashboardOldRoute: ProtectedDashboardOldRoute,
 }
 

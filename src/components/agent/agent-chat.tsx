@@ -12,21 +12,21 @@ type Message = {
 
 export function AgentChat({
     title,
-    excerpt,
+    subtitle,
     onSetTitle,
-    onSetExcerpt,
+    onSetSubtitle,
 }: {
     title: string
-    excerpt: string
+    subtitle: string
     onSetTitle: (t: string) => void
-    onSetExcerpt: (e: string) => void
+    onSetSubtitle: (s: string) => void
 }) {
     const [input, setInput] = useState('')
     const [messages, setMessages] = useState<Message[]>([
         {
             id: 'm1',
             role: 'assistant',
-            content: "Hi! I'm your AI co-writer. I can help punch up your title, draft an excerpt, or suggest section ideas.",
+            content: "Hi! I'm your AI co-writer. I can help punch up your title, draft a subtitle, or suggest section ideas.",
         },
         {
             id: 'm2',
@@ -88,13 +88,13 @@ export function AgentChat({
         ])
     }
 
-    const generateExcerpt = () => {
+    const generateSubtitle = () => {
         const base = title || 'this article'
         const next = `A clear, succinct overview of ${base.toLowerCase()}—what it covers, why it matters, and how to get value fast.`
-        onSetExcerpt(next)
+        onSetSubtitle(next)
         setMessages((prev) => [
             ...prev,
-            { id: `a-${Date.now()}`, role: 'assistant', content: 'Drafted a new excerpt. Feel free to tweak it.' },
+            { id: `a-${Date.now()}`, role: 'assistant', content: 'Drafted a new subtitle. Feel free to tweak it.' },
         ])
     }
 
@@ -136,8 +136,8 @@ export function AgentChat({
                     <Button variant="secondary" size="sm" className="gap-1 h-7 px-2 text-[11px] cursor-pointer" onClick={applyPunchierTitle}>
                         <Sparkles className="h-3.5 w-3.5" /> Punchier title
                     </Button>
-                    <Button variant="secondary" size="sm" className="gap-1 h-7 px-2 text-[11px] cursor-pointer" onClick={generateExcerpt}>
-                        <Sparkles className="h-3.5 w-3.5" /> Draft excerpt
+                    <Button variant="secondary" size="sm" className="gap-1 h-7 px-2 text-[11px] cursor-pointer" onClick={generateSubtitle}>
+                        <Sparkles className="h-3.5 w-3.5" /> Draft subtitle
                     </Button>
                 </div>
                 <div className="flex items-center gap-2">
@@ -167,8 +167,8 @@ function mockReply(input: string, currentTitle: string) {
     if (q.includes('title')) {
         return `Try: “${makePunchierTitle(currentTitle)}”`
     }
-    if (q.includes('excerpt') || q.includes('summary')) {
-        return 'I can draft a crisp, one-sentence summary that highlights value and context.'
+    if (q.includes('subtitle') || q.includes('summary')) {
+        return 'I can draft a crisp, one-sentence subtitle that highlights value and context.'
     }
     return "Got it. I can help rewrite sections, generate outlines, or polish your tone."
 }

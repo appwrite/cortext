@@ -4,8 +4,8 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { db } from '@/lib/appwrite/db'
 import { files } from '@/lib/appwrite/storage'
-import type { Articles, any } from '@/lib/appwrite/appwrite.types'
-import { Query, type Models } from 'appwrite'
+import type { Articles } from '@/lib/appwrite/appwrite.types'
+import { type Models } from 'appwrite'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
@@ -13,6 +13,7 @@ import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { toast } from '@/hooks/use-toast'
 import { Image as ImageIcon, Trash2, Save, Video, MapPin, Type as TypeIcon, Upload, ArrowLeft, LogOut, GripVertical, Brain, Quote } from 'lucide-react'
+import { AgentChat } from '@/components/agent/agent-chat'
 
 export const Route = createFileRoute('/_protected/dashboard/$articleId-old')({
   component: RouteComponent,
@@ -70,25 +71,21 @@ function ArticleEditor({ articleId, userId }: { articleId: string; userId: strin
     queryFn: () => db.articles.get(articleId),
   })
 
-  const { data: sectionsData } = useQuery({
-    queryKey: ['articleSections', articleId],
-    queryFn: async () => {
-      const res = await db.articleSections.list([
-        Query.equal('createdBy', [userId]),
-        Query.equal('articleId', [articleId]),
-        Query.orderAsc('position'),
-      ])
-      return res.documents
-    },
-  })
-
   const [localSections, setLocalSections] = useState<any[]>([])
 
   useEffect(() => {
-    if (sectionsData) {
-      setLocalSections(sectionsData.map((s) => ({ ...s })))
+    if (article?.body) {
+      try {
+        const sections = JSON.parse(article.body)
+        setLocalSections(Array.isArray(sections) ? sections : [])
+      } catch {
+        setLocalSections([])
+      }
     }
-  }, [sectionsData])
+  }, [article?.body])
+
+  // Track a newly created section to focus its first relevant input when it renders
+  const focusTargetRef = useRef<{ id: string; type: string } | null>(null)
 
   const updateArticle = useMutation({
     mutationFn: async (data: Partial<Omit<Articles, keyof Models.Document>>) => {
@@ -103,49 +100,31 @@ function ArticleEditor({ articleId, userId }: { articleId: string; userId: strin
     onError: () => toast({ title: 'Failed to save article' }),
   })
 
-  const createSection = useMutation({
-    mutationFn: async (type: string) => {
-      const payload: Omit<any, keyof Models.Document> = {
-        createdBy: userId,
-        articleId,
-        type,
-        position: (localSections?.length ?? 0),
-        content: null,
-        mediaId: null,
-        embedUrl: null,
-        data: null,
-        caption: null,
-        speaker: null,
-      }
-      return db.articleSections.create(payload)
-    },
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ['articleSections', articleId] })
-    },
-  })
+  const createSection = (type: string) => {
+    const newSection = {
+      id: Date.now().toString(),
+      type,
+      position: (localSections?.length ?? 0),
+      content: '',
+      title: '',
+      speaker: null,
+    }
+    const updatedSections = [...localSections, newSection]
+    setLocalSections(updatedSections)
+    // Focus the first input after the component re-renders
+    focusTargetRef.current = { id: newSection.id, type: String(type) }
+  }
 
-  const updateSection = useMutation({
-    mutationFn: async ({ id, data }: { id: string, data: Partial<Omit<any, keyof Models.Document>> }) => {
-      const current = await db.articleSections.get(id)
-      if (current.createdBy !== userId) throw new Error('Forbidden')
-      return db.articleSections.update(id, sanitizeSectionUpdate(data))
-    },
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['articleSections', articleId] }),
-  })
+  const updateSection = (id: string, data: any) => {
+    setLocalSections(prev => prev.map(section => 
+      section.id === id ? { ...section, ...data } : section
+    ))
+  }
 
-  const deleteSection = useMutation({
-    mutationFn: async (id: string) => {
-      const current = await db.articleSections.get(id)
-      if (current.createdBy !== userId) throw new Error('Forbidden')
-      return db.articleSections.delete(id)
-    },
-    onSuccess: () => {
-      setLocalSections((prev) => prev.filter((s) => s.$id !== idToDeleteRef.current))
-      qc.invalidateQueries({ queryKey: ['articleSections', articleId] })
-    },
-  })
+  const deleteSection = (id: string) => {
+    setLocalSections(prev => prev.filter(section => section.id !== id))
+  }
 
-  const idToDeleteRef = useRef<string | null>(null)
 
   // Drag & drop ordering with clear cues
   const dragIdRef = useRef<string | null>(null)
@@ -167,18 +146,12 @@ function ArticleEditor({ articleId, userId }: { articleId: string; userId: strin
     e.dataTransfer.dropEffect = 'move'
   }
 
-  const persistOrder = async (next: any[]) => {
-    const changes = next
-      .map((s, i) => ({ id: s.$id, position: i, prev: s.position }))
-      .filter((s) => s.position !== s.prev)
-    if (!changes.length) return
-    await Promise.all(
-      changes.map((c) => updateSection.mutateAsync({ id: c.id, data: { position: c.position } }))
-    )
-    qc.invalidateQueries({ queryKey: ['articleSections', articleId] })
+  const persistOrder = (next: any[]) => {
+    const updatedSections = next.map((s, i) => ({ ...s, position: i }))
+    setLocalSections(updatedSections)
   }
 
-  const onDropRow = async (targetId: string, e: React.DragEvent) => {
+  const onDropRow = (targetId: string, e: React.DragEvent) => {
     e.preventDefault()
     const sourceId = dragIdRef.current || (() => {
       try { return e.dataTransfer.getData('text/plain') } catch { return null }
@@ -190,8 +163,8 @@ function ArticleEditor({ articleId, userId }: { articleId: string; userId: strin
     if (!sourceId || sourceId === targetId) return
 
     setLocalSections((prev) => {
-      const src = prev.findIndex((s) => s.$id === sourceId)
-      const tgt = prev.findIndex((s) => s.$id === targetId)
+      const src = prev.findIndex((s) => s.id === sourceId)
+      const tgt = prev.findIndex((s) => s.id === targetId)
       if (src < 0 || tgt < 0) return prev
       const next = [...prev]
       const [moved] = next.splice(src, 1)
@@ -220,37 +193,14 @@ function ArticleEditor({ articleId, userId }: { articleId: string; userId: strin
   const handleMainSave = async () => {
     try {
       setSaving(true)
-      await updateArticle.mutateAsync({ title, slug: slugify(title), subtitle })
-
-      const originals = sectionsData || []
-      const changed = localSections.filter((loc) => {
-        const orig = originals.find((o) => o.$id === loc.$id)
-        if (!orig) return false
-        return hasSectionChanged(loc, orig)
+      await updateArticle.mutateAsync({ 
+        title, 
+        slug: slugify(title), 
+        subtitle,
+        body: JSON.stringify(localSections)
       })
 
-      if (changed.length) {
-        await Promise.all(
-          changed.map((s) =>
-            updateSection.mutateAsync({
-              id: s.$id,
-              data: {
-                type: s.type,
-                content: s.content ?? null,
-                mediaId: s.mediaId ?? null,
-                embedUrl: s.embedUrl ?? null,
-                data: s.data ?? null,
-                caption: s.caption ?? null,
-                speaker: (s as any).speaker ?? null,
-                position: s.position,
-              },
-            })
-          )
-        )
-      }
-
       toast({ title: 'Saved' })
-      qc.invalidateQueries({ queryKey: ['articleSections', articleId] })
       qc.invalidateQueries({ queryKey: ['article', articleId] })
     } catch (e) {
       toast({ title: 'Failed to save changes' })
@@ -265,7 +215,13 @@ function ArticleEditor({ articleId, userId }: { articleId: string; userId: strin
 
   return (
     <main className="flex-1">
-      <div className="px-6 py-6 space-y-8 pb-24">
+      <AgentChat
+        title={title}
+        excerpt={subtitle}
+        onSetTitle={setTitle}
+        onSetExcerpt={setExcerpt}
+      />
+      <div className="px-6 py-6 space-y-8 pb-24 ml-72 md:ml-80 lg:ml-96">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
             <Link to="/dashboard">
@@ -294,11 +250,11 @@ function ArticleEditor({ articleId, userId }: { articleId: string; userId: strin
           <div className="flex items-center justify-between">
             <h2 className="text-base font-medium">Sections</h2>
             <div className="flex gap-2">
-              <Button size="sm" variant="outline" className="h-7 px-2 text-xs" onClick={() => createSection.mutate('text')}><TypeIcon className="h-4 w-4 mr-1" /> Text</Button>
-              <Button size="sm" variant="outline" className="h-7 px-2 text-xs" onClick={() => createSection.mutate('image')}><ImageIcon className="h-4 w-4 mr-1" /> Image</Button>
-              <Button size="sm" variant="outline" className="h-7 px-2 text-xs" onClick={() => createSection.mutate('video')}><Video className="h-4 w-4 mr-1" /> Video</Button>
-              <Button size="sm" variant="outline" className="h-7 px-2 text-xs" onClick={() => createSection.mutate('map')}><MapPin className="h-4 w-4 mr-1" /> Map</Button>
-              <Button size="sm" variant="outline" className="h-7 px-2 text-xs" onClick={() => createSection.mutate('quote')}><Quote className="h-4 w-4 mr-1" /> Quote</Button>
+              <Button size="sm" variant="outline" className="h-7 px-2 text-xs" onClick={() => createSection('text')}><TypeIcon className="h-4 w-4 mr-1" /> Text</Button>
+              <Button size="sm" variant="outline" className="h-7 px-2 text-xs" onClick={() => createSection('image')}><ImageIcon className="h-4 w-4 mr-1" /> Image</Button>
+              <Button size="sm" variant="outline" className="h-7 px-2 text-xs" onClick={() => createSection('video')}><Video className="h-4 w-4 mr-1" /> Video</Button>
+              <Button size="sm" variant="outline" className="h-7 px-2 text-xs" onClick={() => createSection('map')}><MapPin className="h-4 w-4 mr-1" /> Map</Button>
+              <Button size="sm" variant="outline" className="h-7 px-2 text-xs" onClick={() => createSection('quote')}><Quote className="h-4 w-4 mr-1" /> Quote</Button>
             </div>
           </div>
 
@@ -317,22 +273,22 @@ function ArticleEditor({ articleId, userId }: { articleId: string; userId: strin
                 </TableHeader>
                 <TableBody>
                   {localSections?.map((s) => {
-                    const isTarget = overInfo.id === s.$id && (!!draggingId && draggingId !== s.$id)
+                    const isTarget = overInfo.id === s.id && (!!draggingId && draggingId !== s.id)
                     const borderCue = isTarget ? (overInfo.where === 'above' ? 'border-t-2 border-primary' : 'border-b-2 border-primary') : ''
                     return (
                       <TableRow
-                        key={s.$id}
-                        onDragOver={(e) => onDragOverRow(s.$id, e)}
-                        onDrop={(e) => onDropRow(s.$id, e)}
+                        key={s.id}
+                        onDragOver={(e) => onDragOverRow(s.id, e)}
+                        onDrop={(e) => onDropRow(s.id, e)}
                         className={`relative transition-colors ${isTarget ? 'bg-accent/50' : ''} ${borderCue}`}
                       >
                         <TableCell>
                           <button
                             aria-label="Drag to reorder"
                             draggable
-                            onDragStart={(e) => onDragStart(s.$id, e)}
+                            onDragStart={(e) => onDragStart(s.id, e)}
                             onDragEnd={() => { setDraggingId(null); setOverInfo({ id: null, where: 'below' }) }}
-                            className={`p-1 rounded hover:bg-accent text-muted-foreground cursor-grab active:cursor-grabbing ${draggingId === s.$id ? 'opacity-60 ring-2 ring-primary/40' : ''}`}
+                            className={`p-1 rounded hover:bg-accent text-muted-foreground cursor-grab active:cursor-grabbing ${draggingId === s.id ? 'opacity-60 ring-2 ring-primary/40' : ''}`}
                             title="Drag to reorder"
                           >
                             <GripVertical className="h-4 w-4" />
@@ -342,11 +298,11 @@ function ArticleEditor({ articleId, userId }: { articleId: string; userId: strin
                         <TableCell>
                           <SectionEditor
                             section={s}
-                            onLocalChange={(patch) => setLocalSections((prev) => prev.map((it) => it.$id === s.$id ? { ...it, ...patch } as any : it))}
+                            onLocalChange={(patch) => updateSection(s.id, patch)}
                           />
                         </TableCell>
                         <TableCell className="text-right">
-                          <Button variant="ghost" size="icon" onClick={() => { idToDeleteRef.current = s.$id; deleteSection.mutate(s.$id) }}>
+                          <Button variant="ghost" size="icon" onClick={() => deleteSection(s.id)}>
                             <Trash2 className="h-4 w-4" />
                           </Button>
                         </TableCell>
@@ -366,7 +322,7 @@ function ArticleEditor({ articleId, userId }: { articleId: string; userId: strin
           <Button
             variant="secondary"
             className="whitespace-nowrap"
-            onClick={() => updateArticle.mutate({ published: !article.published, publishedAt: !article.published ? Date.now() : null })}
+            onClick={() => updateArticle.mutate({ published: !article.published, publishedAt: !article.published ? new Date().toISOString() : null })}
           >
             {article.published ? 'Unpublish' : 'Publish'}
           </Button>
@@ -414,9 +370,9 @@ function TextEditor({ section, onLocalChange }: { section: any; onLocalChange: (
 
   return (
     <div className="space-y-1">
-      <Label htmlFor={`text-${section.$id}`}>Text</Label>
+      <Label htmlFor={`text-${section.id}`}>Text</Label>
       <Textarea
-        id={`text-${section.$id}`}
+        id={`text-${section.id}`}
         ref={ref}
         value={value}
         onChange={(e) => setValue(e.target.value)}
@@ -440,12 +396,12 @@ function QuoteEditor({ section, onLocalChange }: { section: any; onLocalChange: 
   return (
     <div className="space-y-2">
       <div className="space-y-1">
-        <Label htmlFor={`quote-${section.$id}`}>Quote</Label>
-        <Textarea id={`quote-${section.$id}`} value={content} onChange={(e) => setContent(e.target.value)} placeholder="Add a quote…" rows={2} className="text-sm" />
+        <Label htmlFor={`quote-${section.id}`}>Quote</Label>
+        <Textarea id={`quote-${section.id}`} value={content} onChange={(e) => setContent(e.target.value)} placeholder="Add a quote…" rows={2} className="text-sm" />
       </div>
       <div className="space-y-1">
-        <Label htmlFor={`speaker-${section.$id}`}>Speaker</Label>
-        <Input id={`speaker-${section.$id}`} value={speaker} onChange={(e) => setSpeaker(e.target.value)} placeholder="Name (optional)" />
+        <Label htmlFor={`speaker-${section.id}`}>Speaker</Label>
+        <Input id={`speaker-${section.id}`} value={speaker} onChange={(e) => setSpeaker(e.target.value)} placeholder="Name (optional)" />
       </div>
     </div>
   )
@@ -471,7 +427,7 @@ function ImageEditor({ section, onLocalChange }: { section: any; onLocalChange: 
   return (
     <div className="space-y-2">
       <div className="space-y-1">
-        <Label htmlFor={`file-${section.$id}`}>Image</Label>
+        <Label htmlFor={`file-${section.id}`}>Image</Label>
         <div className="flex items-start gap-3">
           {previewUrl ? (
             <img src={previewUrl} alt="" className="max-h-32 rounded border" />
@@ -479,9 +435,9 @@ function ImageEditor({ section, onLocalChange }: { section: any; onLocalChange: 
             <div className="text-sm text-muted-foreground">No image</div>
           )}
           <div className="flex items-center gap-2">
-            <label className="inline-flex" htmlFor={`file-${section.$id}`}>
+            <label className="inline-flex" htmlFor={`file-${section.id}`}>
               <input
-                id={`file-${section.$id}`}
+                id={`file-${section.id}`}
                 type="file"
                 accept="image/*"
                 className="hidden"
@@ -498,8 +454,8 @@ function ImageEditor({ section, onLocalChange }: { section: any; onLocalChange: 
         </div>
       </div>
       <div className="space-y-1">
-        <Label htmlFor={`caption-${section.$id}`}>Caption</Label>
-        <Input id={`caption-${section.$id}`} value={section.caption ?? ''} onChange={(e) => onLocalChange({ caption: e.target.value })} placeholder="Caption (optional)" />
+        <Label htmlFor={`caption-${section.id}`}>Caption</Label>
+        <Input id={`caption-${section.id}`} value={section.caption ?? ''} onChange={(e) => onLocalChange({ caption: e.target.value })} placeholder="Caption (optional)" />
       </div>
     </div>
   )
@@ -516,8 +472,8 @@ function VideoEditor({ section, onLocalChange }: { section: any; onLocalChange: 
   return (
     <div className="space-y-2">
       <div className="space-y-1">
-        <Label htmlFor={`video-url-${section.$id}`}>Video URL</Label>
-        <Input id={`video-url-${section.$id}`} value={url} onChange={(e) => setUrl(e.target.value)} placeholder="Paste YouTube URL" />
+        <Label htmlFor={`video-url-${section.id}`}>Video URL</Label>
+        <Input id={`video-url-${section.id}`} value={url} onChange={(e) => setUrl(e.target.value)} placeholder="Paste YouTube URL" />
       </div>
       {embed && (
         <div className="aspect-video w-full max-w-md">
@@ -525,8 +481,8 @@ function VideoEditor({ section, onLocalChange }: { section: any; onLocalChange: 
         </div>
       )}
       <div className="space-y-1">
-        <Label htmlFor={`caption-${section.$id}`}>Caption</Label>
-        <Input id={`caption-${section.$id}`} value={section.caption ?? ''} onChange={(e) => onLocalChange({ caption: e.target.value })} placeholder="Caption (optional)" />
+        <Label htmlFor={`caption-${section.id}`}>Caption</Label>
+        <Input id={`caption-${section.id}`} value={section.caption ?? ''} onChange={(e) => onLocalChange({ caption: e.target.value })} placeholder="Caption (optional)" />
       </div>
     </div>
   )
@@ -550,12 +506,12 @@ function MapEditor({ section, onLocalChange }: { section: any; onLocalChange: (d
     <div className="space-y-2">
       <div className="grid grid-cols-2 gap-2 items-start">
         <div className="space-y-1">
-          <Label htmlFor={`lat-${section.$id}`}>Latitude</Label>
-          <Input id={`lat-${section.$id}`} placeholder="e.g. 37.7749" value={lat as any} onChange={(e) => setLat(e.target.value as any)} />
+          <Label htmlFor={`lat-${section.id}`}>Latitude</Label>
+          <Input id={`lat-${section.id}`} placeholder="e.g. 37.7749" value={lat as any} onChange={(e) => setLat(e.target.value as any)} />
         </div>
         <div className="space-y-1">
-          <Label htmlFor={`lng-${section.$id}`}>Longitude</Label>
-          <Input id={`lng-${section.$id}`} placeholder="e.g. -122.4194" value={lng as any} onChange={(e) => setLng(e.target.value as any)} />
+          <Label htmlFor={`lng-${section.id}`}>Longitude</Label>
+          <Input id={`lng-${section.id}`} placeholder="e.g. -122.4194" value={lng as any} onChange={(e) => setLng(e.target.value as any)} />
         </div>
       </div>
       {nlat && nlng ? (
@@ -569,18 +525,6 @@ function MapEditor({ section, onLocalChange }: { section: any; onLocalChange: (d
   )
 }
 
-function hasSectionChanged(a: any, b: any) {
-  return (
-    a.type !== b.type ||
-    (a.content ?? null) !== (b.content ?? null) ||
-    (a.mediaId ?? null) !== (b.mediaId ?? null) ||
-    (a.embedUrl ?? null) !== (b.embedUrl ?? null) ||
-    (a.data ?? null) !== (b.data ?? null) ||
-    (a.caption ?? null) !== (b.caption ?? null) ||
-    ((a as any).speaker ?? null) !== ((b as any).speaker ?? null) ||
-    a.position !== b.position
-  )
-}
 
 function slugify(input: string) {
   return input
@@ -595,10 +539,6 @@ function sanitizeArticleUpdate(data: Partial<Omit<Articles, keyof Models.Documen
   return rest
 }
 
-function sanitizeSectionUpdate(data: Partial<Omit<any, keyof Models.Document>>) {
-  const { createdBy, articleId, ...rest } = data as any
-  return rest
-}
 
 function toYouTubeEmbed(url: string | null | undefined) {
   if (!url) return null
