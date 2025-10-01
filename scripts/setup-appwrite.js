@@ -268,6 +268,15 @@ async function ensureAttribute(collectionId, attribute) {
               attribute.default,
               attribute.array
             );
+          case 'datetime':
+            return databases.createDatetimeAttribute(
+              DATABASE_ID,
+              collectionId,
+              attribute.key,
+              attribute.required,
+              attribute.default,
+              attribute.array
+            );
           default:
             throw new Error(`Unsupported attribute type: ${attribute.type}`);
         }
