@@ -14,6 +14,7 @@ import { Textarea } from '@/components/ui/textarea'
 import { toast } from '@/hooks/use-toast'
 import { Image as ImageIcon, Plus, Trash2, Save, Video, MapPin, Type as TypeIcon, Upload, ArrowLeft, LogOut, GripVertical, Brain, Loader2, Heading1, Quote, Pin as PinIcon } from 'lucide-react'
 import { AgentChat } from '@/components/agent/agent-chat'
+import { AuthorSelector } from '@/components/author'
 
 export const Route = createFileRoute('/_protected/dashboard')({
     component: RouteComponent,
@@ -237,6 +238,7 @@ function ArticlesList({ userId }: { userId: string }) {
 function CreateArticleView({ userId, onDone, onCancel }: { userId: string; onDone: (id: string) => void; onCancel: () => void }) {
     const qc = useQueryClient()
     const [title, setTitle] = useState('')
+    const [authors, setAuthors] = useState<string[]>([])
     const createArticle = useMutation({
         mutationFn: async () => {
             const payload: Omit<Articles, keyof Models.Document> = {
@@ -246,7 +248,7 @@ function CreateArticleView({ userId, onDone, onCancel }: { userId: string; onDon
                 subtitle: null,
                 images: null,
                 body: null,
-                authors: null,
+                authors: authors.length > 0 ? authors : null,
                 live: false,
                 pinned: false,
                 redirect: null,
@@ -277,6 +279,12 @@ function CreateArticleView({ userId, onDone, onCancel }: { userId: string; onDon
                     <div>
                         <Label htmlFor="new-title">Title</Label>
                         <Input id="new-title" value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Article title" />
+                    </div>
+                    <div>
+                        <AuthorSelector 
+                            selectedAuthorIds={authors} 
+                            onAuthorsChange={setAuthors} 
+                        />
                     </div>
                     <div className="flex gap-2">
                         <Button onClick={() => createArticle.mutate()} disabled={createArticle.isPending} className="cursor-pointer">
@@ -433,12 +441,14 @@ function ArticleEditor({ articleId, userId, onBack }: { articleId: string; userI
 
     const [title, setTitle] = useState('')
     const [subtitle, setExcerpt] = useState('')
+    const [authors, setAuthors] = useState<string[]>([])
     const [saving, setSaving] = useState(false)
 
     useMemo(() => {
         if (article) {
             setTitle(article.title ?? '')
             setExcerpt(article.subtitle ?? '')
+            setAuthors(article.authors ?? [])
         }
     }, [article])
 
@@ -449,6 +459,7 @@ function ArticleEditor({ articleId, userId, onBack }: { articleId: string; userI
                 title, 
                 slug: slugify(title), 
                 subtitle,
+                authors,
                 body: JSON.stringify(localSections)
             })
 
@@ -468,7 +479,7 @@ function ArticleEditor({ articleId, userId, onBack }: { articleId: string; userI
     return (
         <>
             <AgentChat title={title} subtitle={subtitle} onSetTitle={setTitle} onSetSubtitle={setExcerpt} />
-            <div className="pb-16 pl-72 md:pl-80 lg:pl-96 pr-4 sm:pr-6 space-y-6">
+            <div className="pb-16 pl-72 md:pl-80 lg:pl-96 pr-4 sm:pr-6 space-y-6 max-w-6xl mx-auto">
                 <div className="flex items-center justify-between">
                     <Button variant="ghost" size="sm" onClick={onBack} className="cursor-pointer">
                         <ArrowLeft className="h-4 w-4 mr-1" /> Back to articles
@@ -484,6 +495,12 @@ function ArticleEditor({ articleId, userId, onBack }: { articleId: string; userI
                     <div>
                         <Label htmlFor="subtitle">Subtitle</Label>
                         <Input id="subtitle" value={subtitle} onChange={(e) => setExcerpt(e.target.value)} placeholder="Short summary (optional)" />
+                    </div>
+                    <div>
+                        <AuthorSelector 
+                            selectedAuthorIds={authors} 
+                            onAuthorsChange={setAuthors} 
+                        />
                     </div>
                     <div className="text-xs text-muted-foreground flex items-center gap-2">
                         <span>Status:</span>
@@ -565,7 +582,7 @@ function ArticleEditor({ articleId, userId, onBack }: { articleId: string; userI
 
                 {/* Sticky bottom actions — stop before agent rail */}
                 <div className="fixed bottom-0 right-0 left-72 md:left-80 lg:left-96 z-20 border-t bg-background/90 backdrop-blur supports-[backdrop-filter]:bg-background/70">
-                    <div className="px-6 py-3 flex items-center justify-end gap-2">
+                    <div className="px-6 py-3 flex items-center justify-end gap-2 max-w-6xl mx-auto">
                         <Button
                             variant="secondary"
                             className="whitespace-nowrap cursor-pointer"

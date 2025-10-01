@@ -14,6 +14,7 @@ import { Textarea } from '@/components/ui/textarea'
 import { toast } from '@/hooks/use-toast'
 import { Image as ImageIcon, Trash2, Save, Video, MapPin, Type as TypeIcon, Upload, ArrowLeft, LogOut, GripVertical, Brain, Quote } from 'lucide-react'
 import { AgentChat } from '@/components/agent/agent-chat'
+import { AuthorSelector } from '@/components/author'
 
 export const Route = createFileRoute('/_protected/dashboard/$articleId')({
   component: RouteComponent,
@@ -178,12 +179,14 @@ function ArticleEditor({ articleId, userId }: { articleId: string; userId: strin
 
   const [title, setTitle] = useState('')
   const [subtitle, setExcerpt] = useState('')
+  const [authors, setAuthors] = useState<string[]>([])
   const [saving, setSaving] = useState(false)
 
   useMemo(() => {
     if (article) {
       setTitle(article.title ?? '')
       setExcerpt(article.subtitle ?? '')
+      setAuthors(article.authors ?? [])
     }
   }, [article])
 
@@ -194,6 +197,7 @@ function ArticleEditor({ articleId, userId }: { articleId: string; userId: strin
         title, 
         slug: slugify(title), 
         subtitle,
+        authors,
         body: JSON.stringify(localSections)
       })
 
@@ -218,7 +222,7 @@ function ArticleEditor({ articleId, userId }: { articleId: string; userId: strin
         onSetTitle={setTitle}
         onSetSubtitle={setExcerpt}
       />
-      <div className="px-6 py-6 space-y-8 pb-24 ml-72 md:ml-80 lg:ml-96">
+      <div className="px-6 py-6 space-y-8 pb-24 ml-72 md:ml-80 lg:ml-96 max-w-6xl mx-auto">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
             <Link to="/dashboard">
@@ -235,6 +239,12 @@ function ArticleEditor({ articleId, userId }: { articleId: string; userId: strin
             <div>
               <Label htmlFor="subtitle">Subtitle</Label>
               <Input id="subtitle" value={subtitle} onChange={(e) => setExcerpt(e.target.value)} placeholder="Short summary (optional)" />
+            </div>
+            <div>
+              <AuthorSelector 
+                selectedAuthorIds={authors} 
+                onAuthorsChange={setAuthors} 
+              />
             </div>
           <div className="text-xs text-muted-foreground flex items-center gap-2">
             <span>Status:</span>
@@ -316,7 +326,7 @@ function ArticleEditor({ articleId, userId }: { articleId: string; userId: strin
 
       {/* Fixed bottom actions */}
       <div className="fixed bottom-0 inset-x-0 z-20 border-t bg-background/90 backdrop-blur supports-[backdrop-filter]:bg-background/70">
-        <div className="px-6 py-3 flex items-center justify-end gap-2">
+        <div className="px-6 py-3 flex items-center justify-end gap-2 max-w-6xl mx-auto">
           <Button
             variant="secondary"
             className="whitespace-nowrap"
