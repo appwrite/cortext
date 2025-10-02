@@ -1,6 +1,6 @@
 import { createFileRoute, Link, useNavigate, useSearch } from '@tanstack/react-router'
 import { useAuth } from '@/hooks/use-auth'
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState, useCallback } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { db } from '@/lib/appwrite/db'
 import { files } from '@/lib/appwrite/storage'
@@ -405,11 +405,20 @@ function ArticleEditor({ articleId, userId, onBack }: { articleId: string; userI
         focusTargetRef.current = { id: newSection.id, type: String(type) }
     }
 
-    const updateSection = (id: string, data: any) => {
+    const updateSection = useCallback((id: string, data: any) => {
         setLocalSections(prev => prev.map(section => 
             section.id === id ? { ...section, ...data } : section
         ))
-    }
+    }, [])
+
+    // Memoized onLocalChange handler for each section
+    const onLocalChangeHandlers = useMemo(() => {
+        const handlers: Record<string, (patch: any) => void> = {}
+        localSections.forEach(section => {
+            handlers[section.id] = (patch: any) => updateSection(section.id, patch)
+        })
+        return handlers
+    }, [localSections, updateSection])
 
     const deleteSection = (id: string) => {
         setLocalSections(prev => prev.filter(section => section.id !== id))
@@ -692,7 +701,7 @@ function ArticleEditor({ articleId, userId, onBack }: { articleId: string; userI
                                                 <TableCell>
                                                     <SectionEditor
                                                         section={s}
-                                                        onLocalChange={(patch) => updateSection(s.id, patch)}
+                                                        onLocalChange={onLocalChangeHandlers[s.id]}
                                                         isDragging={!!draggingId}
                                                     />
                                                 </TableCell>
@@ -976,21 +985,21 @@ function CodeSectionEditor({ section, onLocalChange, isDragging = false }: { sec
         }
     }, [section.data, section.language])
 
-    const handleCodeChange = (newCode: string) => {
+    const handleCodeChange = useCallback((newCode: string) => {
         setCode(newCode)
         onLocalChange({ content: newCode })
-    }
+    }, [onLocalChange])
 
-    const handleLanguageChange = (newLanguage: string) => {
+    const handleLanguageChange = useCallback((newLanguage: string) => {
         setLanguage(newLanguage)
         // Store language in section data for persistence
         const data = section.data ? JSON.parse(section.data) : {}
         data.language = newLanguage
         onLocalChange({ data: JSON.stringify(data) })
-    }
+    }, [onLocalChange, section.data])
 
     return (
-        <div className="space-y-2" key={`code-editor-${section.id}`}>
+        <div className="space-y-2">
             <CodeEditor
                 value={code}
                 onChange={handleCodeChange}

@@ -260,7 +260,7 @@ export function CodeEditor({
       <div style={{ height: `${editorHeight}px` }}>
         {shouldRenderEditor && !isDragging ? (
           <Editor
-            key={`${currentLanguage}-${editorHeight}-${Date.now()}`}
+            key={`${currentLanguage}-${editorHeight}`}
             height="100%"
             language={currentLanguage}
             value={value}
