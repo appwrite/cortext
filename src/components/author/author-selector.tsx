@@ -2,23 +2,96 @@ import { useState, useEffect, useMemo } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { db } from '@/lib/appwrite/db'
 import type { Authors } from '@/lib/appwrite/appwrite.types'
-import { type Models, Query } from 'appwrite'
+import { type Models } from 'appwrite'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { Badge } from '@/components/ui/badge'
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
-import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command'
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
+import { Command, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { Skeleton } from '@/components/ui/skeleton'
-import { Check, ChevronsUpDown, Plus, X, Settings, Loader2 } from 'lucide-react'
+import { Check, ChevronsUpDown, Plus, X, Settings, Loader2, GripVertical } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { toast } from '@/hooks/use-toast'
+import {
+  DndContext,
+  closestCenter,
+  KeyboardSensor,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  DragEndEvent,
+} from '@dnd-kit/core'
+import {
+  arrayMove,
+  SortableContext,
+  sortableKeyboardCoordinates,
+  horizontalListSortingStrategy,
+} from '@dnd-kit/sortable'
+import {
+  useSortable,
+} from '@dnd-kit/sortable'
+import { CSS } from '@dnd-kit/utilities'
 
 interface AuthorSelectorProps {
   selectedAuthorIds: string[]
   onAuthorsChange: (authorIds: string[]) => void
+}
+
+interface SortableAuthorItemProps {
+  author: Authors
+  onRemove: (authorId: string) => void
+}
+
+function SortableAuthorItem({ author, onRemove }: SortableAuthorItemProps) {
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({ id: author.$id })
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+  }
+
+  return (
+    <div
+      ref={setNodeRef}
+      style={style}
+      className={cn(
+        "group",
+        isDragging && "opacity-50 z-50"
+      )}
+    >
+      <Badge 
+        variant="secondary" 
+        className={cn(
+          "flex items-center gap-1 cursor-grab active:cursor-grabbing hover:bg-secondary/80 transition-colors",
+          isDragging && "shadow-lg scale-105"
+        )}
+        {...attributes}
+        {...listeners}
+      >
+        <GripVertical className="h-3 w-3 text-muted-foreground" />
+        {author.firstname} {author.lastname}
+        <button
+          onClick={(e) => {
+            e.stopPropagation()
+            onRemove(author.$id)
+          }}
+          className="ml-1 hover:bg-destructive/20 rounded-full p-0.5"
+        >
+          <X className="h-3 w-3" />
+        </button>
+      </Badge>
+    </div>
+  )
 }
 
 export function AuthorSelector({ selectedAuthorIds, onAuthorsChange }: AuthorSelectorProps) {
@@ -27,6 +100,13 @@ export function AuthorSelector({ selectedAuthorIds, onAuthorsChange }: AuthorSel
   const [showNewAuthorModal, setShowNewAuthorModal] = useState(false)
   const [editingAuthor, setEditingAuthor] = useState<Authors | null>(null)
   const qc = useQueryClient()
+
+  const sensors = useSensors(
+    useSensor(PointerSensor),
+    useSensor(KeyboardSensor, {
+      coordinateGetter: sortableKeyboardCoordinates,
+    })
+  )
 
   // Debounced search value for server-side search
   const [debouncedSearchValue, setDebouncedSearchValue] = useState('')
@@ -56,7 +136,9 @@ export function AuthorSelector({ selectedAuthorIds, onAuthorsChange }: AuthorSel
   // Memoize selected authors to prevent unnecessary re-renders
   // This should only change when selectedAuthorIds changes, not during search
   const selectedAuthors = useMemo(() => {
-    return allAuthors.filter(author => selectedAuthorIds.includes(author.$id))
+    return selectedAuthorIds
+      .map(id => allAuthors.find(author => author.$id === id))
+      .filter((author): author is Authors => author !== undefined)
   }, [allAuthors, selectedAuthorIds])
 
   // Memoize filtered authors for search (only changes when search term changes)
@@ -92,6 +174,17 @@ export function AuthorSelector({ selectedAuthorIds, onAuthorsChange }: AuthorSel
 
   const handleAuthorRemove = (authorId: string) => {
     onAuthorsChange(selectedAuthorIds.filter(id => id !== authorId))
+  }
+
+  const handleDragEnd = (event: DragEndEvent) => {
+    const { active, over } = event
+
+    if (over && active.id !== over.id) {
+      const oldIndex = selectedAuthorIds.indexOf(active.id as string)
+      const newIndex = selectedAuthorIds.indexOf(over.id as string)
+
+      onAuthorsChange(arrayMove(selectedAuthorIds, oldIndex, newIndex))
+    }
   }
 
   // Memoize the author list items to prevent unnecessary re-renders
@@ -131,7 +224,7 @@ export function AuthorSelector({ selectedAuthorIds, onAuthorsChange }: AuthorSel
         </Button>
       </CommandItem>
     ))
-  }, [filteredAuthors, selectedAuthorIds])
+  }, [filteredAuthors, selectedAuthorIds, handleAuthorSelect])
 
   // Memoize the selected authors display to prevent re-renders during search
   const selectedAuthorsDisplay = useMemo(() => {
@@ -141,24 +234,28 @@ export function AuthorSelector({ selectedAuthorIds, onAuthorsChange }: AuthorSel
     
     if (selectedAuthors.length > 0) {
       return (
-        <div className="flex flex-wrap gap-2">
-          {selectedAuthors.map(author => (
-            <Badge key={author.$id} variant="secondary" className="flex items-center gap-1">
-              {author.firstname} {author.lastname}
-              <button
-                onClick={() => handleAuthorRemove(author.$id)}
-                className="ml-1 hover:bg-destructive/20 rounded-full p-0.5"
-              >
-                <X className="h-3 w-3" />
-              </button>
-            </Badge>
-          ))}
-        </div>
+        <DndContext
+          sensors={sensors}
+          collisionDetection={closestCenter}
+          onDragEnd={handleDragEnd}
+        >
+          <SortableContext items={selectedAuthorIds} strategy={horizontalListSortingStrategy}>
+            <div className="flex flex-wrap gap-2 min-h-[2.5rem]">
+              {selectedAuthors.map(author => (
+                <SortableAuthorItem
+                  key={author.$id}
+                  author={author}
+                  onRemove={handleAuthorRemove}
+                />
+              ))}
+            </div>
+          </SortableContext>
+        </DndContext>
       )
     }
     
     return null
-  }, [isPending, selectedAuthors, AuthorTagsSkeleton])
+  }, [isPending, selectedAuthors, AuthorTagsSkeleton, selectedAuthorIds, sensors, handleAuthorRemove, handleDragEnd])
 
   return (
     <div className="space-y-2">

@@ -3,23 +3,108 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { db } from '@/lib/appwrite/db'
 import { files } from '@/lib/appwrite/storage'
 import type { Images } from '@/lib/appwrite/appwrite.types'
-import { type Models, Query } from 'appwrite'
+import { type Models } from 'appwrite'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
-import { Badge } from '@/components/ui/badge'
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
-import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command'
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
+import { Command, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { Skeleton } from '@/components/ui/skeleton'
-import { Check, ChevronsUpDown, Plus, X, Settings, Loader2, Upload, Image as ImageIcon } from 'lucide-react'
+import { Check, ChevronsUpDown, Plus, X, Settings, Loader2, Upload, GripVertical } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { toast } from '@/hooks/use-toast'
+import {
+  DndContext,
+  closestCenter,
+  KeyboardSensor,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  DragEndEvent,
+} from '@dnd-kit/core'
+import {
+  arrayMove,
+  SortableContext,
+  sortableKeyboardCoordinates,
+  rectSortingStrategy,
+} from '@dnd-kit/sortable'
+import {
+  useSortable,
+} from '@dnd-kit/sortable'
+import { CSS } from '@dnd-kit/utilities'
 
 interface ImageGalleryProps {
   selectedImageIds: string[]
   onImagesChange: (imageIds: string[]) => void
+}
+
+interface SortableImageItemProps {
+  image: Images
+  onRemove: (imageId: string) => void
+}
+
+function SortableImageItem({ image, onRemove }: SortableImageItemProps) {
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({ id: image.$id })
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+  }
+
+  const previewUrl = String(files.getPreview(image.file, 400, 300))
+
+  return (
+    <div
+      ref={setNodeRef}
+      style={style}
+      className={cn(
+        "relative group aspect-[4/3]",
+        isDragging && "opacity-50"
+      )}
+    >
+      <img 
+        src={previewUrl} 
+        alt={image.caption || 'Image'} 
+        className="w-full h-full object-cover rounded-lg border"
+      />
+      <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity rounded-lg">
+        <div className="absolute top-2 left-2">
+          <div
+            {...attributes}
+            {...listeners}
+            className="cursor-grab active:cursor-grabbing p-1 hover:bg-white/20 rounded"
+          >
+            <GripVertical className="h-4 w-4 text-white drop-shadow-sm" />
+          </div>
+        </div>
+        <div className="absolute top-2 right-2">
+          <button
+            className="h-5 w-5 rounded-full bg-black border-2 border-white flex items-center justify-center hover:bg-gray-800 transition-colors"
+            onClick={(e) => {
+              e.stopPropagation()
+              onRemove(image.$id)
+            }}
+          >
+            <X className="h-3 w-3 text-white" />
+          </button>
+        </div>
+        <div className="absolute bottom-2 left-2 right-2">
+          <div className="text-white text-xs truncate drop-shadow-sm">
+            {image.caption || 'Untitled Image'}
+          </div>
+        </div>
+      </div>
+    </div>
+  )
 }
 
 export function ImageGallery({ selectedImageIds, onImagesChange }: ImageGalleryProps) {
@@ -28,6 +113,13 @@ export function ImageGallery({ selectedImageIds, onImagesChange }: ImageGalleryP
   const [showNewImageModal, setShowNewImageModal] = useState(false)
   const [editingImage, setEditingImage] = useState<Images | null>(null)
   const qc = useQueryClient()
+
+  const sensors = useSensors(
+    useSensor(PointerSensor),
+    useSensor(KeyboardSensor, {
+      coordinateGetter: sortableKeyboardCoordinates,
+    })
+  )
 
   // Debounced search value for server-side search
   const [debouncedSearchValue, setDebouncedSearchValue] = useState('')
@@ -56,7 +148,9 @@ export function ImageGallery({ selectedImageIds, onImagesChange }: ImageGalleryP
 
   // Memoize selected images to prevent unnecessary re-renders
   const selectedImages = useMemo(() => {
-    return allImages.filter(image => selectedImageIds.includes(image.$id))
+    return selectedImageIds
+      .map(id => allImages.find(image => image.$id === id))
+      .filter((image): image is Images => image !== undefined)
   }, [allImages, selectedImageIds])
 
   // Memoize filtered images for search
@@ -94,6 +188,17 @@ export function ImageGallery({ selectedImageIds, onImagesChange }: ImageGalleryP
 
   const handleImageRemove = (imageId: string) => {
     onImagesChange(selectedImageIds.filter(id => id !== imageId))
+  }
+
+  const handleDragEnd = (event: DragEndEvent) => {
+    const { active, over } = event
+
+    if (over && active.id !== over.id) {
+      const oldIndex = selectedImageIds.indexOf(active.id as string)
+      const newIndex = selectedImageIds.indexOf(over.id as string)
+
+      onImagesChange(arrayMove(selectedImageIds, oldIndex, newIndex))
+    }
   }
 
   // Memoize the image list items
@@ -149,7 +254,7 @@ export function ImageGallery({ selectedImageIds, onImagesChange }: ImageGalleryP
         </CommandItem>
       )
     })
-  }, [filteredImages, selectedImageIds])
+  }, [filteredImages, selectedImageIds, handleImageSelect])
 
   // Memoize the selected images display
   const selectedImagesDisplay = useMemo(() => {
@@ -159,37 +264,23 @@ export function ImageGallery({ selectedImageIds, onImagesChange }: ImageGalleryP
     
     if (selectedImages.length > 0) {
       return (
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
-          {selectedImages.map(image => {
-            // Use 2x size for retina display: 400x300 for 4:3 ratio (200x150 display size)
-            const previewUrl = String(files.getPreview(image.file, 400, 300))
-            
-            return (
-              <div key={image.$id} className="relative group aspect-[4/3]">
-                <img 
-                  src={previewUrl} 
-                  alt={image.caption || 'Image'} 
-                  className="w-full h-full object-cover rounded-lg border"
+        <DndContext
+          sensors={sensors}
+          collisionDetection={closestCenter}
+          onDragEnd={handleDragEnd}
+        >
+          <SortableContext items={selectedImageIds} strategy={rectSortingStrategy}>
+            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
+              {selectedImages.map(image => (
+                <SortableImageItem
+                  key={image.$id}
+                  image={image}
+                  onRemove={handleImageRemove}
                 />
-                <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity rounded-lg">
-                  <div className="absolute top-2 right-2">
-                    <button
-                      className="h-5 w-5 rounded-full bg-black border-2 border-white flex items-center justify-center hover:bg-gray-800 transition-colors"
-                      onClick={() => handleImageRemove(image.$id)}
-                    >
-                      <X className="h-3 w-3 text-white" />
-                    </button>
-                  </div>
-                  <div className="absolute bottom-2 left-2 right-2">
-                    <div className="text-white text-xs truncate">
-                      {image.caption || 'Untitled Image'}
-                    </div>
-                  </div>
-                </div>
-              </div>
-            )
-          })}
-        </div>
+              ))}
+            </div>
+          </SortableContext>
+        </DndContext>
       )
     }
     
@@ -198,7 +289,7 @@ export function ImageGallery({ selectedImageIds, onImagesChange }: ImageGalleryP
         <p className="text-sm">No images selected</p>
       </div>
     )
-  }, [isPending, selectedImages, ImageGallerySkeleton])
+  }, [isPending, selectedImages, ImageGallerySkeleton, selectedImageIds, sensors, handleImageRemove, handleDragEnd])
 
   return (
     <div className="space-y-4">

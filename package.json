@@ -14,6 +14,9 @@
     "deploy": "npm run setup:appwrite && npm run build"
   },
   "dependencies": {
+    "@dnd-kit/core": "^6.3.1",
+    "@dnd-kit/sortable": "^10.0.0",
+    "@dnd-kit/utilities": "^3.2.2",
     "@hookform/resolvers": "^3.9.0",
     "@radix-ui/react-accordion": "^1.2.0",
     "@radix-ui/react-alert-dialog": "^1.1.1",
@@ -48,7 +51,6 @@
     "@tanstack/react-router-devtools": "^1.130.13",
     "@vitejs/plugin-react-swc": "^3.10.2",
     "appwrite": "^20.1.0",
-    "node-appwrite": "^19.0.0",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "cmdk": "^1.1.1",
@@ -58,6 +60,7 @@
     "input-otp": "^1.2.4",
     "lucide-react": "^0.525.0",
     "next-themes": "^0.4.6",
+    "node-appwrite": "^19.0.0",
     "react": "^19.1.0",
     "react-day-picker": "^9.8.0",
     "react-dom": "^19.1.0",
