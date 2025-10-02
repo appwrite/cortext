@@ -252,7 +252,13 @@ export function AuthorSelector({ selectedAuthorIds, onAuthorsChange }: AuthorSel
       )
     }
     
-    return null
+    return (
+      <div className="flex flex-wrap min-h-[2rem]">
+        <div className="inline-flex items-center px-2 py-1 bg-gray-50 text-gray-400 rounded-md text-sm mr-2 mb-2 border border-dashed border-gray-300">
+          <span>None selected</span>
+        </div>
+      </div>
+    )
   }, [isPending, selectedAuthors, AuthorTagsSkeleton, selectedAuthorIds, sensors, handleAuthorRemove, handleDragEnd])
 
   return (

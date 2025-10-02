@@ -258,13 +258,19 @@ export function CategorySelector({ selectedCategoryIds, onCategoriesChange }: Ca
           strategy={horizontalListSortingStrategy}
         >
           <div className="flex flex-wrap min-h-[2rem]">
-            {selectedCategories.map((category) => (
-              <SortableCategoryItem
-                key={category.$id}
-                category={category}
-                onRemove={handleCategoryRemove}
-              />
-            ))}
+            {selectedCategories.length > 0 ? (
+              selectedCategories.map((category) => (
+                <SortableCategoryItem
+                  key={category.$id}
+                  category={category}
+                  onRemove={handleCategoryRemove}
+                />
+              ))
+            ) : (
+              <div className="inline-flex items-center px-2 py-1 bg-gray-50 text-gray-400 rounded-md text-sm mr-2 mb-2 border border-dashed border-gray-300">
+                <span>None selected</span>
+              </div>
+            )}
           </div>
         </SortableContext>
       </DndContext>
