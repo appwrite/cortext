@@ -1,22 +1,23 @@
 import { useEffect, useState } from "react";
-import { useRouter } from "@tanstack/react-router";
+import { useRouter, useLocation } from "@tanstack/react-router";
 
 export function useInitialLoader() {
-  const [isLoading, setIsLoading] = useState(true);
+  const [isLoading, setIsLoading] = useState(false); // Start as false
   const [isInitialLoad, setIsInitialLoad] = useState(true);
   const router = useRouter();
+  const location = useLocation();
 
   useEffect(() => {
-    // Check if this is the initial page load
-    const isInitialPageLoad = !sessionStorage.getItem("hasLoadedBefore");
+    // Only show loader for protected routes (dashboard pages), not the main landing page
+    const isProtectedRoute = location.pathname.startsWith('/dashboard');
     
-    if (isInitialPageLoad) {
-      // Mark that we've loaded before
-      sessionStorage.setItem("hasLoadedBefore", "true");
-      
-      // Show loader for a minimum time to prevent flash
-      const minLoadTime = 1000; // 1 second minimum
+    if (isProtectedRoute) {
+      // Show loader for dashboard pages
+      const minLoadTime = 800; // 800ms minimum
       const startTime = Date.now();
+      
+      // Set loading to true for protected routes
+      setIsLoading(true);
       
       const handleLoadComplete = () => {
         const elapsedTime = Date.now() - startTime;
@@ -25,7 +26,7 @@ export function useInitialLoader() {
         setTimeout(() => {
           setIsLoading(false);
           // Mark initial load as complete after a short delay
-          setTimeout(() => setIsInitialLoad(false), 500);
+          setTimeout(() => setIsInitialLoad(false), 300);
         }, remainingTime);
       };
 
@@ -39,11 +40,11 @@ export function useInitialLoader() {
         });
       }
     } else {
-      // Not initial load, don't show loader
+      // Not a protected route, don't show loader
       setIsLoading(false);
       setIsInitialLoad(false);
     }
-  }, [router]);
+  }, [router, location.pathname]);
 
   return {
     isLoading: isLoading && isInitialLoad,
