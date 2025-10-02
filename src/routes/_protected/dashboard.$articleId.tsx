@@ -284,7 +284,8 @@ function ArticleEditor({ articleId, userId }: { articleId: string; userId: strin
           </div>
         </div>
       </div>
-      <div className="px-6 py-6 space-y-8 pb-24 ml-72 md:ml-80 lg:ml-96 max-w-6xl mx-auto">
+      <div className="flex justify-center px-6 py-6 pb-24">
+        <div className="w-full max-w-3xl ml-72 md:ml-80 lg:ml-96 space-y-8">
 
         <section className="space-y-4">
           <div>
@@ -439,6 +440,7 @@ function ArticleEditor({ articleId, userId }: { articleId: string; userId: strin
               <Save className="h-4 w-4 mr-1" /> {saving ? 'Saving…' : 'Save'}
             </Button>
           </div>
+        </div>
         </div>
       </div>
     </main>

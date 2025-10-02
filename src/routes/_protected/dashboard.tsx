@@ -570,14 +570,15 @@ function ArticleEditor({ articleId, userId, onBack }: { articleId: string; userI
     return (
         <>
             <AgentChat title={title} subtitle={subtitle} onSetTitle={setTitle} onSetSubtitle={setExcerpt} />
-            <div className="pl-72 md:pl-80 lg:pl-96 pr-4 sm:pr-6">
-                <div className="flex items-center justify-between pt-2 pb-8">
+            <div className="px-6 pt-2 pb-8 ml-72 md:ml-80 lg:ml-96">
+                <div className="flex items-center justify-between">
                     <Button variant="ghost" size="sm" onClick={onBack} className="cursor-pointer">
                         <ArrowLeft className="h-4 w-4 mr-1" /> Back to articles
                     </Button>
                 </div>
             </div>
-            <div className="pb-16 pl-72 md:pl-80 lg:pl-96 pr-4 sm:pr-6 space-y-6 max-w-6xl mx-auto">
+            <div className="flex justify-center px-6 py-6 pb-24">
+                <div className="w-full max-w-3xl ml-72 md:ml-80 lg:ml-96 space-y-8">
 
                 {/* Article meta form */}
                 <section className="space-y-4">
@@ -755,6 +756,7 @@ function ArticleEditor({ articleId, userId, onBack }: { articleId: string; userI
                             </Button>
                         </div>
                     </div>
+                </div>
                 </div>
             </div>
         </>
