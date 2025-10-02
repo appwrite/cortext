@@ -103,7 +103,7 @@ export function AgentChat({
             className="fixed left-0 z-10 flex w-72 md:w-80 lg:w-96 flex-col border-r bg-background"
             style={{ top: topOffset, bottom: 0 }}
         >
-            <header className="h-16 px-6 border-b flex items-center">
+            <header className="h-12 px-6 border-b flex items-center">
                 <div className="text-xs font-medium">Conversation</div>
             </header>
 

@@ -194,9 +194,8 @@ export function ImageGallery({ selectedImageIds, onImagesChange }: ImageGalleryP
     }
     
     return (
-      <div className="text-center py-8 text-muted-foreground">
-        <ImageIcon className="h-12 w-12 mx-auto mb-2 opacity-50" />
-        <p>No images selected</p>
+      <div className="aspect-[4/3] border-2 border-dashed border-muted-foreground/25 rounded-lg flex items-center justify-center text-muted-foreground w-full">
+        <p className="text-sm">No images selected</p>
       </div>
     )
   }, [isPending, selectedImages, ImageGallerySkeleton])
