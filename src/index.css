@@ -129,4 +129,95 @@
   label.inline-label {
     margin-bottom: 0!important;
   }
+  
+  /* iOS-specific aspect ratio improvements */
+  .aspect-ratio-container {
+    position: relative;
+    width: 100%;
+    height: 0;
+    padding-bottom: 75%; /* 4:3 aspect ratio */
+  }
+  
+  .aspect-ratio-container > * {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+  }
+  
+  /* Fallback for older iOS versions that don't support aspect-ratio */
+  @supports not (aspect-ratio: 4/3) {
+    .aspect-ratio-fallback {
+      position: relative;
+      width: 100%;
+      height: 0;
+      padding-bottom: 75%;
+    }
+    
+    .aspect-ratio-fallback > * {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+    }
+  }
+  
+  /* iOS Safari viewport fixes */
+  @media screen and (-webkit-min-device-pixel-ratio: 2) {
+    .aspect-ratio-container,
+    .aspect-ratio-fallback {
+      -webkit-transform: translateZ(0);
+      transform: translateZ(0);
+    }
+  }
+  
+  /* Prevent iOS zoom on input focus */
+  @media screen and (-webkit-min-device-pixel-ratio: 0) {
+    select,
+    textarea,
+    input[type="text"],
+    input[type="password"],
+    input[type="datetime"],
+    input[type="datetime-local"],
+    input[type="date"],
+    input[type="month"],
+    input[type="time"],
+    input[type="week"],
+    input[type="number"],
+    input[type="email"],
+    input[type="url"],
+    input[type="search"],
+    input[type="tel"],
+    input[type="color"] {
+      font-size: 16px;
+    }
+  }
+  
+  /* iOS image optimization */
+  .aspect-ratio-container img,
+  .aspect-ratio-fallback img {
+    -webkit-backface-visibility: hidden;
+    backface-visibility: hidden;
+    -webkit-transform: translateZ(0);
+    transform: translateZ(0);
+    will-change: transform;
+  }
+  
+  /* Smooth transitions for iOS */
+  .aspect-ratio-container,
+  .aspect-ratio-fallback {
+    -webkit-backface-visibility: hidden;
+    backface-visibility: hidden;
+    -webkit-perspective: 1000;
+    perspective: 1000;
+  }
+  
+  /* Optimize for iOS scrolling */
+  .aspect-ratio-container,
+  .aspect-ratio-fallback {
+    -webkit-overflow-scrolling: touch;
+    overflow-scrolling: touch;
+  }
 }

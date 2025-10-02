@@ -72,38 +72,40 @@ function SortableImageItem({ image, onRemove }: SortableImageItemProps) {
         isDragging && "opacity-50"
       )}
     >
-      <div className="aspect-[4/3] w-full max-h-[200px] relative">
+      <div className="w-full relative aspect-ratio-container aspect-ratio-fallback" style={{ aspectRatio: '4/3', maxHeight: '200px' }}>
         <img 
           src={previewUrl} 
           alt={image.caption || 'Image'} 
           className="w-full h-full object-cover rounded-lg border"
+          loading="lazy"
+          decoding="async"
         />
         <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity rounded-lg">
-        <div className="absolute top-2 left-2">
-          <div
-            {...attributes}
-            {...listeners}
-            className="cursor-grab active:cursor-grabbing p-1 hover:bg-white/20 rounded"
-          >
-            <GripVertical className="h-4 w-4 text-white drop-shadow-sm" />
+          <div className="absolute top-2 left-2">
+            <div
+              {...attributes}
+              {...listeners}
+              className="cursor-grab active:cursor-grabbing p-1 hover:bg-white/20 rounded"
+            >
+              <GripVertical className="h-4 w-4 text-white drop-shadow-sm" />
+            </div>
           </div>
-        </div>
-        <div className="absolute top-2 right-2">
-          <button
-            className="h-5 w-5 rounded-full bg-black border-2 border-white flex items-center justify-center hover:bg-gray-800 transition-colors"
-            onClick={(e) => {
-              e.stopPropagation()
-              onRemove(image.$id)
-            }}
-          >
-            <X className="h-3 w-3 text-white" />
-          </button>
-        </div>
-        <div className="absolute bottom-2 left-2 right-2">
-          <div className="text-white text-xs truncate drop-shadow-sm">
-            {image.caption || 'Untitled Image'}
+          <div className="absolute top-2 right-2">
+            <button
+              className="h-5 w-5 rounded-full bg-black border-2 border-white flex items-center justify-center hover:bg-gray-800 transition-colors"
+              onClick={(e) => {
+                e.stopPropagation()
+                onRemove(image.$id)
+              }}
+            >
+              <X className="h-3 w-3 text-white" />
+            </button>
           </div>
-        </div>
+          <div className="absolute bottom-2 left-2 right-2">
+            <div className="text-white text-xs truncate drop-shadow-sm">
+              {image.caption || 'Untitled Image'}
+            </div>
+          </div>
         </div>
       </div>
     </div>
@@ -173,8 +175,8 @@ export function ImageGallery({ selectedImageIds, onImagesChange }: ImageGalleryP
     return (
       <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
         {Array.from({ length: 8 }).map((_, i) => (
-          <div key={i} className="aspect-[4/3]">
-            <Skeleton className="h-full w-full rounded-lg" />
+          <div key={i} className="w-full relative aspect-ratio-container aspect-ratio-fallback" style={{ aspectRatio: '4/3', maxHeight: '200px' }}>
+            <Skeleton className="w-full h-full rounded-lg" />
           </div>
         ))}
       </div>
@@ -223,6 +225,8 @@ export function ImageGallery({ selectedImageIds, onImagesChange }: ImageGalleryP
                 src={previewUrl} 
                 alt={image.caption || 'Image'} 
                 className="w-20 h-15 object-cover rounded-lg border"
+                loading="lazy"
+                decoding="async"
               />
               <Check
                 className={cn(
@@ -289,7 +293,7 @@ export function ImageGallery({ selectedImageIds, onImagesChange }: ImageGalleryP
     
     return (
       <div className="w-full">
-        <div className="w-full border border-dashed border-muted-foreground/25 rounded-lg flex items-center justify-center text-muted-foreground aspect-[4/3] max-h-[200px]">
+        <div className="w-full h-20 border border-dashed border-muted-foreground/25 rounded-lg flex items-center justify-center text-muted-foreground min-h-[92px]">
           <p className="text-sm">No images selected</p>
         </div>
       </div>
@@ -516,23 +520,25 @@ function NewImageModal({ open, onOpenChange, onImageCreated }: NewImageModalProp
             <div className="space-y-2">
               {previewUrl ? (
                 <div className="relative">
-                  <div className="aspect-[4/3] w-full">
+                  <div className="w-full relative aspect-ratio-container aspect-ratio-fallback" style={{ aspectRatio: '4/3' }}>
                     <img 
                       src={previewUrl} 
                       alt="Preview" 
                       className="w-full h-full object-cover rounded-lg border"
+                      loading="eager"
+                      decoding="async"
                     />
+                    <button
+                      type="button"
+                      className="absolute top-2 right-2 h-5 w-5 rounded-full bg-black border-2 border-white flex items-center justify-center hover:bg-gray-800 transition-colors"
+                      onClick={() => {
+                        setSelectedFile(null)
+                        setPreviewUrl(null)
+                      }}
+                    >
+                      <X className="h-3 w-3 text-white" />
+                    </button>
                   </div>
-                  <button
-                    type="button"
-                    className="absolute top-2 right-2 h-5 w-5 rounded-full bg-black border-2 border-white flex items-center justify-center hover:bg-gray-800 transition-colors"
-                    onClick={() => {
-                      setSelectedFile(null)
-                      setPreviewUrl(null)
-                    }}
-                  >
-                    <X className="h-3 w-3 text-white" />
-                  </button>
                 </div>
               ) : (
                 <div className="border-2 border-dashed border-muted-foreground/25 rounded-lg p-8 text-center">
@@ -674,11 +680,13 @@ function EditImageModal({ image, open, onOpenChange, onImageUpdated }: EditImage
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="space-y-2">
             <Label>Image Preview</Label>
-            <div className="aspect-[4/3] w-full">
+            <div className="w-full relative aspect-ratio-container aspect-ratio-fallback" style={{ aspectRatio: '4/3' }}>
               <img 
                 src={previewUrl} 
                 alt={image.caption || 'Image'} 
                 className="w-full h-full object-cover rounded-lg border"
+                loading="eager"
+                decoding="async"
               />
             </div>
           </div>
