@@ -2,7 +2,9 @@ import { useEffect, useRef, useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { ScrollArea } from '@/components/ui/scroll-area'
-import { Brain, Sparkles, Send } from 'lucide-react'
+import { Drawer, DrawerContent, DrawerHeader, DrawerTitle } from '@/components/ui/drawer'
+import { Brain, Sparkles, Send, MessageCircle } from 'lucide-react'
+import { useIsMobile } from '@/hooks/use-mobile'
 
 type Message = {
     id: string
@@ -34,6 +36,8 @@ export function AgentChat({
             content: 'Try one of the quick actions below or ask me to rewrite the intro.',
         },
     ])
+    const [isDrawerOpen, setIsDrawerOpen] = useState(false)
+    const isMobile = useIsMobile()
 
     // Precisely align with the app header; footer does not occupy the left rail
     const [topOffset, setTopOffset] = useState<number>(64) // header fallback
@@ -98,15 +102,8 @@ export function AgentChat({
         ])
     }
 
-    return (
-        <aside
-            className="fixed left-0 z-10 flex w-72 md:w-80 lg:w-96 flex-col border-r bg-background"
-            style={{ top: topOffset, bottom: 0 }}
-        >
-            <header className="h-12 px-6 border-b flex items-center">
-                <div className="text-xs font-medium">Conversation</div>
-            </header>
-
+    const chatContent = (
+        <>
             <ScrollArea className="flex-1">
                 <div className="px-6 py-6 space-y-2">
                     {messages.map((m) => (
@@ -158,6 +155,48 @@ export function AgentChat({
                     </Button>
                 </div>
             </div>
+        </>
+    )
+
+    if (isMobile) {
+        return (
+            <>
+                {/* Floating chat button - positioned above footer */}
+                <Button
+                    onClick={() => setIsDrawerOpen(true)}
+                    className="fixed bottom-20 left-6 z-50 h-14 w-14 rounded-full shadow-lg"
+                    size="icon"
+                >
+                    <MessageCircle className="h-6 w-6" />
+                </Button>
+
+                {/* Mobile drawer */}
+                <Drawer open={isDrawerOpen} onOpenChange={setIsDrawerOpen}>
+                    <DrawerContent className="h-[80vh]">
+                        <DrawerHeader>
+                            <DrawerTitle className="flex items-center gap-2">
+                                <Brain className="h-4 w-4" />
+                                AI Co-writer
+                            </DrawerTitle>
+                        </DrawerHeader>
+                        <div className="flex flex-col h-full">
+                            {chatContent}
+                        </div>
+                    </DrawerContent>
+                </Drawer>
+            </>
+        )
+    }
+
+    return (
+        <aside
+            className="fixed left-0 z-10 flex w-72 md:w-[18rem] lg:w-[20rem] xl:w-[24rem] flex-col border-r bg-background"
+            style={{ top: topOffset, bottom: 0 }}
+        >
+            <header className="h-12 px-6 border-b flex items-center">
+                <div className="text-xs font-medium">Conversation</div>
+            </header>
+            {chatContent}
         </aside>
     )
 }

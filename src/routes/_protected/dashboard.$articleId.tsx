@@ -275,7 +275,7 @@ function ArticleEditor({ articleId, userId }: { articleId: string; userId: strin
         onSetTitle={setTitle}
         onSetSubtitle={setExcerpt}
       />
-      <div className="px-6 pt-2 pb-8 ml-72 md:ml-80 lg:ml-96">
+      <div className="px-6 pt-2 pb-8 ml-0 md:ml-[18rem] lg:ml-[20rem] xl:ml-[24rem]">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
             <Link to="/dashboard">
@@ -284,8 +284,8 @@ function ArticleEditor({ articleId, userId }: { articleId: string; userId: strin
           </div>
         </div>
       </div>
-      <div className="flex justify-center px-6 py-6 pb-24">
-        <div className="w-full max-w-3xl ml-72 md:ml-80 lg:ml-96 space-y-8">
+      <div className="flex justify-center px-6 py-6 pb-24 ml-0 md:ml-[18rem] lg:ml-[20rem] xl:ml-[24rem]">
+        <div className="w-full max-w-3xl space-y-8">
 
         <section className="space-y-4">
           <div>
@@ -421,7 +421,7 @@ function ArticleEditor({ articleId, userId }: { articleId: string; userId: strin
       </div>
 
       {/* Fixed bottom actions */}
-      <div className="fixed bottom-0 inset-x-0 z-20 border-t bg-background/90 backdrop-blur supports-[backdrop-filter]:bg-background/70">
+      <div className="fixed bottom-0 inset-x-0 md:left-[18rem] md:right-0 lg:left-[20rem] lg:right-0 xl:left-[24rem] xl:right-0 z-20 border-t bg-background/90 backdrop-blur supports-[backdrop-filter]:bg-background/70">
         <div className="px-6 py-3 flex items-center justify-between max-w-6xl mx-auto">
           <div className="text-xs text-muted-foreground flex items-center gap-2">
             <span>Status:</span>

@@ -570,15 +570,15 @@ function ArticleEditor({ articleId, userId, onBack }: { articleId: string; userI
     return (
         <>
             <AgentChat title={title} subtitle={subtitle} onSetTitle={setTitle} onSetSubtitle={setExcerpt} />
-            <div className="px-6 pt-2 pb-8 ml-72 md:ml-80 lg:ml-96">
+            <div className="px-6 pt-2 pb-8 ml-0 md:ml-[18rem] lg:ml-[20rem] xl:ml-[24rem]">
                 <div className="flex items-center justify-between">
                     <Button variant="ghost" size="sm" onClick={onBack} className="cursor-pointer">
                         <ArrowLeft className="h-4 w-4 mr-1" /> Back to articles
                     </Button>
                 </div>
             </div>
-            <div className="flex justify-center px-6 py-6 pb-24">
-                <div className="w-full max-w-3xl ml-72 md:ml-80 lg:ml-96 space-y-8">
+            <div className="flex justify-center px-6 py-6 pb-24 ml-0 md:ml-[18rem] lg:ml-[20rem] xl:ml-[24rem]">
+                <div className="w-full max-w-3xl space-y-8">
 
                 {/* Article meta form */}
                 <section className="space-y-4">
@@ -732,7 +732,7 @@ function ArticleEditor({ articleId, userId, onBack }: { articleId: string; userI
                 </section>
 
                 {/* Sticky bottom actions — stop before agent rail */}
-                <div className="fixed bottom-0 right-0 left-72 md:left-80 lg:left-96 z-20 border-t bg-background/90 backdrop-blur supports-[backdrop-filter]:bg-background/70">
+                <div className="fixed bottom-0 inset-x-0 md:left-[18rem] md:right-0 lg:left-[20rem] lg:right-0 xl:left-[24rem] xl:right-0 z-20 border-t bg-background/90 backdrop-blur supports-[backdrop-filter]:bg-background/70">
                     <div className="px-6 py-3 flex items-center justify-between max-w-6xl mx-auto">
                         <div className="text-xs text-muted-foreground flex items-center gap-2">
                             {article.published ? <span className="text-green-600">Published</span> : <span className="text-amber-600">Draft</span>}
