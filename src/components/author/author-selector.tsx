@@ -65,39 +65,29 @@ function SortableAuthorItem({ author, onRemove }: SortableAuthorItemProps) {
       ref={setNodeRef}
       style={style}
       className={cn(
-        "group",
-        isDragging && "opacity-50 z-50"
+        "inline-flex items-center gap-1 px-2 py-1 bg-gray-100 text-gray-700 rounded-md text-sm mr-2 mb-2",
+        isDragging && "opacity-50"
       )}
     >
-      <Badge 
-        variant="secondary" 
-        className={cn(
-          "flex items-center gap-1 hover:bg-secondary/80 transition-colors",
-          isDragging && "shadow-lg scale-105"
-        )}
+      <div
+        className="cursor-grab active:cursor-grabbing flex items-center gap-1"
+        {...attributes}
+        {...listeners}
       >
-        <div
-          className="cursor-grab active:cursor-grabbing flex items-center gap-1"
-          {...attributes}
-          {...listeners}
-        >
-          <GripVertical className="h-3 w-3 text-muted-foreground" />
-          {author.firstname} {author.lastname}
-        </div>
-        <button
-          onClick={(e) => {
-            e.preventDefault()
-            e.stopPropagation()
-            onRemove(author.$id)
-          }}
-          onMouseDown={(e) => {
-            e.stopPropagation()
-          }}
-          className="ml-1 hover:bg-destructive/20 rounded-full p-0.5"
-        >
-          <X className="h-3 w-3" />
-        </button>
-      </Badge>
+        <GripVertical className="h-3 w-3" />
+        <span>{author.firstname} {author.lastname}</span>
+      </div>
+      <Button
+        variant="ghost"
+        size="sm"
+        className="h-4 w-4 p-0 hover:bg-gray-200"
+        onClick={(e) => {
+          e.stopPropagation()
+          onRemove(author.$id)
+        }}
+      >
+        <X className="h-3 w-3" />
+      </Button>
     </div>
   )
 }
@@ -248,7 +238,7 @@ export function AuthorSelector({ selectedAuthorIds, onAuthorsChange }: AuthorSel
           onDragEnd={handleDragEnd}
         >
           <SortableContext items={selectedAuthorIds} strategy={horizontalListSortingStrategy}>
-            <div className="flex flex-wrap gap-2 min-h-[2.5rem]">
+            <div className="flex flex-wrap min-h-[2rem]">
               {selectedAuthors.map(author => (
                 <SortableAuthorItem
                   key={author.$id}
@@ -315,7 +305,7 @@ export function AuthorSelector({ selectedAuthorIds, onAuthorsChange }: AuthorSel
                 </div>
               )}
             </div>
-            <CommandList className="min-h-[200px]">
+            <CommandList>
               {isPending ? (
                 <div className="p-2">
                   {Array.from({ length: 3 }).map((_, i) => (

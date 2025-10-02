@@ -16,8 +16,10 @@ import { toast } from '@/hooks/use-toast'
 import { Image as ImageIcon, Plus, Trash2, Save, Video, MapPin, Type as TypeIcon, Upload, ArrowLeft, LogOut, GripVertical, Brain, Loader2, Heading1, Quote, Pin as PinIcon, FileText, Quote as QuoteIcon } from 'lucide-react'
 import { AgentChat } from '@/components/agent/agent-chat'
 import { AuthorSelector } from '@/components/author'
+import { CategorySelector } from '@/components/category'
 import { ImageGallery } from '@/components/image'
 import { useDocumentTitle } from '@/hooks/use-document-title'
+import { formatDateForDisplay, formatDateCompact } from '@/lib/date-utils'
 
 export const Route = createFileRoute('/_protected/dashboard')({
     component: RouteComponent,
@@ -175,7 +177,7 @@ function ArticlesList({ userId }: { userId: string }) {
                                 </Link>
                             </TableCell>
                             <TableCell className="hidden sm:table-cell text-muted-foreground">
-                                {new Date(a.$updatedAt).toLocaleString()}
+                                {formatDateCompact(a.$updatedAt)}
                             </TableCell>
                             <TableCell className="hidden md:table-cell">
                                 {a.published ? (
@@ -269,6 +271,7 @@ function CreateArticleView({ userId, onDone, onCancel }: { userId: string; onDon
     const [live, setLive] = useState(false)
     const [redirect, setRedirect] = useState('')
     const [authors, setAuthors] = useState<string[]>([])
+    const [categories, setCategories] = useState<string[]>([])
     const createArticle = useMutation({
         mutationFn: async () => {
             const payload: Omit<Articles, keyof Models.Document> = {
@@ -282,7 +285,7 @@ function CreateArticleView({ userId, onDone, onCancel }: { userId: string; onDon
                 live: live,
                 pinned: false,
                 redirect: redirect.trim() || null,
-                categories: null,
+                categories: categories.length > 0 ? categories : null,
                 createdBy: userId,
                 published: false,
                 slug: null,
@@ -316,7 +319,7 @@ function CreateArticleView({ userId, onDone, onCancel }: { userId: string; onDon
                             <Input id="new-title" value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Article title" className="pr-32" />
                             <div className="absolute right-3 top-1/2 -translate-y-1/2 flex items-center space-x-2">
                                 <Checkbox id="new-live" checked={live} onCheckedChange={(checked) => setLive(checked === true)} />
-                                <Label htmlFor="new-live" className="text-xs text-muted-foreground">Live</Label>
+                                <Label htmlFor="new-live" className="text-xs text-muted-foreground inline-label">Live</Label>
                             </div>
                         </div>
                     </div>
@@ -324,6 +327,12 @@ function CreateArticleView({ userId, onDone, onCancel }: { userId: string; onDon
                         <AuthorSelector 
                             selectedAuthorIds={authors} 
                             onAuthorsChange={setAuthors} 
+                        />
+                    </div>
+                    <div>
+                        <CategorySelector 
+                            selectedCategoryIds={categories} 
+                            onCategoriesChange={setCategories} 
                         />
                     </div>
                     <div>
@@ -489,6 +498,7 @@ function ArticleEditor({ articleId, userId, onBack }: { articleId: string; userI
     const [live, setLive] = useState(false)
     const [redirect, setRedirect] = useState('')
     const [authors, setAuthors] = useState<string[]>([])
+    const [categories, setCategories] = useState<string[]>([])
     const [saving, setSaving] = useState(false)
 
     useMemo(() => {
@@ -499,6 +509,7 @@ function ArticleEditor({ articleId, userId, onBack }: { articleId: string; userI
             setLive(article.live ?? false)
             setRedirect(article.redirect ?? '')
             setAuthors(article.authors ?? [])
+            setCategories(article.categories ?? [])
         }
     }, [article])
 
@@ -516,6 +527,7 @@ function ArticleEditor({ articleId, userId, onBack }: { articleId: string; userI
                 live,
                 redirect,
                 authors,
+                categories,
                 body: JSON.stringify(localSections)
             })
 
@@ -556,7 +568,7 @@ function ArticleEditor({ articleId, userId, onBack }: { articleId: string; userI
                             <Input id="title" value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Article title" className="pr-32" />
                             <div className="absolute right-3 top-1/2 -translate-y-1/2 flex items-center space-x-2">
                                 <Checkbox id="live" checked={live} onCheckedChange={(checked) => setLive(checked === true)} />
-                                <Label htmlFor="live" className="text-xs text-muted-foreground">Live</Label>
+                                <Label htmlFor="live" className="text-xs text-muted-foreground inline-label">Live</Label>
                             </div>
                         </div>
                     </div>
@@ -568,6 +580,12 @@ function ArticleEditor({ articleId, userId, onBack }: { articleId: string; userI
                         <AuthorSelector 
                             selectedAuthorIds={authors} 
                             onAuthorsChange={setAuthors} 
+                        />
+                    </div>
+                    <div>
+                        <CategorySelector 
+                            selectedCategoryIds={categories} 
+                            onCategoriesChange={setCategories} 
                         />
                     </div>
                 </section>
@@ -661,7 +679,7 @@ function ArticleEditor({ articleId, userId, onBack }: { articleId: string; userI
                         <div className="text-xs text-muted-foreground flex items-center gap-2">
                             <span>Status:</span>
                             {article.published ? <span className="text-green-600">Published</span> : <span className="text-amber-600">Draft</span>}
-                            {article.publishedAt && <span>• {new Date(article.publishedAt).toLocaleString()}</span>}
+                            {article.publishedAt && <span>• {formatDateForDisplay(article.publishedAt)}</span>}
                         </div>
                         <div className="flex items-center gap-2">
                             <Button

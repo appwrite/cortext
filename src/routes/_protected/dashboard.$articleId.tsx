@@ -15,6 +15,7 @@ import { toast } from '@/hooks/use-toast'
 import { Image as ImageIcon, Trash2, Save, Video, MapPin, Type as TypeIcon, Upload, ArrowLeft, LogOut, GripVertical, Brain, Quote, FileText, Quote as QuoteIcon, Heading1 } from 'lucide-react'
 import { AgentChat } from '@/components/agent/agent-chat'
 import { AuthorSelector } from '@/components/author'
+import { CategorySelector } from '@/components/category'
 import { ImageGallery } from '@/components/image'
 import { useDocumentTitle } from '@/hooks/use-document-title'
 
@@ -203,6 +204,7 @@ function ArticleEditor({ articleId, userId }: { articleId: string; userId: strin
   const [title, setTitle] = useState('')
   const [subtitle, setExcerpt] = useState('')
   const [authors, setAuthors] = useState<string[]>([])
+  const [categories, setCategories] = useState<string[]>([])
   const [saving, setSaving] = useState(false)
 
   useMemo(() => {
@@ -210,6 +212,7 @@ function ArticleEditor({ articleId, userId }: { articleId: string; userId: strin
       setTitle(article.title ?? '')
       setExcerpt(article.subtitle ?? '')
       setAuthors(article.authors ?? [])
+      setCategories(article.categories ?? [])
     }
   }, [article])
 
@@ -224,6 +227,7 @@ function ArticleEditor({ articleId, userId }: { articleId: string; userId: strin
         slug: slugify(title), 
         subtitle,
         authors,
+        categories,
         body: JSON.stringify(localSections)
       })
 
@@ -272,6 +276,12 @@ function ArticleEditor({ articleId, userId }: { articleId: string; userId: strin
               <AuthorSelector 
                 selectedAuthorIds={authors} 
                 onAuthorsChange={setAuthors} 
+              />
+            </div>
+            <div>
+              <CategorySelector 
+                selectedCategoryIds={categories} 
+                onCategoriesChange={setCategories} 
               />
             </div>
         </section>
