@@ -677,7 +677,6 @@ function ArticleEditor({ articleId, userId, onBack }: { articleId: string; userI
                 <div className="fixed bottom-0 right-0 left-72 md:left-80 lg:left-96 z-20 border-t bg-background/90 backdrop-blur supports-[backdrop-filter]:bg-background/70">
                     <div className="px-6 py-3 flex items-center justify-between max-w-6xl mx-auto">
                         <div className="text-xs text-muted-foreground flex items-center gap-2">
-                            <span>Status:</span>
                             {article.published ? <span className="text-green-600">Published</span> : <span className="text-amber-600">Draft</span>}
                             {article.publishedAt && <span>• {formatDateForDisplay(article.publishedAt)}</span>}
                         </div>
