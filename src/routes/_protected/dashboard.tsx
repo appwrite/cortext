@@ -311,7 +311,7 @@ function CreateArticleView({ userId, onDone, onCancel }: { userId: string; onDon
                 <div className="space-y-4">
                     <div>
                         <Label htmlFor="new-trailer">Trailer</Label>
-                        <Input id="new-trailer" value={trailer} onChange={(e) => setTrailer(e.target.value)} placeholder="Article trailer" />
+                        <Input id="new-trailer" value={trailer} onChange={(e) => setTrailer(e.target.value)} placeholder="Breaking news, Exclusive..." />
                     </div>
                     <div>
                         <Label htmlFor="new-title">Title</Label>
@@ -560,7 +560,7 @@ function ArticleEditor({ articleId, userId, onBack }: { articleId: string; userI
                 <section className="space-y-4">
                     <div>
                         <Label htmlFor="trailer">Trailer</Label>
-                        <Input id="trailer" value={trailer} onChange={(e) => setTrailer(e.target.value)} placeholder="Article trailer" />
+                        <Input id="trailer" value={trailer} onChange={(e) => setTrailer(e.target.value)} placeholder="Breaking news, Exclusive..." />
                     </div>
                     <div className="md:col-span-2">
                         <Label htmlFor="title">Title</Label>
