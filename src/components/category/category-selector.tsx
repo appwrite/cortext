@@ -9,10 +9,12 @@ import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { Badge } from '@/components/ui/badge'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog'
 import { Command, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { Skeleton } from '@/components/ui/skeleton'
-import { Check, ChevronsUpDown, Plus, X, Settings, Loader2, GripVertical } from 'lucide-react'
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible'
+import { Check, ChevronsUpDown, Plus, X, Settings, Loader2, GripVertical, Trash2, ChevronDown } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { toast } from '@/hooks/use-toast'
 import {
@@ -97,6 +99,7 @@ export function CategorySelector({ selectedCategoryIds, onCategoriesChange }: Ca
   const [searchValue, setSearchValue] = useState('')
   const [showNewCategoryModal, setShowNewCategoryModal] = useState(false)
   const [editingCategory, setEditingCategory] = useState<Categories | null>(null)
+  const [isCollapsed, setIsCollapsed] = useState(true)
   const qc = useQueryClient()
 
   const sensors = useSensors(
@@ -244,79 +247,99 @@ export function CategorySelector({ selectedCategoryIds, onCategoriesChange }: Ca
   }
 
   return (
-    <div className="space-y-2">
-      <Label>Categories</Label>
-      
-      {/* Selected categories with drag and drop */}
-      <DndContext
-        sensors={sensors}
-        collisionDetection={closestCenter}
-        onDragEnd={handleDragEnd}
-      >
-        <SortableContext
-          items={selectedCategoryIds}
-          strategy={horizontalListSortingStrategy}
-        >
-          <div className="flex flex-wrap min-h-[2rem]">
-            {selectedCategories.length > 0 ? (
-              selectedCategories.map((category) => (
-                <SortableCategoryItem
-                  key={category.$id}
-                  category={category}
-                  onRemove={handleCategoryRemove}
-                />
-              ))
-            ) : (
-              <div className="inline-flex items-center px-2 py-1 bg-gray-50 text-gray-400 rounded-md text-sm mr-2 mb-2 border border-dashed border-gray-300">
-                <span>None selected</span>
-              </div>
-            )}
-          </div>
-        </SortableContext>
-      </DndContext>
-
-      {/* Category selector popover */}
-      <Popover open={open} onOpenChange={setOpen}>
-        <PopoverTrigger asChild>
+    <Collapsible open={!isCollapsed} onOpenChange={(open) => setIsCollapsed(!open)}>
+      <div className="flex items-center">
+        <CollapsibleTrigger asChild>
           <Button
-            variant="outline"
-            role="combobox"
-            aria-expanded={open}
-            className="w-full justify-between"
+            variant="ghost"
+            size="sm"
+            className="h-auto p-0 -ml-6 mr-2 hover:bg-transparent"
           >
-            {selectedCategoryIds.length > 0
-              ? `${selectedCategoryIds.length} categor${selectedCategoryIds.length === 1 ? 'y' : 'ies'} selected`
-              : "Select categories..."}
-            <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+            <ChevronDown className={cn("h-4 w-4 transition-transform", !isCollapsed && "rotate-180")} />
           </Button>
-        </PopoverTrigger>
-        <PopoverContent className="w-full p-0" align="start">
-          <Command>
-            <CommandInput
-              placeholder="Search categories..."
-              value={searchValue}
-              onValueChange={setSearchValue}
-              className="w-full"
-            />
-            <CommandList>
-              <CommandGroup>
-                {categoryListItems}
-                {filteredCategories.length === 0 && (
-                  <div className="py-6 text-center text-sm text-muted-foreground">
-                    No categories found.
-                  </div>
-                )}
-              </CommandGroup>
-              <CommandGroup>
-                <CommandItem onSelect={() => setShowNewCategoryModal(true)}>
-                  <Plus className="mr-2 h-4 w-4" />
-                  Create new category
-                </CommandItem>
-              </CommandGroup>
-            </CommandList>
-          </Command>
-        </PopoverContent>
-      </Popover>
+        </CollapsibleTrigger>
+        <Label className="inline-label">Categories</Label>
+        {selectedCategories.length > 0 && (
+          <span className="text-sm text-muted-foreground ml-2">
+            ({selectedCategories.length} selected)
+          </span>
+        )}
+      </div>
+      
+      <CollapsibleContent className="space-y-2">
+        {/* Selected categories with drag and drop */}
+        <div className="mt-3">
+          <DndContext
+            sensors={sensors}
+            collisionDetection={closestCenter}
+            onDragEnd={handleDragEnd}
+          >
+            <SortableContext
+              items={selectedCategoryIds}
+              strategy={horizontalListSortingStrategy}
+            >
+              <div className="flex flex-wrap min-h-[2rem]">
+              {selectedCategories.length > 0 ? (
+                selectedCategories.map((category) => (
+                  <SortableCategoryItem
+                    key={category.$id}
+                    category={category}
+                    onRemove={handleCategoryRemove}
+                  />
+                ))
+              ) : (
+                <div className="inline-flex items-center px-2 py-1 bg-gray-50 text-gray-400 rounded-md text-sm mr-2 mb-2 border border-dashed border-gray-300">
+                  <span>None selected</span>
+                </div>
+              )}
+            </div>
+          </SortableContext>
+        </DndContext>
+        </div>
+
+        {/* Category selector popover */}
+        <Popover open={open} onOpenChange={setOpen}>
+          <PopoverTrigger asChild>
+            <Button
+              variant="outline"
+              role="combobox"
+              aria-expanded={open}
+              className="w-full justify-between"
+            >
+              {selectedCategoryIds.length > 0
+                ? `${selectedCategoryIds.length} categor${selectedCategoryIds.length === 1 ? 'y' : 'ies'} selected`
+                : "Select categories..."}
+              <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+            </Button>
+          </PopoverTrigger>
+          <PopoverContent className="w-full p-0" align="start">
+            <Command>
+              <CommandInput
+                placeholder="Search categories..."
+                value={searchValue}
+                onValueChange={setSearchValue}
+                className="w-full"
+              />
+              <CommandList>
+                <CommandGroup>
+                  {categoryListItems}
+                  {filteredCategories.length === 0 && (
+                    <div className="py-6 text-center text-sm text-muted-foreground">
+                      No categories found.
+                    </div>
+                  )}
+                </CommandGroup>
+                <CommandGroup>
+                  <CommandItem onSelect={() => setShowNewCategoryModal(true)}>
+                    <Plus className="mr-2 h-4 w-4" />
+                    Create new category
+                  </CommandItem>
+                </CommandGroup>
+              </CommandList>
+            </Command>
+          </PopoverContent>
+        </Popover>
+      </CollapsibleContent>
 
       {/* New category modal */}
       <NewCategoryModal 
@@ -339,7 +362,7 @@ export function CategorySelector({ selectedCategoryIds, onCategoriesChange }: Ca
           }}
         />
       )}
-    </div>
+    </Collapsible>
   )
 }
 
@@ -495,6 +518,25 @@ function EditCategoryModal({ category, open, onOpenChange, onCategoryUpdated }: 
     },
   })
 
+  const deleteCategory = useMutation({
+    mutationFn: async () => {
+      return db.categories.delete(category.$id)
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['categories'] })
+      toast({ title: 'Category deleted successfully' })
+      onCategoryUpdated()
+    },
+    onError: (error: any) => {
+      console.error('Category deletion error:', error)
+      toast({ 
+        title: 'Failed to delete category', 
+        description: error.message || 'An unexpected error occurred',
+        variant: 'destructive' 
+      })
+    },
+  })
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
     if (!formData.name.trim()) {
@@ -551,14 +593,42 @@ function EditCategoryModal({ category, open, onOpenChange, onCategoryUpdated }: 
               rows={3}
             />
           </div>
-          <div className="flex justify-end gap-2">
-            <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
-              Cancel
-            </Button>
-            <Button type="submit" disabled={updateCategory.isPending}>
-              {updateCategory.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-              Update Category
-            </Button>
+          <div className="flex justify-between">
+            <AlertDialog>
+              <AlertDialogTrigger asChild>
+                <Button type="button" disabled={deleteCategory.isPending} className="bg-red-600 text-white hover:bg-red-700">
+                  <Trash2 className="h-4 w-4 mr-2" />
+                  {deleteCategory.isPending ? 'Deleting...' : 'Delete'}
+                </Button>
+              </AlertDialogTrigger>
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+                  <AlertDialogDescription>
+                    This action cannot be undone. This will permanently delete the category "{category.name}" and remove all associated data.
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel>Cancel</AlertDialogCancel>
+                  <AlertDialogAction
+                    onClick={() => deleteCategory.mutate()}
+                    className="bg-red-600 text-white hover:bg-red-700"
+                  >
+                    Delete
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
+
+            <div className="flex gap-2">
+              <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
+                Cancel
+              </Button>
+              <Button type="submit" disabled={updateCategory.isPending}>
+                {updateCategory.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                Update Category
+              </Button>
+            </div>
           </div>
         </form>
       </DialogContent>

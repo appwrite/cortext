@@ -9,10 +9,11 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog'
 import { Command, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { Skeleton } from '@/components/ui/skeleton'
-import { Check, ChevronsUpDown, Plus, X, Settings, Loader2, Upload, GripVertical } from 'lucide-react'
+import { Check, ChevronsUpDown, Plus, X, Settings, Loader2, Upload, GripVertical, Trash2 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { toast } from '@/hooks/use-toast'
 import {
@@ -630,6 +631,25 @@ function EditImageModal({ image, open, onOpenChange, onImageUpdated }: EditImage
     },
   })
 
+  const deleteImage = useMutation({
+    mutationFn: async () => {
+      return db.images.delete(image.$id)
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['images'] })
+      toast({ title: 'Image deleted successfully' })
+      onImageUpdated()
+    },
+    onError: (error: any) => {
+      console.error('Image deletion error:', error)
+      toast({ 
+        title: 'Failed to delete image', 
+        description: error.message || 'An unexpected error occurred',
+        variant: 'destructive' 
+      })
+    },
+  })
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
     
@@ -684,13 +704,41 @@ function EditImageModal({ image, open, onOpenChange, onImageUpdated }: EditImage
             />
           </div>
 
-          <div className="flex justify-end gap-2 pt-4">
-            <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
-              Cancel
-            </Button>
-            <Button type="submit" disabled={updateImage.isPending}>
-              {updateImage.isPending ? 'Updating...' : 'Update Image'}
-            </Button>
+          <div className="flex justify-between pt-4">
+            <AlertDialog>
+              <AlertDialogTrigger asChild>
+                <Button type="button" disabled={deleteImage.isPending} className="bg-red-600 text-white hover:bg-red-700">
+                  <Trash2 className="h-4 w-4 mr-2" />
+                  {deleteImage.isPending ? 'Deleting...' : 'Delete'}
+                </Button>
+              </AlertDialogTrigger>
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+                  <AlertDialogDescription>
+                    This action cannot be undone. This will permanently delete the image and remove all associated data.
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel>Cancel</AlertDialogCancel>
+                  <AlertDialogAction
+                    onClick={() => deleteImage.mutate()}
+                    className="bg-red-600 text-white hover:bg-red-700"
+                  >
+                    Delete
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
+
+            <div className="flex gap-2">
+              <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
+                Cancel
+              </Button>
+              <Button type="submit" disabled={updateImage.isPending}>
+                {updateImage.isPending ? 'Updating...' : 'Update Image'}
+              </Button>
+            </div>
           </div>
         </form>
       </DialogContent>

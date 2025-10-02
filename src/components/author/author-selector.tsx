@@ -9,10 +9,12 @@ import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { Badge } from '@/components/ui/badge'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog'
 import { Command, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { Skeleton } from '@/components/ui/skeleton'
-import { Check, ChevronsUpDown, Plus, X, Settings, Loader2, GripVertical } from 'lucide-react'
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible'
+import { Check, ChevronsUpDown, Plus, X, Settings, Loader2, GripVertical, Trash2, ChevronDown } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { toast } from '@/hooks/use-toast'
 import {
@@ -97,6 +99,7 @@ export function AuthorSelector({ selectedAuthorIds, onAuthorsChange }: AuthorSel
   const [searchValue, setSearchValue] = useState('')
   const [showNewAuthorModal, setShowNewAuthorModal] = useState(false)
   const [editingAuthor, setEditingAuthor] = useState<Authors | null>(null)
+  const [isCollapsed, setIsCollapsed] = useState(true)
   const qc = useQueryClient()
 
   const sensors = useSensors(
@@ -262,103 +265,121 @@ export function AuthorSelector({ selectedAuthorIds, onAuthorsChange }: AuthorSel
   }, [isPending, selectedAuthors, AuthorTagsSkeleton, selectedAuthorIds, sensors, handleAuthorRemove, handleDragEnd])
 
   return (
-    <div>
-      <Label>Authors</Label>
-      
-      {/* Selected authors display */}
-      <div className="mt-1">
-        {selectedAuthorsDisplay}
-      </div>
-
-      {/* Author selection popover */}
-      <div>
-        <Popover open={open} onOpenChange={setOpen}>
-          <PopoverTrigger asChild>
-            <Button
-              variant="outline"
-              role="combobox"
-              aria-expanded={open}
-              className="w-full justify-between"
-              disabled={isPending}
-            >
-            {isPending ? (
-              <div className="flex items-center gap-2">
-                <Skeleton className="h-4 w-32" />
-              </div>
-            ) : selectedAuthors.length > 0 ? (
-              `${selectedAuthors.length} author${selectedAuthors.length > 1 ? 's' : ''} selected`
-            ) : (
-              "Select authors..."
-            )}
-            <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+    <Collapsible open={!isCollapsed} onOpenChange={(open) => setIsCollapsed(!open)}>
+      <div className="flex items-center">
+        <CollapsibleTrigger asChild>
+          <Button
+            variant="ghost"
+            size="sm"
+            className="h-auto p-0 -ml-6 mr-2 hover:bg-transparent"
+          >
+            <ChevronDown className={cn("h-4 w-4 transition-transform", !isCollapsed && "rotate-180")} />
           </Button>
-        </PopoverTrigger>
-        <PopoverContent className="w-full p-0" style={{ width: 'var(--radix-popover-trigger-width)' }}>
-          <Command shouldFilter={false}>
-            <div className="relative">
-              <CommandInput 
-                placeholder="Search authors..." 
-                value={searchValue}
-                onValueChange={(value) => {
-                  console.log('CommandInput onValueChange:', value)
-                  setSearchValue(value)
-                }}
-                className="w-full pr-8"
-              />
-              {isPending && (
-                <div className="absolute right-2 top-1/2 transform -translate-y-1/2">
-                  <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
-                </div>
-              )}
-            </div>
-            <CommandList>
-              {isPending ? (
-                <div className="p-2">
-                  {Array.from({ length: 3 }).map((_, i) => (
-                    <div key={i} className="flex items-center space-x-2 p-2">
-                      <Skeleton className="h-4 w-4" />
-                      <Skeleton className="h-4 w-32" />
-                      <Skeleton className="h-4 w-20" />
-                    </div>
-                  ))}
-                </div>
-              ) : filteredAuthors.length === 0 ? (
-                <div className="text-center py-6">
-                  <p className="text-sm text-muted-foreground mb-2">
-                    {debouncedSearchValue.trim() ? 'No authors found' : 'No authors available'}
-                  </p>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => {
-                      setOpen(false)
-                      setShowNewAuthorModal(true)
-                    }}
-                  >
-                    <Plus className="h-4 w-4 mr-1" />
-                    Add new author
-                  </Button>
-                </div>
-              ) : (
-                <CommandGroup>
-                  {authorListItems}
-                  <CommandItem
-                    onSelect={() => {
-                      setOpen(false)
-                      setShowNewAuthorModal(true)
-                    }}
-                    className="text-primary"
-                  >
-                    <Plus className="mr-2 h-4 w-4" />
-                    Add new author
-                  </CommandItem>
-                </CommandGroup>
-              )}
-            </CommandList>
-          </Command>
-        </PopoverContent>
-        </Popover>
+        </CollapsibleTrigger>
+        <Label className="inline-label">Authors</Label>
+        {selectedAuthors.length > 0 && (
+          <span className="text-sm text-muted-foreground ml-2">
+            ({selectedAuthors.length} selected)
+          </span>
+        )}
       </div>
+      
+      <CollapsibleContent className="space-y-2">
+        {/* Selected authors display */}
+        <div className="mt-3">
+          {selectedAuthorsDisplay}
+        </div>
+
+        {/* Author selection popover */}
+        <div>
+          <Popover open={open} onOpenChange={setOpen}>
+            <PopoverTrigger asChild>
+              <Button
+                variant="outline"
+                role="combobox"
+                aria-expanded={open}
+                className="w-full justify-between"
+                disabled={isPending}
+              >
+              {isPending ? (
+                <div className="flex items-center gap-2">
+                  <Skeleton className="h-4 w-32" />
+                </div>
+              ) : selectedAuthors.length > 0 ? (
+                `${selectedAuthors.length} author${selectedAuthors.length > 1 ? 's' : ''} selected`
+              ) : (
+                "Select authors..."
+              )}
+              <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+            </Button>
+          </PopoverTrigger>
+          <PopoverContent className="w-full p-0" style={{ width: 'var(--radix-popover-trigger-width)' }}>
+            <Command shouldFilter={false}>
+              <div className="relative">
+                <CommandInput 
+                  placeholder="Search authors..." 
+                  value={searchValue}
+                  onValueChange={(value) => {
+                    console.log('CommandInput onValueChange:', value)
+                    setSearchValue(value)
+                  }}
+                  className="w-full pr-8"
+                />
+                {isPending && (
+                  <div className="absolute right-2 top-1/2 transform -translate-y-1/2">
+                    <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+                  </div>
+                )}
+              </div>
+              <CommandList>
+                {isPending ? (
+                  <div className="p-2">
+                    {Array.from({ length: 3 }).map((_, i) => (
+                      <div key={i} className="flex items-center space-x-2 p-2">
+                        <Skeleton className="h-4 w-4" />
+                        <Skeleton className="h-4 w-32" />
+                        <Skeleton className="h-4 w-20" />
+                      </div>
+                    ))}
+                  </div>
+                ) : filteredAuthors.length === 0 ? (
+                  <div className="text-center py-6">
+                    <p className="text-sm text-muted-foreground mb-2">
+                      {debouncedSearchValue.trim() ? 'No authors found' : 'No authors available'}
+                    </p>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => {
+                        setOpen(false)
+                        setShowNewAuthorModal(true)
+                      }}
+                    >
+                      <Plus className="h-4 w-4 mr-1" />
+                      Add new author
+                    </Button>
+                  </div>
+                ) : (
+                  <CommandGroup>
+                    {authorListItems}
+                    <CommandItem
+                      onSelect={() => {
+                        setOpen(false)
+                        setShowNewAuthorModal(true)
+                      }}
+                      className="text-primary"
+                    >
+                      <Plus className="mr-2 h-4 w-4" />
+                      Add new author
+                    </CommandItem>
+                  </CommandGroup>
+                )}
+              </CommandList>
+            </Command>
+          </PopoverContent>
+          </Popover>
+        </div>
+      </CollapsibleContent>
 
       {/* New author modal */}
       <NewAuthorModal 
@@ -381,7 +402,7 @@ export function AuthorSelector({ selectedAuthorIds, onAuthorsChange }: AuthorSel
           }}
         />
       )}
-    </div>
+    </Collapsible>
   )
 }
 
@@ -662,6 +683,25 @@ function EditAuthorModal({ author, open, onOpenChange, onAuthorUpdated }: EditAu
     },
   })
 
+  const deleteAuthor = useMutation({
+    mutationFn: async () => {
+      return db.authors.delete(author.$id)
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['authors'] })
+      toast({ title: 'Author deleted successfully' })
+      onAuthorUpdated()
+    },
+    onError: (error: any) => {
+      console.error('Author deletion error:', error)
+      toast({ 
+        title: 'Failed to delete author', 
+        description: error.message || 'An unexpected error occurred',
+        variant: 'destructive' 
+      })
+    },
+  })
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
     if (!formData.firstname || !formData.lastname) {
@@ -804,13 +844,41 @@ function EditAuthorModal({ author, open, onOpenChange, onAuthorUpdated }: EditAu
             </div>
           </div>
 
-          <div className="flex justify-end gap-2 pt-4">
-            <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
-              Cancel
-            </Button>
-            <Button type="submit" disabled={updateAuthor.isPending}>
-              {updateAuthor.isPending ? 'Updating...' : 'Update Author'}
-            </Button>
+          <div className="flex justify-between pt-4">
+            <AlertDialog>
+              <AlertDialogTrigger asChild>
+                <Button type="button" disabled={deleteAuthor.isPending} className="bg-red-600 text-white hover:bg-red-700">
+                  <Trash2 className="h-4 w-4 mr-2" />
+                  {deleteAuthor.isPending ? 'Deleting...' : 'Delete'}
+                </Button>
+              </AlertDialogTrigger>
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+                  <AlertDialogDescription>
+                    This action cannot be undone. This will permanently delete the author "{author.firstname} {author.lastname}" and remove all associated data.
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel>Cancel</AlertDialogCancel>
+                  <AlertDialogAction
+                    onClick={() => deleteAuthor.mutate()}
+                    className="bg-red-600 text-white hover:bg-red-700"
+                  >
+                    Delete
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
+
+            <div className="flex gap-2">
+              <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
+                Cancel
+              </Button>
+              <Button type="submit" disabled={updateAuthor.isPending}>
+                {updateAuthor.isPending ? 'Updating...' : 'Update Author'}
+              </Button>
+            </div>
           </div>
         </form>
       </DialogContent>
