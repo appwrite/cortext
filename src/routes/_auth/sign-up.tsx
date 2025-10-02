@@ -12,6 +12,7 @@ import { AuthField } from "@/components/auth/auth-field";
 import { ID, AppwriteException } from "appwrite";
 import { getAccountClient } from "@/lib/appwrite";
 import { queryClient } from "@/lib/react-query";
+import { useDocumentTitle } from "@/hooks/use-document-title";
 
 export const Route = createFileRoute("/_auth/sign-up")({
   component: RouteComponent,
@@ -51,6 +52,9 @@ const createUserAccount = async (data: SignUpForm) => {
 function RouteComponent() {
   const search = useSearch({ strict: false });
   const navigate = useNavigate();
+
+  // Set document title for sign up page
+  useDocumentTitle('Sign Up');
 
   const { mutate: signUp, isPending } = useMutation({
     mutationFn: createUserAccount,

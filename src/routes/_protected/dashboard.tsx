@@ -17,6 +17,7 @@ import { Image as ImageIcon, Plus, Trash2, Save, Video, MapPin, Type as TypeIcon
 import { AgentChat } from '@/components/agent/agent-chat'
 import { AuthorSelector } from '@/components/author'
 import { ImageGallery } from '@/components/image'
+import { useDocumentTitle } from '@/hooks/use-document-title'
 
 export const Route = createFileRoute('/_protected/dashboard')({
     component: RouteComponent,
@@ -46,6 +47,9 @@ function getSectionTypeIcon(type: string) {
 function RouteComponent() {
     const { user, signOut } = useAuth()
     const userId = user?.$id
+
+    // Set document title for dashboard
+    useDocumentTitle('Dashboard')
 
     if (!userId) {
         return <div className="p-6">Loading...</div>
@@ -308,11 +312,13 @@ function CreateArticleView({ userId, onDone, onCancel }: { userId: string; onDon
                     </div>
                     <div>
                         <Label htmlFor="new-title">Title</Label>
-                        <Input id="new-title" value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Article title" />
-                    </div>
-                    <div className="flex items-center space-x-2">
-                        <Checkbox id="new-live" checked={live} onCheckedChange={(checked) => setLive(checked === true)} />
-                        <Label htmlFor="new-live">Live Coverage</Label>
+                        <div className="relative">
+                            <Input id="new-title" value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Article title" className="pr-32" />
+                            <div className="absolute right-3 top-1/2 -translate-y-1/2 flex items-center space-x-2">
+                                <Checkbox id="new-live" checked={live} onCheckedChange={(checked) => setLive(checked === true)} />
+                                <Label htmlFor="new-live" className="text-xs text-muted-foreground">Live</Label>
+                            </div>
+                        </div>
                     </div>
                     <div>
                         <AuthorSelector 
@@ -496,6 +502,9 @@ function ArticleEditor({ articleId, userId, onBack }: { articleId: string; userI
         }
     }, [article])
 
+    // Set document title based on article title
+    useDocumentTitle(title || 'Editor')
+
     const handleMainSave = async () => {
         try {
             setSaving(true)
@@ -543,11 +552,13 @@ function ArticleEditor({ articleId, userId, onBack }: { articleId: string; userI
                     </div>
                     <div className="md:col-span-2">
                         <Label htmlFor="title">Title</Label>
-                        <Input id="title" value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Article title" />
-                    </div>
-                    <div className="flex items-center space-x-2">
-                        <Checkbox id="live" checked={live} onCheckedChange={(checked) => setLive(checked === true)} />
-                        <Label htmlFor="live">Live Coverage</Label>
+                        <div className="relative">
+                            <Input id="title" value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Article title" className="pr-32" />
+                            <div className="absolute right-3 top-1/2 -translate-y-1/2 flex items-center space-x-2">
+                                <Checkbox id="live" checked={live} onCheckedChange={(checked) => setLive(checked === true)} />
+                                <Label htmlFor="live" className="text-xs text-muted-foreground">Live</Label>
+                            </div>
+                        </div>
                     </div>
                     <div>
                         <Label htmlFor="subtitle">Subtitle</Label>
@@ -558,11 +569,6 @@ function ArticleEditor({ articleId, userId, onBack }: { articleId: string; userI
                             selectedAuthorIds={authors} 
                             onAuthorsChange={setAuthors} 
                         />
-                    </div>
-                    <div className="text-xs text-muted-foreground flex items-center gap-2">
-                        <span>Status:</span>
-                        {article.published ? <span className="text-green-600">Published</span> : <span className="text-amber-600">Draft</span>}
-                        {article.publishedAt && <span>• {new Date(article.publishedAt).toLocaleString()}</span>}
                     </div>
                 </section>
 
@@ -651,22 +657,29 @@ function ArticleEditor({ articleId, userId, onBack }: { articleId: string; userI
 
                 {/* Sticky bottom actions — stop before agent rail */}
                 <div className="fixed bottom-0 right-0 left-72 md:left-80 lg:left-96 z-20 border-t bg-background/90 backdrop-blur supports-[backdrop-filter]:bg-background/70">
-                    <div className="px-6 py-3 flex items-center justify-end gap-2 max-w-6xl mx-auto">
-                        <Button
-                            variant="secondary"
-                            className="whitespace-nowrap cursor-pointer"
-                            onClick={() => updateArticle.mutate({ published: !article.published, publishedAt: !article.published ? new Date().toISOString() : null })}
-                        >
-                            {article.published ? 'Unpublish' : 'Publish'}
-                        </Button>
-                        <Button onClick={handleMainSave} disabled={saving} className="cursor-pointer">
-                            {saving ? (
-                                <Loader2 className="h-4 w-4 mr-1 animate-spin" />
-                            ) : (
-                                <Save className="h-4 w-4 mr-1" />
-                            )}
-                            Save
-                        </Button>
+                    <div className="px-6 py-3 flex items-center justify-between max-w-6xl mx-auto">
+                        <div className="text-xs text-muted-foreground flex items-center gap-2">
+                            <span>Status:</span>
+                            {article.published ? <span className="text-green-600">Published</span> : <span className="text-amber-600">Draft</span>}
+                            {article.publishedAt && <span>• {new Date(article.publishedAt).toLocaleString()}</span>}
+                        </div>
+                        <div className="flex items-center gap-2">
+                            <Button
+                                variant="secondary"
+                                className="whitespace-nowrap cursor-pointer"
+                                onClick={() => updateArticle.mutate({ published: !article.published, publishedAt: !article.published ? new Date().toISOString() : null })}
+                            >
+                                {article.published ? 'Unpublish' : 'Publish'}
+                            </Button>
+                            <Button onClick={handleMainSave} disabled={saving} className="cursor-pointer">
+                                {saving ? (
+                                    <Loader2 className="h-4 w-4 mr-1 animate-spin" />
+                                ) : (
+                                    <Save className="h-4 w-4 mr-1" />
+                                )}
+                                Save
+                            </Button>
+                        </div>
                     </div>
                 </div>
             </div>

@@ -2,6 +2,7 @@ import { useAuth } from "@/hooks/use-auth";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { Button } from "@/components/ui/button";
 import { Layers3, Image as ImageIcon, Video, MapPin, CheckCircle2, Brain, History, MessageSquare, GitBranch } from "lucide-react";
+import { useDocumentTitle } from "@/hooks/use-document-title";
 
 export const Route = createFileRoute("/")({
     component: Index,
@@ -9,6 +10,9 @@ export const Route = createFileRoute("/")({
 
 function Index() {
     const { user, signOut } = useAuth();
+
+    // Set document title for home page
+    useDocumentTitle();
 
     const primaryCta = user ? (
         <Link to="/dashboard">

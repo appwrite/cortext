@@ -11,6 +11,7 @@ import { AuthCard } from "@/components/auth/auth-card";
 import { AuthForm } from "@/components/auth/auth-form";
 import { AuthField } from "@/components/auth/auth-field";
 import { queryClient } from "@/lib/react-query";
+import { useDocumentTitle } from "@/hooks/use-document-title";
 
 export const Route = createFileRoute("/_auth/sign-in")({
   component: RouteComponent,
@@ -27,6 +28,9 @@ function RouteComponent() {
   const search = useSearch({ strict: false });
   const navigate = useNavigate();
   const account = getAccountClient();
+
+  // Set document title for sign in page
+  useDocumentTitle('Sign In');
   const { mutate: login, isPending } = useMutation({
     mutationFn: (data: LoginForm) =>
       account.createEmailPasswordSession(data.email, data.password),

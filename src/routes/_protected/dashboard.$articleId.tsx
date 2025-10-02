@@ -16,6 +16,7 @@ import { Image as ImageIcon, Trash2, Save, Video, MapPin, Type as TypeIcon, Uplo
 import { AgentChat } from '@/components/agent/agent-chat'
 import { AuthorSelector } from '@/components/author'
 import { ImageGallery } from '@/components/image'
+import { useDocumentTitle } from '@/hooks/use-document-title'
 
 export const Route = createFileRoute('/_protected/dashboard/$articleId')({
   component: RouteComponent,
@@ -212,6 +213,9 @@ function ArticleEditor({ articleId, userId }: { articleId: string; userId: strin
     }
   }, [article])
 
+  // Set document title based on article title
+  useDocumentTitle(title || 'Editor')
+
   const handleMainSave = async () => {
     try {
       setSaving(true)
@@ -270,11 +274,6 @@ function ArticleEditor({ articleId, userId }: { articleId: string; userId: strin
                 onAuthorsChange={setAuthors} 
               />
             </div>
-          <div className="text-xs text-muted-foreground flex items-center gap-2">
-            <span>Status:</span>
-            {article.published ? <span className="text-green-600">Published</span> : <span className="text-amber-600">Draft</span>}
-            {article.publishedAt && <span>• {new Date(article.publishedAt).toLocaleString()}</span>}
-          </div>
         </section>
 
         <section className="space-y-4">
@@ -354,17 +353,24 @@ function ArticleEditor({ articleId, userId }: { articleId: string; userId: strin
 
       {/* Fixed bottom actions */}
       <div className="fixed bottom-0 inset-x-0 z-20 border-t bg-background/90 backdrop-blur supports-[backdrop-filter]:bg-background/70">
-        <div className="px-6 py-3 flex items-center justify-end gap-2 max-w-6xl mx-auto">
-          <Button
-            variant="secondary"
-            className="whitespace-nowrap"
-            onClick={() => updateArticle.mutate({ published: !article.published, publishedAt: !article.published ? new Date().toISOString() : null })}
-          >
-            {article.published ? 'Unpublish' : 'Publish'}
-          </Button>
-          <Button onClick={handleMainSave} disabled={saving}>
-            <Save className="h-4 w-4 mr-1" /> {saving ? 'Saving…' : 'Save'}
-          </Button>
+        <div className="px-6 py-3 flex items-center justify-between max-w-6xl mx-auto">
+          <div className="text-xs text-muted-foreground flex items-center gap-2">
+            <span>Status:</span>
+            {article.published ? <span className="text-green-600">Published</span> : <span className="text-amber-600">Draft</span>}
+            {article.publishedAt && <span>• {new Date(article.publishedAt).toLocaleString()}</span>}
+          </div>
+          <div className="flex items-center gap-2">
+            <Button
+              variant="secondary"
+              className="whitespace-nowrap"
+              onClick={() => updateArticle.mutate({ published: !article.published, publishedAt: !article.published ? new Date().toISOString() : null })}
+            >
+              {article.published ? 'Unpublish' : 'Publish'}
+            </Button>
+            <Button onClick={handleMainSave} disabled={saving}>
+              <Save className="h-4 w-4 mr-1" /> {saving ? 'Saving…' : 'Save'}
+            </Button>
+          </div>
         </div>
       </div>
     </main>

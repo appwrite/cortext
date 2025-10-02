@@ -72,18 +72,26 @@ function SortableAuthorItem({ author, onRemove }: SortableAuthorItemProps) {
       <Badge 
         variant="secondary" 
         className={cn(
-          "flex items-center gap-1 cursor-grab active:cursor-grabbing hover:bg-secondary/80 transition-colors",
+          "flex items-center gap-1 hover:bg-secondary/80 transition-colors",
           isDragging && "shadow-lg scale-105"
         )}
-        {...attributes}
-        {...listeners}
       >
-        <GripVertical className="h-3 w-3 text-muted-foreground" />
-        {author.firstname} {author.lastname}
+        <div
+          className="cursor-grab active:cursor-grabbing flex items-center gap-1"
+          {...attributes}
+          {...listeners}
+        >
+          <GripVertical className="h-3 w-3 text-muted-foreground" />
+          {author.firstname} {author.lastname}
+        </div>
         <button
           onClick={(e) => {
+            e.preventDefault()
             e.stopPropagation()
             onRemove(author.$id)
+          }}
+          onMouseDown={(e) => {
+            e.stopPropagation()
           }}
           className="ml-1 hover:bg-destructive/20 rounded-full p-0.5"
         >
