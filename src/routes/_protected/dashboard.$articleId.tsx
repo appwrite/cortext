@@ -287,9 +287,10 @@ function ArticleEditor({ articleId, userId }: { articleId: string; userId: strin
         </section>
 
         <section className="space-y-4">
-          <div className="flex items-center justify-between">
-            <h2 className="text-base font-medium">Sections</h2>
-            <div className="flex gap-2">
+          <div>
+            <h2 className="text-base font-medium mb-3">Sections</h2>
+            <div className="flex flex-wrap gap-2">
+              <Button size="sm" variant="outline" className="h-7 px-2 text-xs" onClick={() => createSection('title')}><Heading1 className="h-4 w-4 mr-1" /> Title</Button>
               <Button size="sm" variant="outline" className="h-7 px-2 text-xs" onClick={() => createSection('text')}><TypeIcon className="h-4 w-4 mr-1" /> Text</Button>
               <Button size="sm" variant="outline" className="h-7 px-2 text-xs" onClick={() => createSection('image')}><ImageIcon className="h-4 w-4 mr-1" /> Image</Button>
               <Button size="sm" variant="outline" className="h-7 px-2 text-xs" onClick={() => createSection('video')}><Video className="h-4 w-4 mr-1" /> Video</Button>
@@ -299,7 +300,20 @@ function ArticleEditor({ articleId, userId }: { articleId: string; userId: strin
           </div>
 
           {(localSections?.length ?? 0) === 0 ? (
-            <p className="text-sm text-muted-foreground">No sections yet. Add one above.</p>
+            <div className="flex flex-col items-center justify-center py-8 px-4 text-center border-2 border-dashed border-muted-foreground/25 rounded-lg bg-muted/5">
+              <h3 className="text-base font-medium text-foreground mb-2">No sections yet</h3>
+              <p className="text-sm text-muted-foreground mb-4">
+                Add content sections to build your article.
+              </p>
+              <div className="flex flex-wrap gap-2 justify-center">
+                <Button size="sm" variant="outline" onClick={() => createSection('title')} className="h-8 px-3 text-xs">
+                  <Heading1 className="h-3.5 w-3.5 mr-1" /> Start with Title
+                </Button>
+                <Button size="sm" variant="outline" onClick={() => createSection('text')} className="h-8 px-3 text-xs">
+                  <TypeIcon className="h-3.5 w-3.5 mr-1" /> Add Text
+                </Button>
+              </div>
+            </div>
           ) : (
             <div className="rounded-md border overflow-hidden">
               <Table>
