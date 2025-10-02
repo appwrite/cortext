@@ -127,7 +127,7 @@ function Index() {
                             <img 
                                 src="/dashboard.png" 
                                 alt="Cortext Dashboard - Article Management Interface"
-                                className="h-full w-full object-cover object-top filter brightness-95 contrast-110 saturate-90 blur-[0.3px]"
+                                className="h-full w-full object-cover object-top filter brightness-95 contrast-110 saturate-90"
                             />
                             <div className="absolute inset-0 bg-gradient-to-t from-white/80 via-white/30 to-transparent pointer-events-none"></div>
                         </div>
