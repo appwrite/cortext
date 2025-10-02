@@ -258,22 +258,25 @@ export function AuthorSelector({ selectedAuthorIds, onAuthorsChange }: AuthorSel
   }, [isPending, selectedAuthors, AuthorTagsSkeleton, selectedAuthorIds, sensors, handleAuthorRemove, handleDragEnd])
 
   return (
-    <div className="space-y-2">
+    <div>
       <Label>Authors</Label>
       
       {/* Selected authors display */}
-      {selectedAuthorsDisplay}
+      <div className="mt-1">
+        {selectedAuthorsDisplay}
+      </div>
 
       {/* Author selection popover */}
-      <Popover open={open} onOpenChange={setOpen}>
-        <PopoverTrigger asChild>
-          <Button
-            variant="outline"
-            role="combobox"
-            aria-expanded={open}
-            className="w-full justify-between"
-            disabled={isPending}
-          >
+      <div>
+        <Popover open={open} onOpenChange={setOpen}>
+          <PopoverTrigger asChild>
+            <Button
+              variant="outline"
+              role="combobox"
+              aria-expanded={open}
+              className="w-full justify-between"
+              disabled={isPending}
+            >
             {isPending ? (
               <div className="flex items-center gap-2">
                 <Skeleton className="h-4 w-32" />
@@ -350,7 +353,8 @@ export function AuthorSelector({ selectedAuthorIds, onAuthorsChange }: AuthorSel
             </CommandList>
           </Command>
         </PopoverContent>
-      </Popover>
+        </Popover>
+      </div>
 
       {/* New author modal */}
       <NewAuthorModal 
