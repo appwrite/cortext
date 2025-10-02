@@ -67,16 +67,17 @@ function SortableImageItem({ image, onRemove }: SortableImageItemProps) {
       ref={setNodeRef}
       style={style}
       className={cn(
-        "relative group aspect-[4/3] max-h-[200px]",
+        "relative group w-full",
         isDragging && "opacity-50"
       )}
     >
-      <img 
-        src={previewUrl} 
-        alt={image.caption || 'Image'} 
-        className="w-full h-full object-cover rounded-lg border"
-      />
-      <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity rounded-lg">
+      <div className="aspect-[4/3] w-full max-h-[200px] relative">
+        <img 
+          src={previewUrl} 
+          alt={image.caption || 'Image'} 
+          className="w-full h-full object-cover rounded-lg border"
+        />
+        <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity rounded-lg">
         <div className="absolute top-2 left-2">
           <div
             {...attributes}
@@ -101,6 +102,7 @@ function SortableImageItem({ image, onRemove }: SortableImageItemProps) {
           <div className="text-white text-xs truncate drop-shadow-sm">
             {image.caption || 'Untitled Image'}
           </div>
+        </div>
         </div>
       </div>
     </div>
@@ -168,7 +170,7 @@ export function ImageGallery({ selectedImageIds, onImagesChange }: ImageGalleryP
   // Memoize loading skeleton
   const ImageGallerySkeleton = useMemo(() => {
     return (
-      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
+      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
         {Array.from({ length: 8 }).map((_, i) => (
           <div key={i} className="aspect-[4/3]">
             <Skeleton className="h-full w-full rounded-lg" />
@@ -204,8 +206,8 @@ export function ImageGallery({ selectedImageIds, onImagesChange }: ImageGalleryP
   // Memoize the image list items
   const imageListItems = useMemo(() => {
     return filteredImages.map(image => {
-      // Use 2x size for retina display: 24x18 for 4:3 ratio (12x9 display size)
-      const previewUrl = String(files.getPreview(image.file, 24, 18))
+      // Use high resolution for crisp quality: 160x120 for 4:3 ratio (80x60 display size)
+      const previewUrl = String(files.getPreview(image.file, 160, 120))
       
       return (
         <CommandItem
@@ -219,7 +221,7 @@ export function ImageGallery({ selectedImageIds, onImagesChange }: ImageGalleryP
               <img 
                 src={previewUrl} 
                 alt={image.caption || 'Image'} 
-                className="w-12 h-9 object-cover rounded-lg border"
+                className="w-20 h-15 object-cover rounded-lg border"
               />
               <Check
                 className={cn(
@@ -270,7 +272,7 @@ export function ImageGallery({ selectedImageIds, onImagesChange }: ImageGalleryP
           onDragEnd={handleDragEnd}
         >
           <SortableContext items={selectedImageIds} strategy={rectSortingStrategy}>
-            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
               {selectedImages.map(image => (
                 <SortableImageItem
                   key={image.$id}
@@ -286,7 +288,7 @@ export function ImageGallery({ selectedImageIds, onImagesChange }: ImageGalleryP
     
     return (
       <div className="w-full">
-        <div className="w-full border border-dashed border-muted-foreground/25 rounded-lg flex items-center justify-center text-muted-foreground h-[92px]">
+        <div className="w-full border border-dashed border-muted-foreground/25 rounded-lg flex items-center justify-center text-muted-foreground aspect-[4/3] max-h-[200px]">
           <p className="text-sm">No images selected</p>
         </div>
       </div>

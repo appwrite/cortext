@@ -171,6 +171,13 @@ function ArticleEditor({ articleId, userId }: { articleId: string; userId: strin
     e.dataTransfer.dropEffect = 'move'
   }
 
+  const onDragOverBottom = (e: React.DragEvent) => {
+    e.preventDefault()
+    e.stopPropagation()
+    setOverInfo({ id: 'bottom', where: 'below' })
+    e.dataTransfer.dropEffect = 'move'
+  }
+
   const persistOrder = (next: any[]) => {
     const updatedSections = next.map((s, i) => ({ ...s, position: i }))
     setLocalSections(updatedSections)
@@ -189,8 +196,21 @@ function ArticleEditor({ articleId, userId }: { articleId: string; userId: strin
 
     setLocalSections((prev) => {
       const src = prev.findIndex((s) => s.id === sourceId)
+      if (src < 0) return prev
+      
+      // Handle bottom drop case
+      if (targetId === 'bottom') {
+        const next = [...prev]
+        const [moved] = next.splice(src, 1)
+        next.push(moved) // Add to end
+        const normalized = next.map((s, i) => ({ ...s, position: i }))
+        persistOrder(normalized)
+        return normalized
+      }
+      
+      // Handle normal row drop case
       const tgt = prev.findIndex((s) => s.id === targetId)
-      if (src < 0 || tgt < 0) return prev
+      if (tgt < 0) return prev
       const next = [...prev]
       const [moved] = next.splice(src, 1)
       // Compute actual insertion index based on above/below
@@ -380,6 +400,19 @@ function ArticleEditor({ articleId, userId }: { articleId: string; userId: strin
                   })}
                 </TableBody>
               </Table>
+              {/* Bottom drop zone */}
+              {localSections && localSections.length > 0 && (
+                <div
+                  onDragOver={onDragOverBottom}
+                  onDrop={(e) => onDropRow('bottom', e)}
+                  className={`w-full transition-all duration-200 cursor-pointer ${
+                    overInfo.id === 'bottom' && !!draggingId 
+                      ? 'h-4 bg-primary/20 border-t-2 border-primary' 
+                      : 'h-3 bg-muted/20'
+                  }`}
+                  style={{ marginTop: '-1px' }}
+                />
+              )}
             </div>
           )}
         </section>
