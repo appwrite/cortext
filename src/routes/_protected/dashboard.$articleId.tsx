@@ -305,10 +305,10 @@ function ArticleEditor({ articleId, userId }: { articleId: string; userId: strin
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead className="w-[50px]">Order</TableHead>
-                    <TableHead></TableHead>
+                    <TableHead className="w-[30px]">Order</TableHead>
+                    <TableHead className="w-[40px]"></TableHead>
                     <TableHead>Content</TableHead>
-                    <TableHead className="text-right"></TableHead>
+                    <TableHead className="w-[40px] text-right"></TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>

@@ -67,7 +67,7 @@ function SortableImageItem({ image, onRemove }: SortableImageItemProps) {
       ref={setNodeRef}
       style={style}
       className={cn(
-        "relative group aspect-[4/3]",
+        "relative group aspect-[4/3] max-h-[200px]",
         isDragging && "opacity-50"
       )}
     >
@@ -285,8 +285,10 @@ export function ImageGallery({ selectedImageIds, onImagesChange }: ImageGalleryP
     }
     
     return (
-      <div className="aspect-[4/3] border-2 border-dashed border-muted-foreground/25 rounded-lg flex items-center justify-center text-muted-foreground w-full">
-        <p className="text-sm">No images selected</p>
+      <div className="w-full">
+        <div className="w-full border border-dashed border-muted-foreground/25 rounded-lg flex items-center justify-center text-muted-foreground h-[92px]">
+          <p className="text-sm">No images selected</p>
+        </div>
       </div>
     )
   }, [isPending, selectedImages, ImageGallerySkeleton, selectedImageIds, sensors, handleImageRemove, handleDragEnd])
