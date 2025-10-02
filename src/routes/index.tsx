@@ -93,7 +93,7 @@ function Index() {
             <Nav />
 
             {/* Hero */}
-            <section className="mx-auto w-full max-w-7xl px-6 py-20 md:py-28">
+            <section className="mx-auto w-full max-w-7xl px-6 mb-1 mt-24">
                 <div className="mx-auto max-w-3xl text-center">
                     <p className="inline-flex items-center gap-2 rounded-full border px-3 py-1 text-xs font-medium text-foreground/70">
                         Private beta soon
@@ -120,11 +120,16 @@ function Index() {
                     </p>
                 </div>
 
-                {/* Dashboard screenshot placeholder that merges with the next separator */}
+                {/* Dashboard screenshot that merges with the next separator */}
                 <div className="relative mx-auto mt-10 md:mt-12 w-full max-w-6xl -mb-px">
                     <div className="rounded-t-xl border border-b-0 bg-card overflow-hidden">
-                        <div className="aspect-[21/9] w-full">
-                            <div className="h-full w-full bg-gradient-to-b from-foreground/[6%] to-transparent" aria-hidden />
+                        <div className="aspect-[21/9] w-full relative">
+                            <img 
+                                src="/dashboard.png" 
+                                alt="Cortext Dashboard - Article Management Interface"
+                                className="h-full w-full object-cover object-top filter brightness-95 contrast-110 saturate-90 blur-[0.3px]"
+                            />
+                            <div className="absolute inset-0 bg-gradient-to-t from-white/80 via-white/30 to-transparent pointer-events-none"></div>
                         </div>
                     </div>
                 </div>

@@ -221,3 +221,20 @@
     overflow-scrolling: touch;
   }
 }
+
+/* 3D Card Effects */
+.perspective-1000 {
+  perspective: 1000px;
+}
+
+.group:hover .group-hover\:rotate-x-3 {
+  transform: rotateX(3deg);
+}
+
+.group:hover .group-hover\:scale-\[1\.02\] {
+  transform: scale(1.02);
+}
+
+.group:hover .group-hover\:shadow-lg {
+  box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+}
