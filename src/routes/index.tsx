@@ -135,6 +135,51 @@ function Index() {
                 </div>
             </section>
 
+            {/* Trusted by */}
+            <section className="mx-auto w-full max-w-7xl px-6 py-12 border-t">
+                <div className="mx-auto max-w-4xl text-center">
+                    <p className="text-sm font-medium text-foreground/70 mb-8">Trusted by</p>
+                    <div className="flex items-center justify-center gap-12">
+                        <a 
+                            href="https://appwrite.io" 
+                            target="_blank" 
+                            rel="noopener noreferrer"
+                            className="hover:opacity-80 transition-opacity duration-200"
+                        >
+                            <img 
+                                src="/trusted/appwrite.svg" 
+                                alt="Appwrite" 
+                                className="h-5 w-auto"
+                            />
+                        </a>
+                        <a 
+                            href="https://imagine.dev" 
+                            target="_blank" 
+                            rel="noopener noreferrer"
+                            className="hover:opacity-80 transition-opacity duration-200"
+                        >
+                            <img 
+                                src="/trusted/imagine.svg" 
+                                alt="Imagine" 
+                                className="h-6 w-auto"
+                            />
+                        </a>
+                        <a 
+                            href="https://refetch.io" 
+                            target="_blank" 
+                            rel="noopener noreferrer"
+                            className="hover:opacity-80 transition-opacity duration-200"
+                        >
+                            <img 
+                                src="/trusted/refetch.svg" 
+                                alt="Refetch" 
+                                className="h-5 w-auto"
+                            />
+                        </a>
+                    </div>
+                </div>
+            </section>
+
             {/* Feature: Composable Blocks */}
             <section id="features" className="mx-auto w-full max-w-7xl px-6 py-16 md:py-24 border-t">
                 <div className="grid grid-cols-1 gap-10 md:grid-cols-2 md:items-center">
