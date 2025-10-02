@@ -13,11 +13,12 @@ import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { Checkbox } from '@/components/ui/checkbox'
 import { toast } from '@/hooks/use-toast'
-import { Image as ImageIcon, Plus, Trash2, Save, Video, MapPin, Type as TypeIcon, Upload, ArrowLeft, LogOut, GripVertical, Brain, Loader2, Heading1, Quote, Pin as PinIcon, FileText, Quote as QuoteIcon } from 'lucide-react'
+import { Image as ImageIcon, Plus, Trash2, Save, Video, MapPin, Type as TypeIcon, Upload, ArrowLeft, LogOut, GripVertical, Brain, Loader2, Heading1, Quote, Pin as PinIcon, FileText, Quote as QuoteIcon, Code } from 'lucide-react'
 import { AgentChat } from '@/components/agent/agent-chat'
 import { AuthorSelector } from '@/components/author'
 import { CategorySelector } from '@/components/category'
 import { ImageGallery } from '@/components/image'
+import { CodeEditor } from '@/components/ui/code-editor'
 import { useDocumentTitle } from '@/hooks/use-document-title'
 import { formatDateForDisplay, formatDateCompact } from '@/lib/date-utils'
 
@@ -41,6 +42,8 @@ function getSectionTypeIcon(type: string) {
             return <Video className="h-4 w-4" />
         case 'map':
             return <MapPin className="h-4 w-4" />
+        case 'code':
+            return <Code className="h-4 w-4" />
         default:
             return <TypeIcon className="h-4 w-4" />
     }
@@ -599,6 +602,7 @@ function ArticleEditor({ articleId, userId, onBack }: { articleId: string; userI
                             <Button size="sm" variant="outline" onClick={() => createSection('text')} className="cursor-pointer h-7 px-2 text-xs"><TypeIcon className="h-3.5 w-3.5 mr-1" /> Text</Button>
                             <Button size="sm" variant="outline" onClick={() => createSection('quote')} className="cursor-pointer h-7 px-2 text-xs"><Quote className="h-3.5 w-3.5 mr-1" /> Quote</Button>
                             <Button size="sm" variant="outline" onClick={() => createSection('image')} className="cursor-pointer h-7 px-2 text-xs"><ImageIcon className="h-3.5 w-3.5 mr-1" /> Image</Button>
+                            <Button size="sm" variant="outline" onClick={() => createSection('code')} className="cursor-pointer h-7 px-2 text-xs"><Code className="h-3.5 w-3.5 mr-1" /> Code</Button>
                             <Button size="sm" variant="outline" onClick={() => createSection('video')} className="cursor-pointer h-7 px-2 text-xs"><Video className="h-3.5 w-3.5 mr-1" /> Video</Button>
                             <Button size="sm" variant="outline" onClick={() => createSection('map')} className="cursor-pointer h-7 px-2 text-xs"><MapPin className="h-3.5 w-3.5 mr-1" /> Map</Button>
                         </div>
@@ -616,6 +620,12 @@ function ArticleEditor({ articleId, userId, onBack }: { articleId: string; userI
                                 </Button>
                                 <Button size="sm" variant="outline" onClick={() => createSection('text')} className="h-8 px-3 text-xs">
                                     <TypeIcon className="h-3.5 w-3.5 mr-1" /> Add Text
+                                </Button>
+                                <Button size="sm" variant="outline" onClick={() => createSection('image')} className="h-8 px-3 text-xs">
+                                    <ImageIcon className="h-3.5 w-3.5 mr-1" /> Add Image
+                                </Button>
+                                <Button size="sm" variant="outline" onClick={() => createSection('code')} className="h-8 px-3 text-xs">
+                                    <Code className="h-3.5 w-3.5 mr-1" /> Add Code
                                 </Button>
                             </div>
                         </div>
@@ -662,6 +672,7 @@ function ArticleEditor({ articleId, userId, onBack }: { articleId: string; userI
                                                     <SectionEditor
                                                         section={s}
                                                         onLocalChange={(patch) => updateSection(s.id, patch)}
+                                                        isDragging={!!draggingId}
                                                     />
                                                 </TableCell>
                                                 <TableCell className="text-right">
@@ -717,7 +728,7 @@ function ArticleEditor({ articleId, userId, onBack }: { articleId: string; userI
     )
 }
 
-function SectionEditor({ section, onLocalChange }: { section: any; onLocalChange: (data: Partial<any>) => void }) {
+function SectionEditor({ section, onLocalChange, isDragging = false }: { section: any; onLocalChange: (data: Partial<any>) => void; isDragging?: boolean }) {
     if (section.type === 'title') {
         return <TitleEditor section={section} onLocalChange={onLocalChange} />
     }
@@ -735,6 +746,9 @@ function SectionEditor({ section, onLocalChange }: { section: any; onLocalChange
     }
     if (section.type === 'map') {
         return <MapEditor section={section} onLocalChange={onLocalChange} />
+    }
+    if (section.type === 'code') {
+        return <CodeSectionEditor section={section} onLocalChange={onLocalChange} isDragging={isDragging} />
     }
     return <span className="text-sm text-muted-foreground">Unsupported section</span>
 }
@@ -908,6 +922,50 @@ function MapEditor({ section, onLocalChange }: { section: any; onLocalChange: (d
     )
 }
 
+function CodeSectionEditor({ section, onLocalChange, isDragging = false }: { section: any; onLocalChange: (data: Partial<any>) => void; isDragging?: boolean }) {
+    const [code, setCode] = useState(section.content ?? '')
+    const [language, setLanguage] = useState('javascript')
+
+    // Parse language from section data
+    useEffect(() => {
+        if (section.data) {
+            try {
+                const data = JSON.parse(section.data)
+                setLanguage(data.language ?? 'javascript')
+            } catch (e) {
+                // If data is not JSON, treat it as plain text (backward compatibility)
+                setLanguage(section.language ?? 'javascript')
+            }
+        } else {
+            setLanguage(section.language ?? 'javascript')
+        }
+    }, [section.data, section.language])
+
+    const handleCodeChange = (newCode: string) => {
+        setCode(newCode)
+        onLocalChange({ content: newCode })
+    }
+
+    const handleLanguageChange = (newLanguage: string) => {
+        setLanguage(newLanguage)
+        // Store language in section data for persistence
+        const data = section.data ? JSON.parse(section.data) : {}
+        data.language = newLanguage
+        onLocalChange({ data: JSON.stringify(data) })
+    }
+
+    return (
+        <div className="space-y-2" key={`code-editor-${section.id}`}>
+            <CodeEditor
+                value={code}
+                onChange={handleCodeChange}
+                language={language}
+                onLanguageChange={handleLanguageChange}
+                isDragging={isDragging}
+            />
+        </div>
+    )
+}
 
 function slugify(input: string) {
     return input
