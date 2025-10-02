@@ -11,6 +11,7 @@ import { Input } from '@/components/ui/input'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
+import { Checkbox } from '@/components/ui/checkbox'
 import { toast } from '@/hooks/use-toast'
 import { Image as ImageIcon, Plus, Trash2, Save, Video, MapPin, Type as TypeIcon, Upload, ArrowLeft, LogOut, GripVertical, Brain, Loader2, Heading1, Quote, Pin as PinIcon, FileText, Quote as QuoteIcon } from 'lucide-react'
 import { AgentChat } from '@/components/agent/agent-chat'
@@ -259,21 +260,24 @@ function ArticlesList({ userId }: { userId: string }) {
 
 function CreateArticleView({ userId, onDone, onCancel }: { userId: string; onDone: (id: string) => void; onCancel: () => void }) {
     const qc = useQueryClient()
+    const [trailer, setTrailer] = useState('')
     const [title, setTitle] = useState('')
+    const [live, setLive] = useState(false)
+    const [redirect, setRedirect] = useState('')
     const [authors, setAuthors] = useState<string[]>([])
     const createArticle = useMutation({
         mutationFn: async () => {
             const payload: Omit<Articles, keyof Models.Document> = {
-                trailer: null,
+                trailer: trailer.trim() || null,
                 title: title.trim() || 'Untitled',
                 status: 'unpublished',
                 subtitle: null,
                 images: null,
                 body: null,
                 authors: authors.length > 0 ? authors : null,
-                live: false,
+                live: live,
                 pinned: false,
-                redirect: null,
+                redirect: redirect.trim() || null,
                 categories: null,
                 createdBy: userId,
                 published: false,
@@ -299,14 +303,26 @@ function CreateArticleView({ userId, onDone, onCancel }: { userId: string; onDon
                 </div>
                 <div className="space-y-4">
                     <div>
+                        <Label htmlFor="new-trailer">Trailer</Label>
+                        <Input id="new-trailer" value={trailer} onChange={(e) => setTrailer(e.target.value)} placeholder="Article trailer" />
+                    </div>
+                    <div>
                         <Label htmlFor="new-title">Title</Label>
                         <Input id="new-title" value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Article title" />
+                    </div>
+                    <div className="flex items-center space-x-2">
+                        <Checkbox id="new-live" checked={live} onCheckedChange={(checked) => setLive(checked === true)} />
+                        <Label htmlFor="new-live">Live Coverage</Label>
                     </div>
                     <div>
                         <AuthorSelector 
                             selectedAuthorIds={authors} 
                             onAuthorsChange={setAuthors} 
                         />
+                    </div>
+                    <div>
+                        <Label htmlFor="new-redirect">Redirect URL</Label>
+                        <Input id="new-redirect" value={redirect} onChange={(e) => setRedirect(e.target.value)} placeholder="Redirect URL (optional)" />
                     </div>
                     <div className="flex gap-2">
                         <Button onClick={() => createArticle.mutate()} disabled={createArticle.isPending} className="cursor-pointer">
@@ -461,15 +477,21 @@ function ArticleEditor({ articleId, userId, onBack }: { articleId: string; userI
         })
     }
 
+    const [trailer, setTrailer] = useState('')
     const [title, setTitle] = useState('')
     const [subtitle, setExcerpt] = useState('')
+    const [live, setLive] = useState(false)
+    const [redirect, setRedirect] = useState('')
     const [authors, setAuthors] = useState<string[]>([])
     const [saving, setSaving] = useState(false)
 
     useMemo(() => {
         if (article) {
+            setTrailer(article.trailer ?? '')
             setTitle(article.title ?? '')
             setExcerpt(article.subtitle ?? '')
+            setLive(article.live ?? false)
+            setRedirect(article.redirect ?? '')
             setAuthors(article.authors ?? [])
         }
     }, [article])
@@ -478,9 +500,12 @@ function ArticleEditor({ articleId, userId, onBack }: { articleId: string; userI
         try {
             setSaving(true)
             await updateArticle.mutateAsync({ 
+                trailer,
                 title, 
                 slug: slugify(title), 
                 subtitle,
+                live,
+                redirect,
                 authors,
                 body: JSON.stringify(localSections)
             })
@@ -512,9 +537,17 @@ function ArticleEditor({ articleId, userId, onBack }: { articleId: string; userI
 
                 {/* Article meta form */}
                 <section className="space-y-4">
+                    <div>
+                        <Label htmlFor="trailer">Trailer</Label>
+                        <Input id="trailer" value={trailer} onChange={(e) => setTrailer(e.target.value)} placeholder="Article trailer" />
+                    </div>
                     <div className="md:col-span-2">
                         <Label htmlFor="title">Title</Label>
                         <Input id="title" value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Article title" />
+                    </div>
+                    <div className="flex items-center space-x-2">
+                        <Checkbox id="live" checked={live} onCheckedChange={(checked) => setLive(checked === true)} />
+                        <Label htmlFor="live">Live Coverage</Label>
                     </div>
                     <div>
                         <Label htmlFor="subtitle">Subtitle</Label>
@@ -606,6 +639,14 @@ function ArticleEditor({ articleId, userId, onBack }: { articleId: string; userI
                             </Table>
                         </div>
                     )}
+                </section>
+
+                {/* Redirect URL */}
+                <section className="space-y-4">
+                    <div>
+                        <Label htmlFor="redirect">Redirect URL</Label>
+                        <Input id="redirect" value={redirect} onChange={(e) => setRedirect(e.target.value)} placeholder="Redirect URL (optional)" />
+                    </div>
                 </section>
 
                 {/* Sticky bottom actions — stop before agent rail */}
