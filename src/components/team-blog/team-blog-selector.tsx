@@ -10,7 +10,7 @@ import { TeamSettingsModal } from './team-settings-modal'
 import { BlogSettingsModal } from './blog-settings-modal'
 import { useTeamBlog } from '@/hooks/use-team-blog'
 import { useTeamBlogContext } from '@/contexts/team-blog-context'
-import { getAvatarsClient, getTeamsClient } from '@/lib/appwrite'
+import { getTeamsClient } from '@/lib/appwrite'
 import { cn } from '@/lib/utils'
 
 interface TeamBlogSelectorProps {
@@ -73,12 +73,8 @@ export function TeamBlogSelector({ userId }: TeamBlogSelectorProps) {
       return <FileText className="h-4 w-4" />
     }
     return (
-      <div className="w-6 h-6 rounded-full overflow-hidden">
-        <img 
-          src={getAvatarsClient().getInitials(currentBlog.name, 48, 48)} 
-          alt={currentBlog.name}
-          className="w-full h-full object-cover"
-        />
+      <div className="w-6 h-6 rounded-full bg-gray-800 flex items-center justify-center text-white text-xs font-medium">
+        {currentBlog.name.split(' ').map(word => word[0]).join('').slice(0, 2).toUpperCase()}
       </div>
     )
   }

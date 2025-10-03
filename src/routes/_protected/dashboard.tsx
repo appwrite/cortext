@@ -78,15 +78,22 @@ function Header({ userId, onSignOut }: { userId: string; onSignOut: () => void }
     return (
         <header className="sticky top-0 z-20 border-b bg-background/80 backdrop-blur supports-[backdrop-filter]:bg-background/70">
             <div className="px-6 h-16 flex items-center justify-between">
+                {/* Left side - Team/Blog Selector */}
                 <div className="flex items-center gap-6">
+                    <nav className="flex items-center gap-4 text-sm text-muted-foreground">
+                        <TeamBlogSelector userId={userId} />
+                    </nav>
+                </div>
+                
+                {/* Center - Logo */}
+                <div className="flex items-center justify-center absolute left-1/2 transform -translate-x-1/2">
                     <Link to="/" className="font-semibold tracking-tight inline-flex items-center gap-2">
                         <Brain className="h-6 w-6" />
                         Cortext
                     </Link>
-                    <nav className="hidden sm:flex items-center gap-4 text-sm text-muted-foreground">
-                        <TeamBlogSelector userId={userId} />
-                    </nav>
                 </div>
+                
+                {/* Right side - User actions */}
                 <div className="flex items-center gap-4">
                     <NotificationBell userId={userId} />
                     <Button variant="outline" size="sm" onClick={onSignOut} className="cursor-pointer">

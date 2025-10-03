@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { db } from '@/lib/appwrite/db'
-import { getTeamsClient, getAvatarsClient } from '@/lib/appwrite'
+import { getTeamsClient } from '@/lib/appwrite'
 import { Query } from 'appwrite'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -180,12 +180,8 @@ export function TeamBlogDropdown({ userId, onClose, onCreateTeam, onCreateBlog, 
                         isSelected && "bg-accent"
                       )}
                     >
-                    <div className="w-6 h-6 rounded-full overflow-hidden flex-shrink-0">
-                      <img 
-                        src={getAvatarsClient().getInitials(team.name, 64, 64)} 
-                        alt={team.name}
-                        className="w-full h-full object-cover"
-                      />
+                    <div className="w-6 h-6 rounded-full bg-gray-800 flex items-center justify-center text-white text-xs font-medium flex-shrink-0">
+                      {team.name.split(' ').map(word => word[0]).join('').slice(0, 2).toUpperCase()}
                     </div>
                     <div className="flex-1 min-w-0">
                       <p className="text-sm font-medium truncate">{team.name}</p>
@@ -265,12 +261,8 @@ export function TeamBlogDropdown({ userId, onClose, onCreateTeam, onCreateBlog, 
                       currentBlog?.$id === blog.$id && "bg-accent"
                     )}
                   >
-                    <div className="w-6 h-6 rounded-full overflow-hidden flex-shrink-0">
-                      <img 
-                        src={getAvatarsClient().getInitials(blog.name, 64, 64)} 
-                        alt={blog.name}
-                        className="w-full h-full object-cover"
-                      />
+                    <div className="w-6 h-6 rounded-full bg-gray-800 flex items-center justify-center text-white text-xs font-medium flex-shrink-0">
+                      {blog.name.split(' ').map(word => word[0]).join('').slice(0, 2).toUpperCase()}
                     </div>
                     <div className="flex-1 min-w-0">
                       <p className="text-sm font-medium truncate">{blog.name}</p>
