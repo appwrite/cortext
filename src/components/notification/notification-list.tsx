@@ -1,4 +1,4 @@
-import { useNotifications } from './use-notifications'
+import { useNotifications } from '@/components/notification/use-notifications'
 import { Button } from '@/components/ui/button'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { Badge } from '@/components/ui/badge'
@@ -61,7 +61,7 @@ export function NotificationList({ userId }: NotificationListProps) {
           <Button
             variant="ghost"
             size="sm"
-            onClick={markAllAsRead}
+            onClick={() => markAllAsRead()}
             className="w-full justify-start text-xs"
           >
             <CheckCheck className="h-3 w-3 mr-2" />

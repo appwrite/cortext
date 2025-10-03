@@ -2,8 +2,8 @@ import { useState, useRef, useEffect } from 'react'
 import { Bell } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
-import { useNotifications } from './use-notifications'
-import { NotificationList } from './notification-list'
+import { useNotifications } from '@/components/notification/use-notifications'
+import { NotificationList } from '@/components/notification/notification-list'
 import { cn } from '@/lib/utils'
 
 interface NotificationBellProps {
