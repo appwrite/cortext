@@ -18,6 +18,8 @@ import { AgentChat } from '@/components/agent/agent-chat'
 import { AuthorSelector } from '@/components/author'
 import { CategorySelector } from '@/components/category'
 import { ImageGallery } from '@/components/image'
+import { NotificationBell } from '@/components/notification'
+import { NotificationTest } from '@/components/notification/notification-test'
 import { CodeEditor } from '@/components/ui/code-editor'
 import { useDocumentTitle } from '@/hooks/use-document-title'
 import { formatDateForDisplay, formatDateCompact } from '@/lib/date-utils'
@@ -62,13 +64,13 @@ function RouteComponent() {
 
     return (
         <div className="h-dvh overflow-y-auto overscroll-none flex flex-col">
-            <Header onSignOut={() => signOut.mutate()} />
+            <Header userId={userId} onSignOut={() => signOut.mutate()} />
             <Dashboard userId={userId} />
         </div>
     )
 }
 
-function Header({ onSignOut }: { onSignOut: () => void }) {
+function Header({ userId, onSignOut }: { userId: string; onSignOut: () => void }) {
     return (
         <header className="sticky top-0 z-20 border-b bg-background/80 backdrop-blur supports-[backdrop-filter]:bg-background/70">
             <div className="px-6 h-16 flex items-center justify-between">
@@ -82,6 +84,7 @@ function Header({ onSignOut }: { onSignOut: () => void }) {
                     </nav>
                 </div>
                 <div className="flex items-center gap-2">
+                    <NotificationBell userId={userId} />
                     <Button variant="outline" size="sm" onClick={onSignOut} className="cursor-pointer">
                         <LogOut className="h-4 w-4" />
                         <span className="sr-only sm:not-sr-only sm:ml-1">Sign out</span>
@@ -238,6 +241,8 @@ function ArticlesList({ userId }: { userId: string }) {
                         aria-label="Search articles"
                     />
                 </div>
+
+                <NotificationTest userId={userId} />
 
                 {loadingArticles ? (
                     <div className="text-sm text-muted-foreground">Loading…</div>

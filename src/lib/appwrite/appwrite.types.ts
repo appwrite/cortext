@@ -44,3 +44,13 @@ export type Images = Models.Document & {
     credits: string | null;
 }
 
+export type Notifications = Models.Document & {
+    userId: string;
+    title: string;
+    message: string;
+    type: string | null;
+    read: boolean;
+    actionUrl: string | null;
+    actionText: string | null;
+}
+

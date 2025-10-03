@@ -161,6 +161,30 @@ const COLLECTIONS = {
       // Note: caption is large field (2048 chars) - if indexed in future, use lengths: [191]
     ],
   },
+  notifications: {
+    name: 'Notifications',
+    permissions: [
+      Permission.read(Role.any()),
+      Permission.create(Role.any()),
+      Permission.update(Role.any()),
+      Permission.delete(Role.any()),
+    ],
+    attributes: [
+      { key: 'userId', type: 'string', size: 255, required: true, array: false, default: null },
+      { key: 'title', type: 'string', size: 512, required: true, array: false, default: null },
+      { key: 'message', type: 'string', size: 2048, required: true, array: false, default: null },
+      { key: 'type', type: 'string', size: 50, required: false, array: false, default: 'info' },
+      { key: 'read', type: 'boolean', required: false, array: false, default: false },
+      { key: 'actionUrl', type: 'string', size: 512, required: false, array: false, default: null },
+      { key: 'actionText', type: 'string', size: 100, required: false, array: false, default: null },
+    ],
+    indexes: [
+      { key: 'userId', type: 'key', attributes: ['userId'] },
+      { key: 'read', type: 'key', attributes: ['read'] },
+      { key: 'userId_read', type: 'key', attributes: ['userId', 'read'] },
+      { key: 'createdAt', type: 'key', attributes: ['$createdAt'] },
+    ],
+  },
 };
 
 // Storage configuration
