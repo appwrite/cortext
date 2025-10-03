@@ -3,7 +3,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { db } from '@/lib/appwrite/db'
 import { files } from '@/lib/appwrite/storage'
 import type { Images } from '@/lib/appwrite/appwrite.types'
-import { type Models } from 'appwrite'
+import { type Models, Query, Permission, Role } from 'appwrite'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -12,10 +12,10 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog'
 import { Command, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
-import { Skeleton } from '@/components/ui/skeleton'
 import { Check, ChevronsUpDown, Plus, X, Settings, Loader2, Upload, GripVertical, Trash2 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { toast } from '@/hooks/use-toast'
+import { useTeamBlog } from '@/hooks/use-team-blog'
 import {
   DndContext,
   closestCenter,
@@ -39,6 +39,7 @@ import { CSS } from '@dnd-kit/utilities'
 interface ImageGalleryProps {
   selectedImageIds: string[]
   onImagesChange: (imageIds: string[]) => void
+  userId: string
 }
 
 interface SortableImageItemProps {
@@ -112,12 +113,13 @@ function SortableImageItem({ image, onRemove }: SortableImageItemProps) {
   )
 }
 
-export function ImageGallery({ selectedImageIds, onImagesChange }: ImageGalleryProps) {
+export function ImageGallery({ selectedImageIds, onImagesChange, userId }: ImageGalleryProps) {
   const [open, setOpen] = useState(false)
   const [searchValue, setSearchValue] = useState('')
   const [showNewImageModal, setShowNewImageModal] = useState(false)
   const [editingImage, setEditingImage] = useState<Images | null>(null)
   const qc = useQueryClient()
+  const { currentBlog } = useTeamBlog(userId)
 
   const sensors = useSensors(
     useSensor(PointerSensor),
@@ -136,13 +138,17 @@ export function ImageGallery({ selectedImageIds, onImagesChange }: ImageGalleryP
     return () => clearTimeout(timer)
   }, [searchValue])
 
-  // Fetch all images once and cache them
+  // Fetch images for the current blog
   const { data: allImagesData, isPending, error } = useQuery({
-    queryKey: ['images'],
+    queryKey: ['images', currentBlog?.$id],
     queryFn: () => {
-      console.log('Fetching all images')
-      return db.images.list()
+      console.log('Fetching images for blog:', currentBlog?.$id)
+      if (!currentBlog?.$id) return { documents: [] }
+      return db.images.list([
+        Query.equal('blogId', currentBlog.$id)
+      ])
     },
+    enabled: !!currentBlog?.$id,
     staleTime: 10 * 60 * 1000, // Cache for 10 minutes
   })
 
@@ -170,18 +176,7 @@ export function ImageGallery({ selectedImageIds, onImagesChange }: ImageGalleryP
     })
   }, [allImages, debouncedSearchValue])
 
-  // Memoize loading skeleton
-  const ImageGallerySkeleton = useMemo(() => {
-    return (
-      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
-        {Array.from({ length: 8 }).map((_, i) => (
-          <div key={i} className="w-full relative aspect-ratio-container aspect-ratio-fallback" style={{ aspectRatio: '4/3', maxHeight: '200px' }}>
-            <Skeleton className="w-full h-full rounded-lg" />
-          </div>
-        ))}
-      </div>
-    )
-  }, [])
+  // No more skeleton - just show empty state during loading
 
   const handleImageSelect = (imageId: string) => {
     if (selectedImageIds.includes(imageId)) {
@@ -265,10 +260,6 @@ export function ImageGallery({ selectedImageIds, onImagesChange }: ImageGalleryP
 
   // Memoize the selected images display
   const selectedImagesDisplay = useMemo(() => {
-    if (isPending) {
-      return ImageGallerySkeleton
-    }
-    
     if (selectedImages.length > 0) {
       return (
         <DndContext
@@ -294,11 +285,13 @@ export function ImageGallery({ selectedImageIds, onImagesChange }: ImageGalleryP
     return (
       <div className="w-full">
         <div className="w-full h-20 border border-dashed border-muted-foreground/25 rounded-lg flex items-center justify-center text-muted-foreground min-h-[92px]">
-          <p className="text-sm">No images selected</p>
+          <p className="text-sm">
+            {isPending ? 'Loading images...' : 'No images selected'}
+          </p>
         </div>
       </div>
     )
-  }, [isPending, selectedImages, ImageGallerySkeleton, selectedImageIds, sensors, handleImageRemove, handleDragEnd])
+  }, [isPending, selectedImages, selectedImageIds, sensors, handleImageRemove, handleDragEnd])
 
   return (
     <div className="space-y-4">
@@ -319,14 +312,10 @@ export function ImageGallery({ selectedImageIds, onImagesChange }: ImageGalleryP
             className="w-full justify-between"
             disabled={isPending}
           >
-            {isPending ? (
-              <div className="flex items-center gap-2">
-                <Skeleton className="h-4 w-32" />
-              </div>
-            ) : selectedImages.length > 0 ? (
+            {selectedImages.length > 0 ? (
               `${selectedImages.length} image${selectedImages.length > 1 ? 's' : ''} selected`
             ) : (
-              "Select images..."
+              isPending ? "Loading..." : "Select images..."
             )}
             <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
           </Button>
@@ -351,13 +340,11 @@ export function ImageGallery({ selectedImageIds, onImagesChange }: ImageGalleryP
             </div>
             <CommandList className="min-h-[200px] max-h-[400px]">
               {isPending ? (
-                <div className="p-2">
-                  {Array.from({ length: 3 }).map((_, i) => (
-                    <div key={i} className="flex items-center space-x-2 p-2">
-                      <Skeleton className="h-12 w-12" />
-                      <Skeleton className="h-4 w-32" />
-                    </div>
-                  ))}
+                <div className="flex items-center justify-center py-8">
+                  <div className="flex items-center gap-2 text-muted-foreground">
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                    <span className="text-sm">Loading images...</span>
+                  </div>
                 </div>
               ) : filteredImages.length === 0 ? (
                 <div className="text-center py-6">
@@ -404,6 +391,7 @@ export function ImageGallery({ selectedImageIds, onImagesChange }: ImageGalleryP
           onImagesChange([...selectedImageIds, imageId])
           setShowNewImageModal(false)
         }}
+        userId={userId}
       />
 
       {/* Edit image modal */}
@@ -415,6 +403,7 @@ export function ImageGallery({ selectedImageIds, onImagesChange }: ImageGalleryP
           onImageUpdated={() => {
             setEditingImage(null)
           }}
+          userId={userId}
         />
       )}
     </div>
@@ -425,9 +414,10 @@ interface NewImageModalProps {
   open: boolean
   onOpenChange: (open: boolean) => void
   onImageCreated: (imageId: string) => void
+  userId: string
 }
 
-function NewImageModal({ open, onOpenChange, onImageCreated }: NewImageModalProps) {
+function NewImageModal({ open, onOpenChange, onImageCreated, userId }: NewImageModalProps) {
   const [formData, setFormData] = useState({
     caption: '',
     credits: '',
@@ -437,6 +427,7 @@ function NewImageModal({ open, onOpenChange, onImageCreated }: NewImageModalProp
   const [previewUrl, setPreviewUrl] = useState<string | null>(null)
 
   const qc = useQueryClient()
+  const { currentBlog, currentTeam } = useTeamBlog(userId)
 
   const handleFileSelect = (file: File) => {
     setSelectedFile(file)
@@ -452,10 +443,10 @@ function NewImageModal({ open, onOpenChange, onImageCreated }: NewImageModalProp
       delete (cleanData as any).$id
       delete (cleanData as any).id
       console.log('Clean data for creation:', cleanData)
-      return db.images.create(cleanData)
+      return db.images.create(cleanData, currentTeam?.$id)
     },
     onSuccess: (newImage) => {
-      qc.invalidateQueries({ queryKey: ['images'] })
+      qc.invalidateQueries({ queryKey: ['images', currentBlog?.$id] })
       toast({ title: 'Image created successfully' })
       onImageCreated(newImage.$id)
       setFormData({
@@ -484,14 +475,21 @@ function NewImageModal({ open, onOpenChange, onImageCreated }: NewImageModalProp
     
     setUploading(true)
     try {
-      // Upload file to storage
-      const uploadedFile = await files.upload(selectedFile, selectedFile.name)
+      // Upload file to storage with team permissions
+      const teamPermissions = currentTeam?.$id ? [
+        Permission.read(Role.team(currentTeam.$id)),
+        Permission.update(Role.team(currentTeam.$id)),
+        Permission.delete(Role.team(currentTeam.$id))
+      ] : undefined
+      
+      const uploadedFile = await files.upload(selectedFile, selectedFile.name, teamPermissions)
       
       // Create image record in database
       const cleanedData: Omit<Images, keyof Models.Document> = {
         file: uploadedFile.$id,
         caption: formData.caption.trim() || null,
         credits: formData.credits.trim() || null,
+        blogId: currentBlog?.$id || null,
       }
       
       console.log('Form data before submission:', cleanedData)
@@ -608,24 +606,27 @@ interface EditImageModalProps {
   open: boolean
   onOpenChange: (open: boolean) => void
   onImageUpdated: () => void
+  userId: string
 }
 
-function EditImageModal({ image, open, onOpenChange, onImageUpdated }: EditImageModalProps) {
+function EditImageModal({ image, open, onOpenChange, onImageUpdated, userId }: EditImageModalProps) {
   const [formData, setFormData] = useState({
     caption: image.caption || '',
     credits: image.credits || '',
   })
 
   const qc = useQueryClient()
+  const { currentBlog } = useTeamBlog(userId)
 
   const updateImage = useMutation({
     mutationFn: async (data: Partial<Omit<Images, keyof Models.Document>>) => {
       return db.images.update(image.$id, data)
     },
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ['images'] })
+      qc.invalidateQueries({ queryKey: ['images', currentBlog?.$id] })
       toast({ title: 'Image updated successfully' })
       onImageUpdated()
+      onOpenChange(false)
     },
     onError: (error: any) => {
       console.error('Image update error:', error)
@@ -642,9 +643,10 @@ function EditImageModal({ image, open, onOpenChange, onImageUpdated }: EditImage
       return db.images.delete(image.$id)
     },
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ['images'] })
+      qc.invalidateQueries({ queryKey: ['images', currentBlog?.$id] })
       toast({ title: 'Image deleted successfully' })
       onImageUpdated()
+      onOpenChange(false)
     },
     onError: (error: any) => {
       console.error('Image deletion error:', error)

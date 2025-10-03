@@ -2,7 +2,7 @@ import { useState, useEffect, useMemo } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { db } from '@/lib/appwrite/db'
 import type { Authors } from '@/lib/appwrite/appwrite.types'
-import { type Models } from 'appwrite'
+import { type Models, Query } from 'appwrite'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -17,6 +17,7 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/component
 import { Check, ChevronsUpDown, Plus, X, Settings, Loader2, GripVertical, Trash2, ChevronDown } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { toast } from '@/hooks/use-toast'
+import { useTeamBlog } from '@/hooks/use-team-blog'
 import {
   DndContext,
   closestCenter,
@@ -40,6 +41,7 @@ import { CSS } from '@dnd-kit/utilities'
 interface AuthorSelectorProps {
   selectedAuthorIds: string[]
   onAuthorsChange: (authorIds: string[]) => void
+  userId: string
 }
 
 interface SortableAuthorItemProps {
@@ -94,13 +96,14 @@ function SortableAuthorItem({ author, onRemove }: SortableAuthorItemProps) {
   )
 }
 
-export function AuthorSelector({ selectedAuthorIds, onAuthorsChange }: AuthorSelectorProps) {
+export function AuthorSelector({ selectedAuthorIds, onAuthorsChange, userId }: AuthorSelectorProps) {
   const [open, setOpen] = useState(false)
   const [searchValue, setSearchValue] = useState('')
   const [showNewAuthorModal, setShowNewAuthorModal] = useState(false)
   const [editingAuthor, setEditingAuthor] = useState<Authors | null>(null)
   const [isCollapsed, setIsCollapsed] = useState(true)
   const qc = useQueryClient()
+  const { currentBlog } = useTeamBlog(userId)
 
   const sensors = useSensors(
     useSensor(PointerSensor),
@@ -119,13 +122,17 @@ export function AuthorSelector({ selectedAuthorIds, onAuthorsChange }: AuthorSel
     return () => clearTimeout(timer)
   }, [searchValue])
 
-  // Fetch all authors once and cache them (this should not change during search)
+  // Fetch authors for the current blog
   const { data: allAuthorsData, isPending, error } = useQuery({
-    queryKey: ['authors'],
+    queryKey: ['authors', currentBlog?.$id],
     queryFn: () => {
-      console.log('Fetching all authors')
-      return db.authors.list()
+      console.log('Fetching authors for blog:', currentBlog?.$id)
+      if (!currentBlog?.$id) return { documents: [] }
+      return db.authors.list([
+        Query.equal('blogId', currentBlog.$id)
+      ])
     },
+    enabled: !!currentBlog?.$id,
     staleTime: 10 * 60 * 1000, // Cache for 10 minutes
   })
 
@@ -389,6 +396,7 @@ export function AuthorSelector({ selectedAuthorIds, onAuthorsChange }: AuthorSel
           onAuthorsChange([...selectedAuthorIds, authorId])
           setShowNewAuthorModal(false)
         }}
+        userId={userId}
       />
 
       {/* Edit author modal */}
@@ -410,9 +418,10 @@ interface NewAuthorModalProps {
   open: boolean
   onOpenChange: (open: boolean) => void
   onAuthorCreated: (authorId: string) => void
+  userId: string
 }
 
-function NewAuthorModal({ open, onOpenChange, onAuthorCreated }: NewAuthorModalProps) {
+function NewAuthorModal({ open, onOpenChange, onAuthorCreated, userId }: NewAuthorModalProps) {
   const [formData, setFormData] = useState({
     firstname: '',
     lastname: '',
@@ -428,6 +437,7 @@ function NewAuthorModal({ open, onOpenChange, onAuthorCreated }: NewAuthorModalP
   })
 
   const qc = useQueryClient()
+  const { currentBlog, currentTeam } = useTeamBlog(userId)
 
   const createAuthor = useMutation({
     mutationFn: async (data: Omit<Authors, keyof Models.Document>) => {
@@ -437,10 +447,10 @@ function NewAuthorModal({ open, onOpenChange, onAuthorCreated }: NewAuthorModalP
       delete (cleanData as any).$id
       delete (cleanData as any).id
       console.log('Clean data for creation:', cleanData)
-      return db.authors.create(cleanData)
+      return db.authors.create(cleanData, currentTeam?.$id)
     },
     onSuccess: (newAuthor) => {
-      qc.invalidateQueries({ queryKey: ['authors'] })
+      qc.invalidateQueries({ queryKey: ['authors', currentBlog?.$id] })
       toast({ title: 'Author created successfully' })
       onAuthorCreated(newAuthor.$id)
       setFormData({
@@ -495,6 +505,7 @@ function NewAuthorModal({ open, onOpenChange, onAuthorCreated }: NewAuthorModalP
       googleplus: formData.googleplus.trim() || null,
       instagram: formData.instagram.trim() || null,
       pinterest: formData.pinterest.trim() || null,
+      blogId: currentBlog?.$id || null,
     }
     
     console.log('Form data before submission:', cleanedData)

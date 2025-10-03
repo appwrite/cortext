@@ -2,7 +2,7 @@ import { useState, useEffect, useMemo } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { db } from '@/lib/appwrite/db'
 import type { Categories } from '@/lib/appwrite/appwrite.types'
-import { type Models } from 'appwrite'
+import { type Models, Query } from 'appwrite'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -17,6 +17,7 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/component
 import { Check, ChevronsUpDown, Plus, X, Settings, Loader2, GripVertical, Trash2, ChevronDown } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { toast } from '@/hooks/use-toast'
+import { useTeamBlog } from '@/hooks/use-team-blog'
 import {
   DndContext,
   closestCenter,
@@ -40,6 +41,7 @@ import { CSS } from '@dnd-kit/utilities'
 interface CategorySelectorProps {
   selectedCategoryIds: string[]
   onCategoriesChange: (categoryIds: string[]) => void
+  userId: string
 }
 
 interface SortableCategoryItemProps {
@@ -94,13 +96,14 @@ function SortableCategoryItem({ category, onRemove }: SortableCategoryItemProps)
   )
 }
 
-export function CategorySelector({ selectedCategoryIds, onCategoriesChange }: CategorySelectorProps) {
+export function CategorySelector({ selectedCategoryIds, onCategoriesChange, userId }: CategorySelectorProps) {
   const [open, setOpen] = useState(false)
   const [searchValue, setSearchValue] = useState('')
   const [showNewCategoryModal, setShowNewCategoryModal] = useState(false)
   const [editingCategory, setEditingCategory] = useState<Categories | null>(null)
   const [isCollapsed, setIsCollapsed] = useState(true)
   const qc = useQueryClient()
+  const { currentBlog } = useTeamBlog(userId)
 
   const sensors = useSensors(
     useSensor(PointerSensor),
@@ -119,13 +122,17 @@ export function CategorySelector({ selectedCategoryIds, onCategoriesChange }: Ca
     return () => clearTimeout(timer)
   }, [searchValue])
 
-  // Fetch all categories once and cache them (this should not change during search)
+  // Fetch categories for the current blog
   const { data: allCategoriesData, isPending, error } = useQuery({
-    queryKey: ['categories'],
+    queryKey: ['categories', currentBlog?.$id],
     queryFn: () => {
-      console.log('Fetching all categories')
-      return db.categories.list()
+      console.log('Fetching categories for blog:', currentBlog?.$id)
+      if (!currentBlog?.$id) return { documents: [] }
+      return db.categories.list([
+        Query.equal('blogId', currentBlog.$id)
+      ])
     },
+    enabled: !!currentBlog?.$id,
     staleTime: 10 * 60 * 1000, // Cache for 10 minutes
   })
 
@@ -349,6 +356,7 @@ export function CategorySelector({ selectedCategoryIds, onCategoriesChange }: Ca
           onCategoriesChange([...selectedCategoryIds, categoryId])
           setShowNewCategoryModal(false)
         }}
+        userId={userId}
       />
 
       {/* Edit category modal */}
@@ -370,9 +378,10 @@ interface NewCategoryModalProps {
   open: boolean
   onOpenChange: (open: boolean) => void
   onCategoryCreated: (categoryId: string) => void
+  userId: string
 }
 
-function NewCategoryModal({ open, onOpenChange, onCategoryCreated }: NewCategoryModalProps) {
+function NewCategoryModal({ open, onOpenChange, onCategoryCreated, userId }: NewCategoryModalProps) {
   const [formData, setFormData] = useState({
     name: '',
     slug: '',
@@ -380,6 +389,7 @@ function NewCategoryModal({ open, onOpenChange, onCategoryCreated }: NewCategory
   })
 
   const qc = useQueryClient()
+  const { currentBlog, currentTeam } = useTeamBlog(userId)
 
   const createCategory = useMutation({
     mutationFn: async (data: Omit<Categories, keyof Models.Document>) => {
@@ -389,10 +399,10 @@ function NewCategoryModal({ open, onOpenChange, onCategoryCreated }: NewCategory
       delete (cleanData as any).$id
       delete (cleanData as any).id
       console.log('Clean data for creation:', cleanData)
-      return db.categories.create(cleanData)
+      return db.categories.create(cleanData, currentTeam?.$id)
     },
     onSuccess: (newCategory) => {
-      qc.invalidateQueries({ queryKey: ['categories'] })
+      qc.invalidateQueries({ queryKey: ['categories', currentBlog?.$id] })
       toast({ title: 'Category created successfully' })
       onCategoryCreated(newCategory.$id)
       setFormData({
@@ -428,6 +438,7 @@ function NewCategoryModal({ open, onOpenChange, onCategoryCreated }: NewCategory
       name: formData.name.trim(),
       slug,
       description: formData.description.trim() || null,
+      blogId: currentBlog?.$id || null,
     })
   }
 
@@ -504,7 +515,7 @@ function EditCategoryModal({ category, open, onOpenChange, onCategoryUpdated }: 
       return db.categories.update(category.$id, data)
     },
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ['categories'] })
+      qc.invalidateQueries({ queryKey: ['categories', currentBlog?.$id] })
       toast({ title: 'Category updated successfully' })
       onCategoryUpdated()
     },
@@ -523,7 +534,7 @@ function EditCategoryModal({ category, open, onOpenChange, onCategoryUpdated }: 
       return db.categories.delete(category.$id)
     },
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ['categories'] })
+      qc.invalidateQueries({ queryKey: ['categories', currentBlog?.$id] })
       toast({ title: 'Category deleted successfully' })
       onCategoryUpdated()
     },

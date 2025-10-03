@@ -19,7 +19,10 @@ import { AuthorSelector } from '@/components/author'
 import { CategorySelector } from '@/components/category'
 import { ImageGallery } from '@/components/image'
 import { NotificationBell } from '@/components/notification'
+import { TeamBlogSelector } from '@/components/team-blog'
 import { CodeEditor } from '@/components/ui/code-editor'
+import { useTeamBlog } from '@/hooks/use-team-blog'
+import { TeamBlogProvider, useTeamBlogContext } from '@/contexts/team-blog-context'
 import { useDocumentTitle } from '@/hooks/use-document-title'
 import { formatDateForDisplay, formatDateCompact } from '@/lib/date-utils'
 
@@ -62,10 +65,12 @@ function RouteComponent() {
     }
 
     return (
-        <div className="h-dvh overflow-y-auto overscroll-none flex flex-col">
-            <Header userId={userId} onSignOut={() => signOut.mutate()} />
-            <Dashboard userId={userId} />
-        </div>
+        <TeamBlogProvider userId={userId}>
+            <div className="h-dvh overflow-y-auto overscroll-none flex flex-col">
+                <Header userId={userId} onSignOut={() => signOut.mutate()} />
+                <Dashboard userId={userId} />
+            </div>
+        </TeamBlogProvider>
     )
 }
 
@@ -73,13 +78,13 @@ function Header({ userId, onSignOut }: { userId: string; onSignOut: () => void }
     return (
         <header className="sticky top-0 z-20 border-b bg-background/80 backdrop-blur supports-[backdrop-filter]:bg-background/70">
             <div className="px-6 h-16 flex items-center justify-between">
-                <div className="flex items-center gap-3">
+                <div className="flex items-center gap-6">
                     <Link to="/" className="font-semibold tracking-tight inline-flex items-center gap-2">
-                        <Brain className="h-5 w-5" />
+                        <Brain className="h-6 w-6" />
                         Cortext
                     </Link>
                     <nav className="hidden sm:flex items-center gap-4 text-sm text-muted-foreground">
-                        <span>Dashboard</span>
+                        <TeamBlogSelector userId={userId} />
                     </nav>
                 </div>
                 <div className="flex items-center gap-4">
@@ -95,10 +100,10 @@ function Header({ userId, onSignOut }: { userId: string; onSignOut: () => void }
 }
 
 function Dashboard({ userId }: { userId: string }) {
-    const search = useSearch({ strict: false }) as { articleId?: string; new?: string | number | boolean }
+    const search = useSearch({ strict: false }) as { articleId?: string }
     const navigate = useNavigate()
+    const { currentBlog } = useTeamBlogContext()
     const editingId = search?.articleId || null
-    const creating = Boolean(search?.new)
 
     if (editingId) {
         return (
@@ -110,25 +115,94 @@ function Dashboard({ userId }: { userId: string }) {
         )
     }
 
-    if (creating) {
-        return <CreateArticleView userId={userId} onDone={(id) => navigate({ to: '/dashboard', search: { articleId: id } })} onCancel={() => navigate({ to: '/dashboard', search: {} })} />
-    }
-
-    return <ArticlesList userId={userId} />
+    return <ArticlesList key={currentBlog?.$id || 'no-blog'} userId={userId} />
 }
+
+function EmptyArticlesState({ currentBlog, userId }: { currentBlog: any; userId: string }) {
+    const navigate = useNavigate()
+    const { currentTeam } = useTeamBlogContext()
+    
+    return (
+        <div className="flex flex-col items-center justify-center py-24 px-6">
+            <div className="text-center space-y-6 max-w-md">
+                <div className="space-y-3">
+                    <h2 className="text-2xl font-semibold text-foreground">
+                        {currentBlog ? `No articles` : 'No articles yet'}
+                    </h2>
+                    <p className="text-muted-foreground leading-relaxed">
+                        {currentBlog 
+                            ? 'Create your first article to get started.'
+                            : 'Start writing your first article.'
+                        }
+                    </p>
+                </div>
+                
+                <Button 
+                    size="sm" 
+                    className="cursor-pointer"
+                    onClick={async () => {
+                        try {
+                            const payload: Omit<Articles, keyof Models.Document> = {
+                                trailer: null,
+                                title: 'Untitled',
+                                status: 'unpublished',
+                                subtitle: null,
+                                images: null,
+                                body: null,
+                                authors: null,
+                                live: false,
+                                pinned: false,
+                                redirect: null,
+                                categories: null,
+                                createdBy: userId,
+                                published: false,
+                                slug: null,
+                                publishedAt: null,
+                                blogId: currentBlog?.$id || null,
+                            }
+                            const article = await db.articles.create(payload, currentTeam?.$id)
+                            navigate({ to: '/dashboard', search: { articleId: article.$id } })
+                        } catch (error) {
+                            toast({ 
+                                title: 'Failed to create article', 
+                                description: error instanceof Error ? error.message : 'Unknown error',
+                                variant: 'destructive'
+                            })
+                        }
+                    }}
+                >
+                    <Plus className="h-4 w-4 mr-2" />
+                    Create Article
+                </Button>
+            </div>
+        </div>
+    )
+}
+
 
 function ArticlesList({ userId }: { userId: string }) {
     const qc = useQueryClient()
+    const navigate = useNavigate()
+    const { currentBlog, currentTeam } = useTeamBlogContext()
+
 
     const { data: articleList, isPending: loadingArticles } = useQuery({
-        queryKey: ['articles', userId],
+        queryKey: ['articles', userId, currentBlog?.$id],
         queryFn: async () => {
-            const res = await db.articles.list([
+            const queries = [
                 Query.equal('createdBy', [userId]),
                 Query.orderDesc('$updatedAt'),
-            ])
+            ]
+            
+            // Only filter by blog ID if a blog is selected
+            if (currentBlog?.$id) {
+                queries.push(Query.equal('blogId', currentBlog.$id))
+            }
+            
+            const res = await db.articles.list(queries)
             return res
         },
+        enabled: !!userId
     })
 
     const togglePin = useMutation({
@@ -138,7 +212,7 @@ function ArticlesList({ userId }: { userId: string }) {
             return db.articles.update(id, { pinned: next })
         },
         onSuccess: () => {
-            qc.invalidateQueries({ queryKey: ['articles', userId] })
+            qc.invalidateQueries({ queryKey: ['articles', userId, currentBlog?.$id] })
         },
         onError: () => toast({ title: 'Failed to update pin' }),
     })
@@ -223,30 +297,61 @@ function ArticlesList({ userId }: { userId: string }) {
                         <p className="text-sm text-muted-foreground">Create, select, and manage your articles.</p>
                     </div>
                     <div className="hidden sm:flex items-center gap-2">
-                        <Link to="/dashboard" search={{ new: 1 }}>
-                            <Button size="sm" variant="outline" className="cursor-pointer">
-                                <Plus className="h-4 w-4 mr-1" /> New Article
-                            </Button>
-                        </Link>
+                        <Button 
+                            size="sm" 
+                            variant="outline" 
+                            className="cursor-pointer"
+                            onClick={async () => {
+                                try {
+                                    const payload: Omit<Articles, keyof Models.Document> = {
+                                        trailer: null,
+                                        title: 'Untitled',
+                                        status: 'unpublished',
+                                        subtitle: null,
+                                        images: null,
+                                        body: null,
+                                        authors: null,
+                                        live: false,
+                                        pinned: false,
+                                        redirect: null,
+                                        categories: null,
+                                        createdBy: userId,
+                                        published: false,
+                                        slug: null,
+                                        publishedAt: null,
+                                        blogId: currentBlog?.$id || null,
+                                    }
+                                    const article = await db.articles.create(payload, currentTeam?.$id)
+                                    navigate({ to: '/dashboard', search: { articleId: article.$id } })
+                                } catch (error) {
+                                    toast({ 
+                                        title: 'Failed to create article', 
+                                        description: error instanceof Error ? error.message : 'Unknown error',
+                                        variant: 'destructive'
+                                    })
+                                }
+                            }}
+                        >
+                            <Plus className="h-4 w-4 mr-1" /> New Article
+                        </Button>
                     </div>
                 </div>
-
-                <div className="flex items-center gap-2">
-                    <Input
-                        value={query}
-                        onChange={(e) => setQuery(e.target.value)}
-                        placeholder="Search articles..."
-                        className="h-9 max-w-md"
-                        aria-label="Search articles"
-                    />
-                </div>
-
 
                 {loadingArticles ? (
                     <div className="text-sm text-muted-foreground">Loading…</div>
                 ) : all.length === 0 ? (
-                    <p className="text-sm text-muted-foreground">No articles yet. Create your first one.</p>
+                    <EmptyArticlesState currentBlog={currentBlog} userId={userId} />
                 ) : (
+                    <>
+                        <div className="flex items-center gap-2">
+                            <Input
+                                value={query}
+                                onChange={(e) => setQuery(e.target.value)}
+                                placeholder="Search articles..."
+                                className="h-9 max-w-md"
+                                aria-label="Search articles"
+                            />
+                        </div>
                     <div className="space-y-6">
                         {pinned.length > 0 && (
                             <section className="space-y-2">
@@ -264,6 +369,7 @@ function ArticlesList({ userId }: { userId: string }) {
                             )}
                         </section>
                     </div>
+                    </>
                 )}
             </div>
         </main>
@@ -272,6 +378,7 @@ function ArticlesList({ userId }: { userId: string }) {
 
 function CreateArticleView({ userId, onDone, onCancel }: { userId: string; onDone: (id: string) => void; onCancel: () => void }) {
     const qc = useQueryClient()
+    const { currentBlog, currentTeam } = useTeamBlogContext()
     const [trailer, setTrailer] = useState('')
     const [title, setTitle] = useState('')
     const [live, setLive] = useState(false)
@@ -296,14 +403,22 @@ function CreateArticleView({ userId, onDone, onCancel }: { userId: string; onDon
                 published: false,
                 slug: null,
                 publishedAt: null,
-                blogId: null,
+                blogId: currentBlog?.$id || null,
             }
-            return db.articles.create(payload)
+            return db.articles.create(payload, currentTeam?.$id)
         },
         onSuccess: (doc) => {
-            qc.invalidateQueries({ queryKey: ['articles', userId] })
+            qc.invalidateQueries({ queryKey: ['articles', userId, currentBlog?.$id] })
             toast({ title: 'Article created' })
             onDone(doc.$id)
+        },
+        onError: (error) => {
+            console.error('Article creation error:', error)
+            toast({ 
+                title: 'Failed to create article', 
+                description: error instanceof Error ? error.message : 'Unknown error',
+                variant: 'destructive'
+            })
         },
     })
 
@@ -332,14 +447,16 @@ function CreateArticleView({ userId, onDone, onCancel }: { userId: string; onDon
                     </div>
                     <div>
                         <AuthorSelector 
-                            selectedAuthorIds={authors} 
-                            onAuthorsChange={setAuthors} 
+                            selectedAuthorIds={authors}
+                            onAuthorsChange={setAuthors}
+                            userId={userId}
                         />
                     </div>
                     <div>
                         <CategorySelector 
-                            selectedCategoryIds={categories} 
-                            onCategoriesChange={setCategories} 
+                            selectedCategoryIds={categories}
+                            onCategoriesChange={setCategories}
+                            userId={userId}
                         />
                     </div>
                     <div>
@@ -359,6 +476,7 @@ function CreateArticleView({ userId, onDone, onCancel }: { userId: string; onDon
 
 function ArticleEditor({ articleId, userId, onBack }: { articleId: string; userId: string; onBack: () => void }) {
     const qc = useQueryClient()
+    const { currentBlog } = useTeamBlogContext()
 
     const { data: article, isPending } = useQuery({
         queryKey: ['article', articleId],
@@ -389,7 +507,7 @@ function ArticleEditor({ articleId, userId, onBack }: { articleId: string; userI
         },
         onSuccess: () => {
             qc.invalidateQueries({ queryKey: ['article', articleId] })
-            qc.invalidateQueries({ queryKey: ['articles', userId] })
+            qc.invalidateQueries({ queryKey: ['articles', userId, currentBlog?.$id] })
         },
         onError: () => toast({ title: 'Failed to save article' }),
     })
@@ -615,14 +733,16 @@ function ArticleEditor({ articleId, userId, onBack }: { articleId: string; userI
                     </div>
                     <div>
                         <AuthorSelector 
-                            selectedAuthorIds={authors} 
-                            onAuthorsChange={setAuthors} 
+                            selectedAuthorIds={authors}
+                            onAuthorsChange={setAuthors}
+                            userId={userId}
                         />
                     </div>
                     <div>
                         <CategorySelector 
-                            selectedCategoryIds={categories} 
-                            onCategoriesChange={setCategories} 
+                            selectedCategoryIds={categories}
+                            onCategoriesChange={setCategories}
+                            userId={userId}
                         />
                     </div>
                 </section>
@@ -707,6 +827,7 @@ function ArticleEditor({ articleId, userId, onBack }: { articleId: string; userI
                                                         section={s}
                                                         onLocalChange={onLocalChangeHandlers[s.id]}
                                                         isDragging={!!draggingId}
+                                                        userId={userId}
                                                     />
                                                 </TableCell>
                                                 <TableCell className="text-right">
@@ -776,7 +897,7 @@ function ArticleEditor({ articleId, userId, onBack }: { articleId: string; userI
     )
 }
 
-function SectionEditor({ section, onLocalChange, isDragging = false }: { section: any; onLocalChange: (data: Partial<any>) => void; isDragging?: boolean }) {
+function SectionEditor({ section, onLocalChange, isDragging = false, userId }: { section: any; onLocalChange: (data: Partial<any>) => void; isDragging?: boolean; userId: string }) {
     if (section.type === 'title') {
         return <TitleEditor section={section} onLocalChange={onLocalChange} />
     }
@@ -787,7 +908,7 @@ function SectionEditor({ section, onLocalChange, isDragging = false }: { section
         return <TextEditor section={section} onLocalChange={onLocalChange} />
     }
     if (section.type === 'image') {
-        return <ImageEditor section={section} onLocalChange={onLocalChange} />
+        return <ImageEditor section={section} onLocalChange={onLocalChange} userId={userId} />
     }
     if (section.type === 'video') {
         return <VideoEditor section={section} onLocalChange={onLocalChange} />
@@ -874,7 +995,7 @@ function TextEditor({ section, onLocalChange }: { section: any; onLocalChange: (
     )
 }
 
-function ImageEditor({ section, onLocalChange }: { section: any; onLocalChange: (data: Partial<any>) => void }) {
+function ImageEditor({ section, onLocalChange, userId }: { section: any; onLocalChange: (data: Partial<any>) => void; userId: string }) {
     // Convert mediaId to array format for ImageGallery, also check for imageIds
     const selectedImageIds = section.imageIds || (section.mediaId ? [section.mediaId] : [])
     
@@ -892,6 +1013,7 @@ function ImageEditor({ section, onLocalChange }: { section: any; onLocalChange: 
             <ImageGallery 
                 selectedImageIds={selectedImageIds}
                 onImagesChange={handleImagesChange}
+                userId={userId}
             />
             <div className="space-y-1">
                 <Label htmlFor={`caption-${section.id}`}>Caption</Label>

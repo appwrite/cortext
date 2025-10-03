@@ -17,8 +17,10 @@ import { AgentChat } from '@/components/agent/agent-chat'
 import { AuthorSelector } from '@/components/author'
 import { CategorySelector } from '@/components/category'
 import { ImageGallery } from '@/components/image'
+import { TeamBlogSelector } from '@/components/team-blog'
 import { CodeEditor } from '@/components/ui/code-editor'
 import { useDocumentTitle } from '@/hooks/use-document-title'
+import { useTeamBlog } from '@/hooks/use-team-blog'
 
 export const Route = createFileRoute('/_protected/dashboard/$articleId')({
   component: RouteComponent,
@@ -56,13 +58,13 @@ function RouteComponent() {
 
   return (
     <div className="min-h-dvh flex flex-col">
-      <Header onSignOut={() => signOut.mutate()} />
+      <Header userId={userId} onSignOut={() => signOut.mutate()} />
       <ArticleEditor articleId={params.articleId} userId={userId} />
     </div>
   )
 }
 
-function Header({ onSignOut }: { onSignOut: () => void }) {
+function Header({ userId, onSignOut }: { userId: string; onSignOut: () => void }) {
   return (
     <header className="sticky top-0 z-20 border-b bg-background/80 backdrop-blur supports-[backdrop-filter]:bg-background/70">
       <div className="px-6 h-16 flex items-center justify-between">
@@ -72,7 +74,7 @@ function Header({ onSignOut }: { onSignOut: () => void }) {
             Cortext
           </Link>
           <nav className="hidden sm:flex items-center gap-4 text-sm text-muted-foreground">
-            <Link to="/dashboard" className="hover:underline">Dashboard</Link>
+            <TeamBlogSelector userId={userId} />
             <span>/</span>
             <span>Editor</span>
           </nav>
@@ -90,6 +92,7 @@ function Header({ onSignOut }: { onSignOut: () => void }) {
 
 function ArticleEditor({ articleId, userId }: { articleId: string; userId: string }) {
   const qc = useQueryClient()
+  const { currentBlog } = useTeamBlog(userId)
 
   const { data: article, isPending } = useQuery({
     queryKey: ['article', articleId],
@@ -120,7 +123,7 @@ function ArticleEditor({ articleId, userId }: { articleId: string; userId: strin
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['article', articleId] })
-      qc.invalidateQueries({ queryKey: ['articles', userId] })
+      qc.invalidateQueries({ queryKey: ['articles', userId, currentBlog?.$id] })
     },
     onError: () => toast({ title: 'Failed to save article' }),
   })
@@ -265,6 +268,7 @@ function ArticleEditor({ articleId, userId }: { articleId: string; userId: strin
 
       toast({ title: 'Saved' })
       qc.invalidateQueries({ queryKey: ['article', articleId] })
+      qc.invalidateQueries({ queryKey: ['articles', userId, currentBlog?.$id] })
     } catch (e) {
       toast({ title: 'Failed to save changes' })
     } finally {
@@ -308,13 +312,15 @@ function ArticleEditor({ articleId, userId }: { articleId: string; userId: strin
             <div>
               <AuthorSelector 
                 selectedAuthorIds={authors} 
-                onAuthorsChange={setAuthors} 
+                onAuthorsChange={setAuthors}
+                userId={userId}
               />
             </div>
             <div>
               <CategorySelector 
                 selectedCategoryIds={categories} 
-                onCategoriesChange={setCategories} 
+                onCategoriesChange={setCategories}
+                userId={userId}
               />
             </div>
         </section>
@@ -398,6 +404,7 @@ function ArticleEditor({ articleId, userId }: { articleId: string; userId: strin
                             section={s}
                             onLocalChange={onLocalChangeHandlers[s.id]}
                             isDragging={!!draggingId}
+                            userId={userId}
                           />
                         </TableCell>
                         <TableCell className="text-right">
@@ -456,7 +463,7 @@ function ArticleEditor({ articleId, userId }: { articleId: string; userId: strin
   )
 }
 
-function SectionEditor({ section, onLocalChange, isDragging = false }: { section: any; onLocalChange: (data: Partial<any>) => void; isDragging?: boolean }) {
+function SectionEditor({ section, onLocalChange, isDragging = false, userId }: { section: any; onLocalChange: (data: Partial<any>) => void; isDragging?: boolean; userId: string }) {
   switch (section.type) {
     case 'text':
       return <TextEditor section={section} onLocalChange={onLocalChange} />
@@ -465,7 +472,7 @@ function SectionEditor({ section, onLocalChange, isDragging = false }: { section
     case 'code':
       return <CodeSectionEditor section={section} onLocalChange={onLocalChange} isDragging={isDragging} />
     case 'image':
-      return <ImageEditor section={section} onLocalChange={onLocalChange} />
+      return <ImageEditor section={section} onLocalChange={onLocalChange} userId={userId} />
     case 'video':
       return <VideoEditor section={section} onLocalChange={onLocalChange} />
     case 'map':
@@ -528,7 +535,7 @@ function QuoteEditor({ section, onLocalChange }: { section: any; onLocalChange: 
   )
 }
 
-function ImageEditor({ section, onLocalChange }: { section: any; onLocalChange: (data: Partial<any>) => void }) {
+function ImageEditor({ section, onLocalChange, userId }: { section: any; onLocalChange: (data: Partial<any>) => void; userId: string }) {
   // Convert mediaId to array format for ImageGallery, also check for imageIds
   const selectedImageIds = section.imageIds || (section.mediaId ? [section.mediaId] : [])
   
@@ -546,6 +553,7 @@ function ImageEditor({ section, onLocalChange }: { section: any; onLocalChange: 
       <ImageGallery 
         selectedImageIds={selectedImageIds}
         onImagesChange={handleImagesChange}
+        userId={userId}
       />
       <div className="space-y-1">
         <Label htmlFor={`caption-${section.id}`}>Caption</Label>
