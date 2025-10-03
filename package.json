@@ -5,13 +5,14 @@
   "type": "module",
   "scripts": {
     "dev": "tsr generate && vite",
-    "build": "tsr generate && tsc -b && vite build",
+    "build": "tsr generate && npm run setup:appwrite && tsc -b && vite build",
     "typecheck": "tsr generate && tsc -b --noEmit",
     "lint": "tsr generate && eslint .",
     "preview": "tsr generate && vite preview",
     "generate:routes": "tsr generate",
     "setup:appwrite": "node scripts/setup-appwrite.js",
-    "deploy": "npm run setup:appwrite && npm run build"
+    "setup:appwrite:only": "node scripts/setup-appwrite.js",
+    "deploy": "npm run build"
   },
   "dependencies": {
     "@dnd-kit/core": "^6.3.1",
