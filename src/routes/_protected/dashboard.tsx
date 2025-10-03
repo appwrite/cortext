@@ -13,7 +13,7 @@ import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { Checkbox } from '@/components/ui/checkbox'
 import { toast } from '@/hooks/use-toast'
-import { Image as ImageIcon, Plus, Trash2, Save, Video, MapPin, Type as TypeIcon, Upload, ArrowLeft, LogOut, GripVertical, Brain, Loader2, Heading1, Quote, Pin as PinIcon, FileText, Quote as QuoteIcon, Code } from 'lucide-react'
+import { Image as ImageIcon, Plus, Trash2, Save, Video, MapPin, Type as TypeIcon, Upload, ArrowLeft, LogOut, GripVertical, Brain, Loader2, Heading1, Quote, Pin as PinIcon, FileText, Quote as QuoteIcon, Code, ChevronLeft, ChevronRight } from 'lucide-react'
 import { AgentChat } from '@/components/agent/agent-chat'
 import { AuthorSelector } from '@/components/author'
 import { CategorySelector } from '@/components/category'
@@ -192,13 +192,19 @@ function ArticlesList({ userId }: { userId: string }) {
     const navigate = useNavigate()
     const { currentBlog, currentTeam } = useTeamBlogContext()
 
+    // Pagination state
+    const [currentPage, setCurrentPage] = useState(1)
+    const pageSize = 10 // Fixed page size
+    const [query, setQuery] = useState('')
 
     const { data: articleList, isPending: loadingArticles } = useQuery({
-        queryKey: ['articles', userId, currentBlog?.$id],
+        queryKey: ['articles', userId, currentBlog?.$id, currentPage, pageSize],
         queryFn: async () => {
             const queries = [
                 Query.equal('createdBy', [userId]),
                 Query.orderDesc('$updatedAt'),
+                Query.limit(pageSize),
+                Query.offset((currentPage - 1) * pageSize),
             ]
             
             // Only filter by blog ID if a blog is selected
@@ -224,7 +230,11 @@ function ArticlesList({ userId }: { userId: string }) {
         onError: () => toast({ title: 'Failed to update pin' }),
     })
 
-    const [query, setQuery] = useState('')
+    // Reset to first page when search query changes
+    useEffect(() => {
+        setCurrentPage(1)
+    }, [query])
+
     const all = articleList?.documents ?? []
     const filtered = query
         ? all.filter((a) => (a.title || 'Untitled').toLowerCase().includes(query.toLowerCase()))
@@ -232,6 +242,12 @@ function ArticlesList({ userId }: { userId: string }) {
 
     const pinned = filtered.filter((a) => a.pinned)
     const others = filtered.filter((a) => !a.pinned)
+
+    // Calculate pagination info
+    const totalCount = articleList?.total ?? 0
+    const totalPages = Math.ceil(totalCount / pageSize)
+    const hasNextPage = currentPage < totalPages
+    const hasPrevPage = currentPage > 1
 
     const ColGroup = () => (
         <colgroup>
@@ -375,6 +391,62 @@ function ArticlesList({ userId }: { userId: string }) {
                                 <ArticlesTable rows={others as Articles[]} />
                             )}
                         </section>
+
+                        {/* Pagination Controls */}
+                        {totalPages > 1 && (
+                            <div className="flex items-center justify-between">
+                                <div className="text-sm text-muted-foreground">
+                                    Showing {((currentPage - 1) * pageSize) + 1} to {Math.min(currentPage * pageSize, totalCount)} of {totalCount} articles
+                                </div>
+                                <div className="flex items-center gap-2">
+                                    <Button
+                                        variant="outline"
+                                        size="sm"
+                                        onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
+                                        disabled={!hasPrevPage}
+                                        className="cursor-pointer"
+                                    >
+                                        <ChevronLeft className="h-4 w-4" />
+                                    </Button>
+                                    <div className="flex items-center gap-1">
+                                        {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
+                                            let pageNum;
+                                            if (totalPages <= 5) {
+                                                pageNum = i + 1;
+                                            } else if (currentPage <= 3) {
+                                                pageNum = i + 1;
+                                            } else if (currentPage >= totalPages - 2) {
+                                                pageNum = totalPages - 4 + i;
+                                            } else {
+                                                pageNum = currentPage - 2 + i;
+                                            }
+                                            
+                                            return (
+                                                <Button
+                                                    key={pageNum}
+                                                    variant={currentPage === pageNum ? "default" : "outline"}
+                                                    size="sm"
+                                                    onClick={() => setCurrentPage(pageNum)}
+                                                    className="cursor-pointer w-8 h-8 p-0"
+                                                >
+                                                    {pageNum}
+                                                </Button>
+                                            );
+                                        })}
+                                    </div>
+                                    <Button
+                                        variant="outline"
+                                        size="sm"
+                                        onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
+                                        disabled={!hasNextPage}
+                                        className="cursor-pointer"
+                                    >
+                                        <ChevronRight className="h-4 w-4" />
+                                    </Button>
+                                </div>
+                            </div>
+                        )}
+
                     </div>
                     </>
                 )}
