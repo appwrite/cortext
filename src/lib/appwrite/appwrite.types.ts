@@ -16,6 +16,7 @@ export type Articles = Models.Document & {
     published: boolean;
     slug: string | null;
     publishedAt: string | null;
+    blogId: string | null;
 }
 
 export type Authors = Models.Document & {
@@ -30,18 +31,21 @@ export type Authors = Models.Document & {
     googleplus: string | null;
     instagram: string | null;
     pinterest: string | null;
+    blogId: string | null;
 }
 
 export type Categories = Models.Document & {
     name: string | null;
     slug: string | null;
     description: string | null;
+    blogId: string | null;
 }
 
 export type Images = Models.Document & {
     file: string;
     caption: string | null;
     credits: string | null;
+    blogId: string | null;
 }
 
 export type Notifications = Models.Document & {
@@ -52,5 +56,26 @@ export type Notifications = Models.Document & {
     read: boolean;
     actionUrl: string | null;
     actionText: string | null;
+    blogId: string | null;
+}
+
+export type Blogs = Models.Document & {
+    name: string;
+    slug: string;
+    description: string | null;
+    domain: string | null;
+    logo: string | null;
+    favicon: string | null;
+    theme: string | null;
+    settings: string | null; // JSON string for custom settings
+    ownerId: string;
+    status: string; // 'active', 'inactive', 'suspended'
+    seoTitle: string | null;
+    seoDescription: string | null;
+    seoKeywords: string[] | null;
+    socialLinks: string | null; // JSON string for social media links
+    analyticsId: string | null;
+    customCss: string | null;
+    customJs: string | null;
 }
 

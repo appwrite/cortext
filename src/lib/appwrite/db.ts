@@ -1,5 +1,5 @@
 import { Client, Databases, ID, type Models } from 'appwrite';
-import type { Articles, Authors, Categories, Images, Notifications } from './appwrite.types';
+import type { Articles, Authors, Categories, Images, Notifications, Blogs } from './appwrite.types';
 
 // Environment variables validation
 const APPWRITE_ENDPOINT = import.meta.env.VITE_APPWRITE_ENDPOINT;
@@ -85,6 +85,18 @@ export const db = {
       databases.deleteDocument(APPWRITE_DATABASE_ID, 'notifications', id),
     list: (queries?: string[]) => 
       databases.listDocuments<Notifications>(APPWRITE_DATABASE_ID, 'notifications', queries),
+  },
+  blogs: {
+    create: (data: Omit<Blogs, keyof Models.Document>) => 
+      databases.createDocument<Blogs>(APPWRITE_DATABASE_ID, 'blogs', ID.unique(), data),
+    get: (id: string) => 
+      databases.getDocument<Blogs>(APPWRITE_DATABASE_ID, 'blogs', id),
+    update: (id: string, data: Partial<Omit<Blogs, keyof Models.Document>>) => 
+      databases.updateDocument<Blogs>(APPWRITE_DATABASE_ID, 'blogs', id, data),
+    delete: (id: string) => 
+      databases.deleteDocument(APPWRITE_DATABASE_ID, 'blogs', id),
+    list: (queries?: string[]) => 
+      databases.listDocuments<Blogs>(APPWRITE_DATABASE_ID, 'blogs', queries),
   }
 };
 
