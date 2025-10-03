@@ -83,22 +83,22 @@ export function AgentChat({
         }, 250)
     }
 
-    const applyPunchierTitle = () => {
-        const next = makePunchierTitle(title)
+    const applySEOTitle = () => {
+        const next = makeSEOTitle(title)
         onSetTitle(next)
         setMessages((prev) => [
             ...prev,
-            { id: `a-${Date.now()}`, role: 'assistant', content: `Updated title to: “${next}”` },
+            { id: `a-${Date.now()}`, role: 'assistant', content: `Updated title to: "${next}"` },
         ])
     }
 
-    const generateSubtitle = () => {
+    const generateMetaDescription = () => {
         const base = title || 'this article'
-        const next = `A clear, succinct overview of ${base.toLowerCase()}—what it covers, why it matters, and how to get value fast.`
+        const next = `Learn about ${base.toLowerCase()} with practical insights, best practices, and actionable tips. Discover how to implement and optimize for better results.`
         onSetSubtitle(next)
         setMessages((prev) => [
             ...prev,
-            { id: `a-${Date.now()}`, role: 'assistant', content: 'Drafted a new subtitle. Feel free to tweak it.' },
+            { id: `a-${Date.now()}`, role: 'assistant', content: 'Drafted a new meta description. Feel free to tweak it.' },
         ])
     }
 
@@ -130,11 +130,11 @@ export function AgentChat({
 
             <div className="px-6 py-6 space-y-2">
                 <div className="flex gap-2">
-                    <Button variant="secondary" size="sm" className="gap-1 h-7 px-2 text-[11px] cursor-pointer" onClick={applyPunchierTitle}>
-                        <Sparkles className="h-3.5 w-3.5" /> Punchier title
+                    <Button variant="secondary" size="sm" className="gap-1 h-7 px-2 text-[11px] cursor-pointer" onClick={applySEOTitle}>
+                        <Sparkles className="h-3.5 w-3.5" /> SEO title
                     </Button>
-                    <Button variant="secondary" size="sm" className="gap-1 h-7 px-2 text-[11px] cursor-pointer" onClick={generateSubtitle}>
-                        <Sparkles className="h-3.5 w-3.5" /> Draft subtitle
+                    <Button variant="secondary" size="sm" className="gap-1 h-7 px-2 text-[11px] cursor-pointer" onClick={generateMetaDescription}>
+                        <Sparkles className="h-3.5 w-3.5" /> Meta description
                     </Button>
                 </div>
                 <div className="flex items-center gap-2">
@@ -204,18 +204,18 @@ export function AgentChat({
 function mockReply(input: string, currentTitle: string) {
     const q = input.toLowerCase()
     if (q.includes('title')) {
-        return `Try: “${makePunchierTitle(currentTitle)}”`
+        return `Try: "${makeSEOTitle(currentTitle)}"`
     }
-    if (q.includes('subtitle') || q.includes('summary')) {
-        return 'I can draft a crisp, one-sentence subtitle that highlights value and context.'
+    if (q.includes('subtitle') || q.includes('summary') || q.includes('meta')) {
+        return 'I can draft a compelling meta description that improves search visibility and click-through rates.'
     }
-    return "Got it. I can help rewrite sections, generate outlines, or polish your tone."
+    return "Got it. I can help optimize your content for SEO, generate outlines, or polish your tone."
 }
 
-function makePunchierTitle(t: string) {
+function makeSEOTitle(t: string) {
     const base = (t || 'From idea to article with your AI co-writer').trim()
-    const starters = ['Instantly', 'Effortlessly', 'Beautifully', 'Powerfully']
-    const s = starters[Math.floor(Math.random() * starters.length)]
-    if (/^from /i.test(base)) return base
+    const seoStarters = ['Complete Guide to', 'How to', 'Best Practices for', 'Ultimate Guide to', 'Everything You Need to Know About']
+    const s = seoStarters[Math.floor(Math.random() * seoStarters.length)]
+    if (/^(complete guide|how to|best practices|ultimate guide|everything you need)/i.test(base)) return base
     return `${s} ${base.charAt(0).toLowerCase()}${base.slice(1)}`
 }

@@ -102,30 +102,30 @@ function Index() {
 
             {/* Hero */}
             <section className="mx-auto w-full max-w-7xl px-8 mb-1 mt-24">
-                <div className="mx-auto max-w-3xl text-center">
+                <div className="mx-auto max-w-3xl text-center mb-10">
                     <p className="inline-flex items-center gap-2 rounded-full border px-3 py-1 text-xs font-medium text-foreground/70">
-                        Private beta soon
+                        Now available
                     </p>
-                    <h1 className="mt-6 text-4xl font-semibold tracking-tight md:text-5xl">
-                        AI-powered content management system
+                    <h1 className="mt-6 mb-6 text-4xl font-semibold tracking-tight md:text-5xl">
+                        AI-powered content management
                         </h1>
                     <p className="mt-4 text-base text-foreground/70 md:text-lg">
                         Organize rich content with flexible, sortable blocks. Co-write with an AI assistant trained to boost quality, SEO, and team productivity.
                         </p>
-                        <div className="mt-8 flex items-center justify-center gap-3">
+                        <div className="mt-8 flex items-center justify-center gap-3 mb-8">
                         <Link
                             to="/sign-up"
                             className="px-5 py-3 rounded-md text-sm font-semibold text-white bg-neutral-900 hover:bg-neutral-800 dark:bg-white dark:text-neutral-900 dark:hover:bg-white/90 transition-colors"
                         >
-                            Get early access
+                            Get started
                                 </Link>
                         <a href="#features" className="px-5 py-3 rounded-md text-sm font-medium border hover:bg-foreground/5 transition-colors">
                             Learn more
                         </a>
                     </div>
-                    <p className="mt-4 text-xs md:text-sm text-foreground/70">
-                        <span className="font-semibold text-foreground">{count.toLocaleString()}</span> people have already signed up
-                    </p>
+                    {/* <p className="mt-4 text-xs md:text-sm text-foreground/70">
+                        <span className="font-semibold text-foreground">{count.toLocaleString()}</span> teams already trusting Cortext
+                    </p> */}
                 </div>
 
                 {/* Dashboard screenshot that merges with the next separator */}
@@ -193,7 +193,13 @@ function Index() {
                 <div className="grid grid-cols-1 gap-10 md:grid-cols-2 md:items-center">
                     <div className="order-2 md:order-1">
                         <div className="rounded-xl border bg-card p-6">
-                            <div className="aspect-[16/10] w-full rounded-lg border bg-gradient-to-tr from-emerald-500/10 to-transparent" aria-hidden />
+                            <div className="aspect-[16/10] w-full rounded-lg border overflow-hidden">
+                                <img 
+                                    src="/features/co-author.png" 
+                                    alt="AI Co-author Interface - Chat assistant and content editing workflow"
+                                    className="h-full w-full object-cover object-left-top"
+                                />
+                            </div>
                             <p className="mt-3 text-sm text-foreground/70">
                                 Co-author suggests structure, headlines, and SEO-ready copy. You stay in control.
                             </p>
@@ -238,7 +244,13 @@ function Index() {
                         </ul>
                     </div>
                     <div className="rounded-xl border bg-card p-6">
-                        <div className="aspect-[16/10] w-full rounded-lg border bg-gradient-to-br from-foreground/[4%] to-transparent" aria-hidden />
+                        <div className="aspect-[16/10] w-full rounded-lg border overflow-hidden">
+                            <img 
+                                src="/features/sections.png" 
+                                alt="Composable Blocks Interface - Section types and content editor"
+                                className="h-full w-full object-cover object-center scale-90"
+                            />
+                        </div>
                         <p className="mt-3 text-sm text-foreground/70">
                             A clean editor surface designed for focus. No clutter, just the tools you need.
                         </p>
@@ -269,7 +281,13 @@ function Index() {
                         </ul>
                     </div>
                     <div className="rounded-xl border bg-card p-6">
-                        <div className="aspect-[16/10] w-full rounded-lg border bg-gradient-to-tr from-sky-500/10 to-transparent" aria-hidden />
+                        <div className="aspect-[16/10] w-full rounded-lg border overflow-hidden">
+                            <img 
+                                src="/features/seo.png" 
+                                alt="SEO Optimization Interface - Real-time suggestions and metadata management"
+                                className="h-full w-full object-cover object-left"
+                            />
+                        </div>
                         <p className="mt-3 text-sm text-foreground/70">
                             Clear, contextual guidance that elevates content quality and reach.
                         </p>
@@ -398,13 +416,13 @@ function Index() {
             <section id="cta" className="mx-auto w-full max-w-7xl px-6 py-16 md:py-24 border-t">
                 <div className="rounded-2xl border px-6 py-10 md:px-10 md:py-14 text-center bg-card">
                     <h3 className="text-2xl font-semibold tracking-tight">Start building with Cortext</h3>
-                    <p className="mt-2 text-foreground/70">Join the early access list and help shape a focused, reliable CMS for modern teams.</p>
+                    <p className="mt-2 text-foreground/70">Join thousands of teams using our focused, reliable CMS for modern content management.</p>
                     <div className="mt-6 flex items-center justify-center gap-3">
                         <Link
                             to="/sign-up"
                             className="px-5 py-3 rounded-md text-sm font-semibold text-white bg-neutral-900 hover:bg-neutral-800 dark:bg-white dark:text-neutral-900 dark:hover:bg-white/90 transition-colors"
                         >
-                            Get early access
+                            Get started
                         </Link>
                         <Link
                             to="/sign-in"
