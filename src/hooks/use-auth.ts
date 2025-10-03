@@ -4,9 +4,11 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 export function useAuth() {
   const account = getAccountClient();
   const queryClient = useQueryClient();
-  const { data: user, isPending } = useQuery({
+  const { data: user, isPending, isLoading } = useQuery({
     queryKey: ["auth", "user"],
     queryFn: () => account.get(),
+    retry: false,
+    staleTime: 0,
   });
 
   const deleteSession = async () => {
@@ -29,6 +31,7 @@ export function useAuth() {
 
   return {
     isPending,
+    isLoading,
     user,
     isAuthenticated: !!user,
     signOut,

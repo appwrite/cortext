@@ -1,6 +1,6 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useAuth } from "@/hooks/use-auth";
-import { Brain, Type as TypeIcon, Image as ImageIcon, Video as VideoIcon, Map as MapIcon, Quote as QuoteIcon, Code2 as CodeIcon, FileEdit, MessageSquare, History } from "lucide-react";
+import { Brain, Type as TypeIcon, Image as ImageIcon, Video as VideoIcon, Map as MapIcon, Quote as QuoteIcon, Code2 as CodeIcon, FileEdit, MessageSquare, History, Github } from "lucide-react";
 import { useEffect, useState } from "react";
 
 export const Route = createFileRoute("/")({
@@ -8,7 +8,7 @@ export const Route = createFileRoute("/")({
 });
 
 function Nav() {
-    const { user, signOut } = useAuth();
+    const { user, isLoading } = useAuth();
 
     return (
         <header className="sticky top-0 z-40 w-full border-b bg-background/80 backdrop-blur supports-[backdrop-filter]:bg-background/60">
@@ -17,32 +17,40 @@ function Nav() {
                     <Brain aria-hidden="true" className="h-6 w-6 text-foreground/80" />
                     Cortext
                 </a>
-                <nav className="hidden md:flex absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 gap-6 text-sm">
+                <nav className="hidden md:flex absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 gap-6 text-sm items-center">
                     <a href="#features" className="text-foreground/70 hover:text-foreground transition-colors">Features</a>
                     <a href="#pricing" className="text-foreground/70 hover:text-foreground transition-colors">Pricing</a>
                     <a href="https://appwrite.io/docs" target="_blank" rel="noopener noreferrer" className="text-foreground/70 hover:text-foreground transition-colors">API</a>
+                    <a
+                        href="https://github.com/appwrite/cortext"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-flex items-center gap-1.5 px-2 py-1 rounded-md border border-foreground/20 hover:border-foreground/40 text-foreground/70 hover:text-foreground transition-colors"
+                        aria-label="View on GitHub"
+                    >
+                        <div className="w-4 h-4 rounded-full bg-foreground/10 flex items-center justify-center">
+                            <Github className="h-2.5 w-2.5 fill-current" />
+                        </div>
+                        <span className="text-xs font-medium">6</span>
+                    </a>
                 </nav>
                 <div className="flex items-center gap-3">
-                    {user ? (
-                        <>
-                            <Link to="/dashboard" className="px-3 py-2 rounded-md text-sm font-medium border hover:bg-foreground/5 transition-colors">Dashboard</Link>
-                            <button
-                                onClick={() => signOut.mutate()}
-                                className="px-3 py-2 rounded-md text-sm font-medium border hover:bg-foreground/5 transition-colors"
-                            >
-                                Sign out
-                            </button>
-                        </>
-                    ) : (
-                        <>
-                            <Link to="/sign-in" className="px-3 py-2 rounded-md text-sm font-medium border hover:bg-foreground/5 transition-colors">Sign in</Link>
-                            <Link
-                                to="/sign-up"
-                                className="px-4 py-2 rounded-md text-sm font-semibold text-white bg-neutral-900 hover:bg-neutral-800 dark:bg-white dark:text-neutral-900 dark:hover:bg-white/90 transition-colors"
-                            >
-                                Get started
-                            </Link>
-                        </>
+                    {!isLoading && (
+                        <div className="animate-in fade-in duration-300">
+                            {user ? (
+                                <Link to="/dashboard" className="px-3 py-2 rounded-md text-sm font-medium border hover:bg-foreground/5 transition-colors">Dashboard</Link>
+                            ) : (
+                                <div className="flex items-center gap-3">
+                                    <Link to="/sign-in" className="px-3 py-2 rounded-md text-sm font-medium border hover:bg-foreground/5 transition-colors">Sign in</Link>
+                                    <Link
+                                        to="/sign-up"
+                                        className="px-4 py-2 rounded-md text-sm font-semibold text-white bg-neutral-900 hover:bg-neutral-800 dark:bg-white dark:text-neutral-900 dark:hover:bg-white/90 transition-colors"
+                                    >
+                                        Get started
+                                    </Link>
+                                </div>
+                            )}
+                        </div>
                     )}
                 </div>
                 </div>
