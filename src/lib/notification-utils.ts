@@ -57,3 +57,41 @@ export async function createSampleNotifications(userId: string) {
     throw error
   }
 }
+
+export async function createTestNotification(userId: string, type: 'info' | 'success' | 'warning' | 'error' = 'info') {
+  const messages = {
+    info: {
+      title: 'New Update Available',
+      message: 'A new version of Cortext is now available with improved performance and new features.',
+    },
+    success: {
+      title: 'Action Completed Successfully',
+      message: 'Your recent action has been completed successfully.',
+    },
+    warning: {
+      title: 'Important Notice',
+      message: 'Please review your recent changes as they may affect your published content.',
+    },
+    error: {
+      title: 'Action Failed',
+      message: 'There was an issue with your recent action. Please try again.',
+    }
+  }
+
+  const notification: CreateNotificationData = {
+    userId,
+    title: messages[type].title,
+    message: messages[type].message,
+    type,
+    read: false,
+    actionUrl: '/dashboard',
+    actionText: 'View Dashboard'
+  }
+
+  try {
+    return await createNotification(notification)
+  } catch (error) {
+    console.error('Failed to create test notification:', error)
+    throw error
+  }
+}

@@ -55,9 +55,9 @@ export function NotificationList({ userId }: NotificationListProps) {
   }
 
   return (
-    <div className="max-h-96">
+    <div className="flex flex-col h-96">
       {hasUnread && (
-        <div className="p-2 border-b">
+        <div className="p-2 border-b flex-shrink-0">
           <Button
             variant="ghost"
             size="sm"
@@ -70,8 +70,9 @@ export function NotificationList({ userId }: NotificationListProps) {
         </div>
       )}
       
-      <ScrollArea className="max-h-80">
-        {notifications.map((notification) => (
+      <ScrollArea className="flex-1">
+        <div>
+          {notifications.map((notification) => (
           <div
             key={notification.$id}
             className={getNotificationStyle(notification.type, notification.read)}
@@ -137,6 +138,7 @@ export function NotificationList({ userId }: NotificationListProps) {
             </div>
           </div>
         ))}
+        </div>
       </ScrollArea>
     </div>
   )

@@ -4,7 +4,9 @@ This notification system provides a complete solution for managing user notifica
 
 ## Features
 
-- **Real-time notifications** with automatic refresh every 30 seconds
+- **Real-time notifications** using Appwrite Realtime API
+- **Instant updates** - no polling, notifications appear immediately
+- **Toast notifications** for new notifications
 - **Unread count badge** on the notification bell
 - **Popover-style dropdown** with arrow pointing to the bell icon
 - **Auto-close on focus loss** - no need for close button
@@ -100,6 +102,16 @@ The notification system uses Tailwind CSS classes and follows the existing desig
 - Responsive design that works on mobile and desktop
 - Smooth animations and transitions
 
+## Realtime Integration
+
+The notification system uses [Appwrite Realtime API](https://appwrite.io/docs/apis/realtime) to provide instant updates:
+
+- **WebSocket connection** to the notifications table
+- **Automatic subscription** when the component mounts
+- **User-specific filtering** - only receives notifications for the current user
+- **Event-based updates** - responds to create, update, and delete events
+- **Automatic cleanup** - unsubscribes when component unmounts
+
 ## Testing
 
 Use the `NotificationTest` component to create sample notifications for testing:
@@ -110,4 +122,15 @@ import { NotificationTest } from '@/components/notification'
 <NotificationTest userId={userId} />
 ```
 
-This component provides a button to create sample notifications with different types and states.
+This component provides:
+- **Sample notifications** - creates multiple test notifications
+- **Realtime test buttons** - creates individual notifications of different types
+- **Instant feedback** - shows toast notifications when new ones are created
+
+### Testing Realtime Updates
+
+1. Open the dashboard in two browser tabs/windows
+2. Use the test buttons to create notifications
+3. Watch notifications appear instantly in both tabs
+4. Notice the unread count updates immediately
+5. See toast notifications for new items

@@ -1,10 +1,12 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { db } from '@/lib/appwrite/db'
+import { db, client } from '@/lib/appwrite/db'
 import { Query } from 'appwrite'
 import { toast } from '@/hooks/use-toast'
+import { useEffect, useRef } from 'react'
 
 export function useNotifications(userId: string) {
   const queryClient = useQueryClient()
+  const subscriptionRef = useRef<any>(null)
 
   // Fetch notifications for the user
   const { data: notifications, isLoading } = useQuery({
@@ -18,8 +20,42 @@ export function useNotifications(userId: string) {
       return response.documents
     },
     enabled: !!userId,
-    refetchInterval: 30000, // Refetch every 30 seconds
+    refetchInterval: false, // Disable polling since we're using realtime
   })
+
+  // Set up realtime subscription for notifications
+  useEffect(() => {
+    if (!userId) return
+
+    // Subscribe to notifications for this specific user
+    const channel = `databases.${import.meta.env.VITE_APPWRITE_DATABASE_ID}.tables.notifications.rows`
+    
+    subscriptionRef.current = client.subscribe(channel, (response) => {
+      // Check if this notification is for the current user
+      if (response.payload && typeof response.payload === 'object' && 'userId' in response.payload && response.payload.userId === userId) {
+        // Invalidate and refetch notifications
+        queryClient.invalidateQueries({ queryKey: ['notifications', userId] })
+        
+        // Show a toast for new notifications (only for create events)
+        if (response.events.some(event => event.includes('.create'))) {
+          const payload = response.payload as any
+          toast({
+            title: 'New notification',
+            description: payload.title || 'You have a new notification',
+            duration: 3000,
+          })
+        }
+      }
+    })
+
+    // Cleanup subscription on unmount
+    return () => {
+      if (subscriptionRef.current) {
+        subscriptionRef.current()
+        subscriptionRef.current = null
+      }
+    }
+  }, [userId, queryClient])
 
   // Mark notification as read
   const markAsReadMutation = useMutation({
