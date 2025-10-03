@@ -65,12 +65,7 @@ const DATABASE_NAME = 'Imagine Project Database';
 const COLLECTIONS = {
   articles: {
     name: 'Articles',
-    permissions: [
-      Permission.read(Role.any()),
-      Permission.create(Role.user()),
-      Permission.update(Role.user()),
-      Permission.delete(Role.user()),
-    ],
+    permissions: [],
     attributes: [
       { key: 'trailer', type: 'string', size: 512, required: false, array: false, default: null },
       { key: 'title', type: 'string', size: 1024, required: false, array: false, default: null },
@@ -103,12 +98,7 @@ const COLLECTIONS = {
   },
   authors: {
     name: 'Authors',
-    permissions: [
-      Permission.read(Role.any()),
-      Permission.create(Role.user()),
-      Permission.update(Role.user()),
-      Permission.delete(Role.user()),
-    ],
+    permissions: [],
     attributes: [
       { key: 'firstname', type: 'string', size: 255, required: false, array: false, default: null },
       { key: 'lastname', type: 'string', size: 255, required: false, array: false, default: null },
@@ -134,12 +124,7 @@ const COLLECTIONS = {
   },
   categories: {
     name: 'Categories',
-    permissions: [
-      Permission.read(Role.any()),
-      Permission.create(Role.user()),
-      Permission.update(Role.user()),
-      Permission.delete(Role.user()),
-    ],
+    permissions: [],
     attributes: [
       { key: 'name', type: 'string', size: 255, required: false, array: false, default: null },
       { key: 'slug', type: 'string', size: 255, required: false, array: false, default: null },
@@ -156,12 +141,7 @@ const COLLECTIONS = {
   },
   images: {
     name: 'Images',
-    permissions: [
-      Permission.read(Role.any()),
-      Permission.create(Role.user()),
-      Permission.update(Role.user()),
-      Permission.delete(Role.user()),
-    ],
+    permissions: [],
     attributes: [
       { key: 'file', type: 'string', size: 256, required: true, array: false, default: null },
       { key: 'caption', type: 'string', size: 2048, required: false, array: false, default: null },
@@ -176,12 +156,7 @@ const COLLECTIONS = {
   },
   notifications: {
     name: 'Notifications',
-    permissions: [
-      Permission.read(Role.any()),
-      Permission.create(Role.any()),
-      Permission.update(Role.any()),
-      Permission.delete(Role.any()),
-    ],
+    permissions: [],
     attributes: [
       { key: 'userId', type: 'string', size: 255, required: true, array: false, default: null },
       { key: 'title', type: 'string', size: 512, required: true, array: false, default: null },
@@ -203,12 +178,7 @@ const COLLECTIONS = {
   },
   blogs: {
     name: 'Blogs',
-    permissions: [
-      Permission.read(Role.any()),
-      Permission.create(Role.user()),
-      Permission.update(Role.user()),
-      Permission.delete(Role.user()),
-    ],
+    permissions: [],
     attributes: [
       { key: 'name', type: 'string', size: 255, required: true, array: false, default: null },
       { key: 'slug', type: 'string', size: 255, required: true, array: false, default: null },
@@ -219,6 +189,7 @@ const COLLECTIONS = {
       { key: 'theme', type: 'string', size: 100, required: false, array: false, default: 'default' },
       { key: 'settings', type: 'string', size: 10000, required: false, array: false, default: null },
       { key: 'ownerId', type: 'string', size: 255, required: true, array: false, default: null },
+      { key: 'teamId', type: 'string', size: 255, required: true, array: false, default: null },
       { key: 'status', type: 'string', size: 50, required: false, array: false, default: 'active' },
       { key: 'seoTitle', type: 'string', size: 512, required: false, array: false, default: null },
       { key: 'seoDescription', type: 'string', size: 1024, required: false, array: false, default: null },
@@ -233,6 +204,7 @@ const COLLECTIONS = {
       { key: 'slug', type: 'unique', attributes: ['slug'] },
       { key: 'domain', type: 'unique', attributes: ['domain'] },
       { key: 'ownerId', type: 'key', attributes: ['ownerId'] },
+      { key: 'teamId', type: 'key', attributes: ['teamId'] },
       { key: 'status', type: 'key', attributes: ['status'] },
       { key: 'ownerId_status', type: 'key', attributes: ['ownerId', 'status'] },
       // Note: description, settings, socialLinks, customCss, customJs are large fields - if indexed in future, use lengths: [191]
@@ -244,12 +216,7 @@ const COLLECTIONS = {
 const STORAGE_BUCKETS = {
   'images': {
     name: 'Images',
-    permissions: [
-      Permission.read(Role.any()),
-      Permission.create(Role.user()),
-      Permission.update(Role.user()),
-      Permission.delete(Role.user()),
-    ],
+    permissions: [],
     fileSecurity: true,
     allowedFileExtensions: ['jpg', 'jpeg', 'png', 'gif', 'webp', 'svg', 'bmp', 'tiff'],
     maxFileSize: 10485760, // 10MB
@@ -297,7 +264,8 @@ async function ensureCollection(collectionId, config) {
         DATABASE_ID,
         collectionId,
         config.name,
-        config.permissions
+        config.permissions,
+        true // documentSecurity: true
       );
       log(`Collection '${config.name}' created successfully`, 'success');
       return collection;

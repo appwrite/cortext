@@ -69,6 +69,7 @@ export type Blogs = Models.Document & {
     theme: string | null;
     settings: string | null; // JSON string for custom settings
     ownerId: string;
+    teamId: string;
     status: string; // 'active', 'inactive', 'suspended'
     seoTitle: string | null;
     seoDescription: string | null;
