@@ -60,7 +60,7 @@ export function BlogSettingsModal({ isOpen, onClose, blog, userId }: BlogSetting
         domain: blogDomain || null,
         seoTitle: seoTitle || null,
         seoDescription: seoDescription || null,
-      }, blog.teamId)
+      })
       
       return blog
     },

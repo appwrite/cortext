@@ -141,9 +141,9 @@ export function ImageGallery({ selectedImageIds, onImagesChange, userId }: Image
   // Fetch images for the current blog
   const { data: allImagesData, isPending, error } = useQuery({
     queryKey: ['images', currentBlog?.$id],
-    queryFn: () => {
+    queryFn: async () => {
       console.log('Fetching images for blog:', currentBlog?.$id)
-      if (!currentBlog?.$id) return { documents: [] }
+      if (!currentBlog?.$id) return { documents: [], total: 0 }
       return db.images.list([
         Query.equal('blogId', currentBlog.$id)
       ])

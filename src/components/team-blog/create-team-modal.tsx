@@ -69,9 +69,20 @@ export function CreateTeamModal({ isOpen, onClose, userId, onTeamCreated }: Crea
         slug: 'new-blog',
         description: null,
         domain: null,
+        logo: null,
+        favicon: null,
+        theme: null,
+        settings: null,
         ownerId: userId,
         teamId: team.$id,
-        status: 'active'
+        status: 'active',
+        seoTitle: null,
+        seoDescription: null,
+        seoKeywords: null,
+        socialLinks: null,
+        analyticsId: null,
+        customCss: null,
+        customJs: null
       }, team.$id)
 
       return { team, blog }

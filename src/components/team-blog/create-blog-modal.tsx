@@ -46,9 +46,20 @@ export function CreateBlogModal({ isOpen, onClose, teamId, userId, onBlogCreated
         slug: slug,
         description: blogDescription || null,
         domain: blogDomain || null,
+        logo: null,
+        favicon: null,
+        theme: null,
+        settings: null,
         ownerId: userId,
         teamId: teamId,
-        status: 'active'
+        status: 'active',
+        seoTitle: null,
+        seoDescription: null,
+        seoKeywords: null,
+        socialLinks: null,
+        analyticsId: null,
+        customCss: null,
+        customJs: null
       }
 
       return await db.blogs.create(blogData, teamId)

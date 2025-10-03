@@ -125,9 +125,9 @@ export function AuthorSelector({ selectedAuthorIds, onAuthorsChange, userId }: A
   // Fetch authors for the current blog
   const { data: allAuthorsData, isPending, error } = useQuery({
     queryKey: ['authors', currentBlog?.$id],
-    queryFn: () => {
+    queryFn: async () => {
       console.log('Fetching authors for blog:', currentBlog?.$id)
-      if (!currentBlog?.$id) return { documents: [] }
+      if (!currentBlog?.$id) return { documents: [], total: 0 }
       return db.authors.list([
         Query.equal('blogId', currentBlog.$id)
       ])

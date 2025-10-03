@@ -125,9 +125,9 @@ export function CategorySelector({ selectedCategoryIds, onCategoriesChange, user
   // Fetch categories for the current blog
   const { data: allCategoriesData, isPending, error } = useQuery({
     queryKey: ['categories', currentBlog?.$id],
-    queryFn: () => {
+    queryFn: async () => {
       console.log('Fetching categories for blog:', currentBlog?.$id)
-      if (!currentBlog?.$id) return { documents: [] }
+      if (!currentBlog?.$id) return { documents: [], total: 0 }
       return db.categories.list([
         Query.equal('blogId', currentBlog.$id)
       ])
@@ -368,6 +368,7 @@ export function CategorySelector({ selectedCategoryIds, onCategoriesChange, user
           onCategoryUpdated={() => {
             setEditingCategory(null)
           }}
+          currentBlog={currentBlog}
         />
       )}
     </Collapsible>
@@ -498,9 +499,10 @@ interface EditCategoryModalProps {
   open: boolean
   onOpenChange: (open: boolean) => void
   onCategoryUpdated: () => void
+  currentBlog: any
 }
 
-function EditCategoryModal({ category, open, onOpenChange, onCategoryUpdated }: EditCategoryModalProps) {
+function EditCategoryModal({ category, open, onOpenChange, onCategoryUpdated, currentBlog }: EditCategoryModalProps) {
   const [formData, setFormData] = useState({
     name: category.name || '',
     slug: category.slug || '',
