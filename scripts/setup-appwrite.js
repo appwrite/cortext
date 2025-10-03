@@ -198,7 +198,7 @@ const COLLECTIONS = {
       { key: 'teamId', type: 'key', attributes: ['teamId'] },
       { key: 'status', type: 'key', attributes: ['status'] },
       { key: 'ownerId_status', type: 'key', attributes: ['ownerId', 'status'] },
-      // Note: description, settings, socialLinks, customCss, customJs are large fields - if indexed in future, use lengths: [191]
+      // Note: description, settings are large fields - if indexed in future, use lengths: [191]
     ],
   },
 };

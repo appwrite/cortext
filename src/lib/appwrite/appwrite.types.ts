@@ -74,9 +74,5 @@ export type Blogs = Models.Document & {
     seoTitle: string | null;
     seoDescription: string | null;
     seoKeywords: string[] | null;
-    socialLinks: string | null; // JSON string for social media links
-    analyticsId: string | null;
-    customCss: string | null;
-    customJs: string | null;
 }
 

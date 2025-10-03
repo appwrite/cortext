@@ -662,7 +662,7 @@ function ArticleEditor({ articleId, userId, onBack }: { articleId: string; userI
     const [categories, setCategories] = useState<string[]>([])
     const [saving, setSaving] = useState(false)
 
-    useMemo(() => {
+    useEffect(() => {
         if (article) {
             setTrailer(article.trailer ?? '')
             setTitle(article.title ?? '')
@@ -727,7 +727,13 @@ function ArticleEditor({ articleId, userId, onBack }: { articleId: string; userI
                     <div className="md:col-span-2">
                         <Label htmlFor="title">Title</Label>
                         <div className="relative">
-                            <Input id="title" value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Article title" className="pr-32" />
+                            <Input 
+                                id="title" 
+                                value={title} 
+                                onChange={(e) => setTitle(e.target.value)} 
+                                placeholder="Article title" 
+                                className="pr-32" 
+                            />
                             <div className="absolute right-3 top-1/2 -translate-y-1/2 flex items-center space-x-2">
                                 <Checkbox id="live" checked={live} onCheckedChange={(checked) => setLive(checked === true)} />
                                 <Label htmlFor="live" className="text-xs text-muted-foreground inline-label">Live</Label>
