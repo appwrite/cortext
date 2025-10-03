@@ -93,13 +93,13 @@ function Index() {
             <Nav />
 
             {/* Hero */}
-            <section className="mx-auto w-full max-w-7xl px-6 mb-1 mt-24">
+            <section className="mx-auto w-full max-w-7xl px-8 mb-1 mt-24">
                 <div className="mx-auto max-w-3xl text-center">
                     <p className="inline-flex items-center gap-2 rounded-full border px-3 py-1 text-xs font-medium text-foreground/70">
                         Private beta soon
                     </p>
                     <h1 className="mt-6 text-4xl font-semibold tracking-tight md:text-5xl">
-                        Cortext - an AI-powered content management system
+                        AI-powered content management system
                         </h1>
                     <p className="mt-4 text-base text-foreground/70 md:text-lg">
                         Organize rich content with flexible, sortable blocks. Co-write with an AI assistant trained to boost quality, SEO, and team productivity.
@@ -180,32 +180,6 @@ function Index() {
                 </div>
             </section>
 
-            {/* Feature: Composable Blocks */}
-            <section id="features" className="mx-auto w-full max-w-7xl px-6 py-16 md:py-24 border-t">
-                <div className="grid grid-cols-1 gap-10 md:grid-cols-2 md:items-center">
-                    <div>
-                        <h2 className="text-2xl font-semibold tracking-tight md:text-3xl">Composable blocks, crystal clear structure</h2>
-                        <p className="mt-3 text-foreground/70">
-                            Blocks keep structure simple and predictable. Drag to sort, edit in place, and publish with confidence.
-                        </p>
-                        <ul className="mt-6 grid grid-cols-2 gap-2 text-sm">
-                            {blocks.map(({ label, Icon }) => (
-                                <li key={label} className="rounded-md border px-3 py-2 text-foreground/80 flex items-center gap-2">
-                                    <Icon className="h-4 w-4 text-foreground/70" aria-hidden />
-                                    <span>{label}</span>
-                                </li>
-                            ))}
-                        </ul>
-                    </div>
-                    <div className="rounded-xl border bg-card p-6">
-                        <div className="aspect-[16/10] w-full rounded-lg border bg-gradient-to-br from-foreground/[4%] to-transparent" aria-hidden />
-                        <p className="mt-3 text-sm text-foreground/70">
-                            A clean editor surface designed for focus. No clutter, just the tools you need.
-                        </p>
-                    </div>
-                </div>
-            </section>
-
             {/* Feature: AI Co-author */}
             <section id="coauthor" className="mx-auto w-full max-w-7xl px-6 py-16 md:py-24 border-t">
                 <div className="grid grid-cols-1 gap-10 md:grid-cols-2 md:items-center">
@@ -234,6 +208,32 @@ function Index() {
                                 </li>
                             ))}
                         </ul>
+                    </div>
+                </div>
+            </section>
+
+            {/* Feature: Composable Blocks */}
+            <section id="features" className="mx-auto w-full max-w-7xl px-6 py-16 md:py-24 border-t">
+                <div className="grid grid-cols-1 gap-10 md:grid-cols-2 md:items-center">
+                    <div>
+                        <h2 className="text-2xl font-semibold tracking-tight md:text-3xl">Composable blocks, crystal clear structure</h2>
+                        <p className="mt-3 text-foreground/70">
+                            Blocks keep structure simple and predictable. Drag to sort, edit in place, and publish with confidence.
+                        </p>
+                        <ul className="mt-6 grid grid-cols-2 gap-2 text-sm">
+                            {blocks.map(({ label, Icon }) => (
+                                <li key={label} className="rounded-md border px-3 py-2 text-foreground/80 flex items-center gap-2">
+                                    <Icon className="h-4 w-4 text-foreground/70" aria-hidden />
+                                    <span>{label}</span>
+                                </li>
+                            ))}
+                        </ul>
+                    </div>
+                    <div className="rounded-xl border bg-card p-6">
+                        <div className="aspect-[16/10] w-full rounded-lg border bg-gradient-to-br from-foreground/[4%] to-transparent" aria-hidden />
+                        <p className="mt-3 text-sm text-foreground/70">
+                            A clean editor surface designed for focus. No clutter, just the tools you need.
+                        </p>
                     </div>
                 </div>
             </section>
