@@ -19,7 +19,6 @@ import { AuthorSelector } from '@/components/author'
 import { CategorySelector } from '@/components/category'
 import { ImageGallery } from '@/components/image'
 import { NotificationBell } from '@/components/notification'
-import { NotificationTest } from '@/components/notification/notification-test'
 import { CodeEditor } from '@/components/ui/code-editor'
 import { useDocumentTitle } from '@/hooks/use-document-title'
 import { formatDateForDisplay, formatDateCompact } from '@/lib/date-utils'
@@ -242,7 +241,6 @@ function ArticlesList({ userId }: { userId: string }) {
                     />
                 </div>
 
-                <NotificationTest userId={userId} />
 
                 {loadingArticles ? (
                     <div className="text-sm text-muted-foreground">Loading…</div>
@@ -298,6 +296,7 @@ function CreateArticleView({ userId, onDone, onCancel }: { userId: string; onDon
                 published: false,
                 slug: null,
                 publishedAt: null,
+                blogId: null,
             }
             return db.articles.create(payload)
         },

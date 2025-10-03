@@ -72,7 +72,7 @@ The notifications collection includes the following fields:
 
 2. **Create notifications**: Use the utility functions to create notifications:
    ```tsx
-   import { createNotification, createSampleNotifications } from '@/lib/notification-utils'
+   import { createNotification } from '@/lib/notification-utils'
    
    // Create a single notification
    await createNotification({
@@ -83,9 +83,6 @@ The notifications collection includes the following fields:
      actionUrl: '/dashboard',
      actionText: 'View Article'
    })
-   
-   // Create sample notifications for testing
-   await createSampleNotifications('user123')
    ```
 
 3. **Display notifications**: Add the NotificationBell to your header:
@@ -112,25 +109,3 @@ The notification system uses [Appwrite Realtime API](https://appwrite.io/docs/ap
 - **Event-based updates** - responds to create, update, and delete events
 - **Automatic cleanup** - unsubscribes when component unmounts
 
-## Testing
-
-Use the `NotificationTest` component to create sample notifications for testing:
-
-```tsx
-import { NotificationTest } from '@/components/notification'
-
-<NotificationTest userId={userId} />
-```
-
-This component provides:
-- **Sample notifications** - creates multiple test notifications
-- **Realtime test buttons** - creates individual notifications of different types
-- **Instant feedback** - shows toast notifications when new ones are created
-
-### Testing Realtime Updates
-
-1. Open the dashboard in two browser tabs/windows
-2. Use the test buttons to create notifications
-3. Watch notifications appear instantly in both tabs
-4. Notice the unread count updates immediately
-5. See toast notifications for new items
