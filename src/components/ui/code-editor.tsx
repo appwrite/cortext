@@ -84,30 +84,45 @@ export function CodeEditor({
     }
   }, [isDragging])
 
-  // Calculate height based on content
+  // Calculate height based on content with debouncing to prevent excessive updates
   useEffect(() => {
-    if (value) {
-      const lines = value.split('\n').length
-      const minHeight = 120 // Minimum height for 3 lines
-      const maxHeight = 500 // Maximum height to prevent excessive scrolling
-      const lineHeight = 22 // Monaco's default line height
-      const padding = 32 // Top and bottom padding
-      const calculatedHeight = Math.max(minHeight, Math.min(maxHeight, lines * lineHeight + padding))
-      setEditorHeight(calculatedHeight)
-      
-      // Update editor layout if it exists and is ready
-      if (editorRef.current && isEditorReady) {
-        try {
-          editorRef.current.layout()
-        } catch (error) {
-          // Ignore disposal errors during layout updates
-          console.warn('Monaco Editor layout update failed:', error)
-        }
+    const calculateHeight = () => {
+      if (value) {
+        const lines = value.split('\n').length
+        const minHeight = 120 // Minimum height for 3 lines
+        const maxHeight = 500 // Maximum height to prevent excessive scrolling
+        const lineHeight = 22 // Monaco's default line height
+        const padding = 32 // Top and bottom padding
+        const calculatedHeight = Math.max(minHeight, Math.min(maxHeight, lines * lineHeight + padding))
+        
+        // Only update if height actually changed to prevent unnecessary re-renders
+        setEditorHeight(prevHeight => {
+          if (Math.abs(prevHeight - calculatedHeight) > 5) { // 5px threshold to prevent micro-adjustments
+            return calculatedHeight
+          }
+          return prevHeight
+        })
+      } else {
+        setEditorHeight(120) // Default height for empty editor
       }
-    } else {
-      setEditorHeight(120) // Default height for empty editor
     }
-  }, [value, isEditorReady])
+
+    // Debounce height calculation to prevent excessive updates during typing
+    const timeoutId = setTimeout(calculateHeight, 100)
+    return () => clearTimeout(timeoutId)
+  }, [value])
+
+  // Update editor layout when height changes
+  useEffect(() => {
+    if (editorRef.current && isEditorReady) {
+      try {
+        editorRef.current.layout()
+      } catch (error) {
+        // Ignore disposal errors during layout updates
+        console.warn('Monaco Editor layout update failed:', error)
+      }
+    }
+  }, [editorHeight, isEditorReady])
 
   // Handle editor mount to get reference
   const handleEditorDidMount = useCallback((editor: any) => {
@@ -260,7 +275,7 @@ export function CodeEditor({
       <div style={{ height: `${editorHeight}px` }}>
         {shouldRenderEditor && !isDragging ? (
           <Editor
-            key={`${currentLanguage}-${editorHeight}`}
+            key={currentLanguage}
             height="100%"
             language={currentLanguage}
             value={value}

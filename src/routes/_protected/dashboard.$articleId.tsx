@@ -638,6 +638,11 @@ function CodeSectionEditor({ section, onLocalChange, isDragging = false }: { sec
   const [code, setCode] = useState(section.content ?? '')
   const [language, setLanguage] = useState('javascript')
 
+  // Update code when section content changes externally
+  useEffect(() => {
+    setCode(section.content ?? '')
+  }, [section.content])
+
   // Parse language from section data
   useEffect(() => {
     if (section.data) {
