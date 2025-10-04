@@ -2,6 +2,7 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { useAuth } from "@/hooks/use-auth";
 import { Brain, Type as TypeIcon, Image as ImageIcon, Video as VideoIcon, Map as MapIcon, Quote as QuoteIcon, Code2 as CodeIcon, FileEdit, MessageSquare, History, Github } from "lucide-react";
 import { useEffect, useState } from "react";
+import { useThemeContext } from "@/contexts/theme-context";
 
 export const Route = createFileRoute("/")({
     component: Index,
@@ -60,6 +61,7 @@ function Nav() {
 
 function Index() {
     const [count, setCount] = useState(0);
+    const { effectiveTheme } = useThemeContext();
 
     useEffect(() => {
         const target = 128; // seed value for early signups
@@ -133,11 +135,15 @@ function Index() {
                     <div className="rounded-t-xl border border-b-0 bg-card overflow-hidden">
                         <div className="aspect-[21/9] w-full relative">
                             <img 
-                                src="/dashboard.png" 
+                                src={effectiveTheme === 'dark' ? "/dashboard-dark.png" : "/dashboard-light.png"} 
                                 alt="Cortext Dashboard - Article Management Interface"
                                 className="h-full w-full object-cover object-top filter brightness-95 contrast-110 saturate-90"
                             />
-                            <div className="absolute inset-0 bg-gradient-to-t from-white/80 via-white/30 to-transparent pointer-events-none"></div>
+                            <div className={`absolute inset-0 pointer-events-none ${
+                                effectiveTheme === 'dark' 
+                                    ? 'bg-gradient-to-t from-black/60 via-black/20 to-transparent' 
+                                    : 'bg-gradient-to-t from-white/80 via-white/30 to-transparent'
+                            }`}></div>
                         </div>
                     </div>
                 </div>
@@ -155,7 +161,7 @@ function Index() {
                             className="hover:opacity-80 transition-opacity duration-200"
                         >
                             <img 
-                                src="/trusted/appwrite.svg" 
+                                src={effectiveTheme === 'dark' ? "/trusted/appwrite-dark.svg" : "/trusted/appwrite-light.svg"} 
                                 alt="Appwrite" 
                                 className="h-5 w-auto"
                             />
@@ -167,7 +173,7 @@ function Index() {
                             className="hover:opacity-80 transition-opacity duration-200"
                         >
                             <img 
-                                src="/trusted/imagine.svg" 
+                                src={effectiveTheme === 'dark' ? "/trusted/imagine-dark.svg" : "/trusted/imagine-light.svg"} 
                                 alt="Imagine" 
                                 className="h-6 w-auto"
                             />
@@ -179,7 +185,7 @@ function Index() {
                             className="hover:opacity-80 transition-opacity duration-200"
                         >
                             <img 
-                                src="/trusted/refetch.svg" 
+                                src={effectiveTheme === 'dark' ? "/trusted/refetch-dark.svg" : "/trusted/refetch-light.svg"} 
                                 alt="Refetch" 
                                 className="h-5 w-auto"
                             />
