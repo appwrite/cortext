@@ -22,19 +22,19 @@ export function NotificationList({ userId }: NotificationListProps) {
   const getNotificationIcon = (type: string | null) => {
     switch (type) {
       case 'success':
-        return <Check className="h-4 w-4 text-green-600" />
+        return <Check className="h-4 w-4 text-green-500 dark:text-green-400" />
       case 'error':
-        return <X className="h-4 w-4 text-red-600" />
+        return <X className="h-4 w-4 text-red-500 dark:text-red-400" />
       case 'warning':
-        return <AlertTriangle className="h-4 w-4 text-yellow-600" />
+        return <AlertTriangle className="h-4 w-4 text-yellow-500 dark:text-yellow-400" />
       default:
-        return <Bell className="h-4 w-4 text-blue-600" />
+        return <Bell className="h-4 w-4 text-blue-500 dark:text-blue-400" />
     }
   }
 
   const getNotificationStyle = (type: string | null, read: boolean) => {
     const baseStyle = "p-3 border-b last:border-b-0 hover:bg-muted/50 transition-colors"
-    const unreadStyle = "bg-blue-50/50 border-l-4 border-l-blue-500"
+    const unreadStyle = "bg-blue-50/50 dark:bg-blue-950/30 border-l-4 border-l-blue-500 dark:border-l-blue-400"
     return cn(baseStyle, !read && unreadStyle)
   }
 
@@ -88,7 +88,7 @@ export function NotificationList({ userId }: NotificationListProps) {
                     {notification.title}
                   </h4>
                   {!notification.read && (
-                    <Badge variant="secondary" className="text-xs px-1.5 py-0.5">
+                    <Badge variant="secondary" className="text-xs px-1.5 py-0.5 bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200">
                       New
                     </Badge>
                   )}

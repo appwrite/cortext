@@ -168,8 +168,8 @@ export function UserAvatar({ user, onSignOut }: UserAvatarProps) {
                   <div className="flex items-center gap-2">
                     <div className={cn(
                       "w-2 h-2 rounded-full",
-                      getUserStatus().variant === 'default' ? "bg-green-500" : 
-                      getUserStatus().variant === 'secondary' ? "bg-yellow-500" : "bg-black"
+                      getUserStatus().variant === 'default' ? "bg-green-500 dark:bg-green-400" : 
+                      getUserStatus().variant === 'secondary' ? "bg-yellow-500 dark:bg-yellow-400" : "bg-gray-500 dark:bg-gray-400"
                     )} />
                     <p className="font-medium">{getUserStatus().text}</p>
                   </div>
@@ -194,7 +194,7 @@ export function UserAvatar({ user, onSignOut }: UserAvatarProps) {
                         title="Copy Account ID"
                       >
                         {copiedId ? (
-                          <Check className="h-3 w-3 text-green-600" />
+                          <Check className="h-3 w-3 text-green-500 dark:text-green-400" />
                         ) : (
                           <Copy className="h-3 w-3 text-muted-foreground" />
                         )}

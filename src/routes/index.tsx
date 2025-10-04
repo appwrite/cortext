@@ -1,6 +1,6 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useAuth } from "@/hooks/use-auth";
-import { Brain, Type as TypeIcon, Image as ImageIcon, Video as VideoIcon, Map as MapIcon, Quote as QuoteIcon, Code2 as CodeIcon, FileEdit, MessageSquare, History, Github } from "lucide-react";
+import { Sparkles, Type as TypeIcon, Image as ImageIcon, Video as VideoIcon, Map as MapIcon, Quote as QuoteIcon, Code2 as CodeIcon, FileEdit, MessageSquare, History, Github } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useThemeContext } from "@/contexts/theme-context";
 
@@ -15,13 +15,13 @@ function Nav() {
         <header className="sticky top-0 z-40 w-full border-b bg-background/80 backdrop-blur supports-[backdrop-filter]:bg-background/60">
             <div className="relative mx-auto max-w-7xl px-6 h-16 flex items-center justify-between">
                 <a href="#home" className="font-semibold text-lg tracking-tight inline-flex items-center gap-2">
-                    <Brain aria-hidden="true" className="h-6 w-6 text-foreground/80" />
+                    <Sparkles aria-hidden="true" className="h-6 w-6 text-foreground/80" />
                     Cortext
                 </a>
                 <nav className="hidden md:flex absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 gap-6 text-sm items-center">
-                    <a href="#coauthor" className="text-foreground/70 hover:text-foreground transition-colors">Features</a>
+                    <a href="#features" className="text-foreground/70 hover:text-foreground transition-colors">Features</a>
+                    <a href="#api" className="text-foreground/70 hover:text-foreground transition-colors">API</a>
                     <a href="#pricing" className="text-foreground/70 hover:text-foreground transition-colors">Pricing</a>
-                    <a href="https://appwrite.io/docs" target="_blank" rel="noopener noreferrer" className="text-foreground/70 hover:text-foreground transition-colors">API</a>
                     <a
                         href="https://github.com/appwrite/cortext"
                         target="_blank"
@@ -88,7 +88,7 @@ function Index() {
         { label: 'Video', Icon: VideoIcon },
         { label: 'Maps', Icon: MapIcon },
         { label: 'Quotes', Icon: QuoteIcon },
-        { label: 'Embeds', Icon: CodeIcon },
+        { label: 'Code', Icon: CodeIcon },
     ];
 
     // Workflow features for drafts, reviews, versioning
@@ -194,141 +194,190 @@ function Index() {
                 </div>
             </section>
 
-            {/* Feature: AI Co-author */}
-            <section id="coauthor" className="mx-auto w-full max-w-7xl px-6 py-16 md:py-24 border-t">
-                <div className="grid grid-cols-1 gap-10 md:grid-cols-2 md:items-center">
-                    <div className="order-2 md:order-1">
-                        <div className="rounded-xl border bg-card p-6">
-                            <div className="aspect-[16/10] w-full rounded-lg border overflow-hidden">
-                                <img 
-                                    src="/features/co-author.png" 
-                                    alt="AI Co-author Interface - Chat assistant and content editing workflow"
-                                    className="h-full w-full object-cover object-left-top"
-                                />
-                            </div>
-                            <p className="mt-3 text-sm text-foreground/70">
-                                Co-author suggests structure, headlines, and SEO-ready copy. You stay in control.
-                            </p>
-                        </div>
-                    </div>
-                    <div className="order-1 md:order-2">
-                        <h2 className="text-2xl font-semibold tracking-tight md:text-3xl">AI co-author</h2>
-                        <p className="mt-3 text-foreground/70">
-                            An AI partner trained for content quality and reach. Draft, refine, and optimize without breaking your flow.
-                        </p>
-                        <ul className="mt-6 space-y-2 text-sm">
-                            {[
-                                'Generate first drafts and outlines',
-                                'Rewrite with tone and style controls',
-                                'Team-friendly prompts for faster reviews',
-                            ].map((item) => (
-                                <li key={item} className="flex items-start gap-3">
-                                    <span className="mt-1 h-2 w-2 rounded-full bg-foreground/60" aria-hidden />
-                                    <span className="text-foreground/80">{item}</span>
-                                </li>
-                            ))}
-                        </ul>
-                    </div>
-                </div>
-            </section>
-
-            {/* Feature: Composable Blocks */}
+            {/* Features */}
             <section id="features" className="mx-auto w-full max-w-7xl px-6 py-16 md:py-24 border-t">
-                <div className="grid grid-cols-1 gap-10 md:grid-cols-2 md:items-center">
-                    <div>
-                        <h2 className="text-2xl font-semibold tracking-tight md:text-3xl">Composable blocks, crystal clear structure</h2>
-                        <p className="mt-3 text-foreground/70">
-                            Blocks keep structure simple and predictable. Drag to sort, edit in place, and publish with confidence.
-                        </p>
-                        <ul className="mt-6 grid grid-cols-2 gap-2 text-sm">
-                            {blocks.map(({ label, Icon }) => (
-                                <li key={label} className="rounded-md border px-3 py-2 text-foreground/80 flex items-center gap-2">
-                                    <Icon className="h-4 w-4 text-foreground/70" aria-hidden />
-                                    <span>{label}</span>
-                                </li>
-                            ))}
-                        </ul>
+                <div className="mx-auto max-w-5xl">
+                    <div className="text-center mb-16">
+                        <h2 className="text-2xl font-semibold tracking-tight md:text-3xl mb-3">Everything you need</h2>
+                        <p className="text-foreground/70">AI-powered content management with flexible blocks and team collaboration.</p>
                     </div>
-                    <div className="rounded-xl border bg-card p-6">
-                        <div className="aspect-[16/10] w-full rounded-lg border overflow-hidden">
-                            <img 
-                                src="/features/sections.png" 
-                                alt="Composable Blocks Interface - Section types and content editor"
-                                className="h-full w-full object-cover object-center scale-90"
-                            />
+
+                    <div className="space-y-12">
+                        {/* First row - 3 features */}
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 lg:gap-8">
+                            {/* AI Co-author */}
+                            <div className="flex items-start gap-4">
+                                <div className="w-8 h-8 rounded-lg bg-foreground flex items-center justify-center flex-shrink-0 mt-1">
+                                    <Sparkles className="w-4 h-4 text-background" />
+                                </div>
+                                <div>
+                                    <h3 className="font-semibold text-foreground/90 mb-1">AI Co-author</h3>
+                                    <p className="text-sm text-foreground/70">Generate drafts, refine content, and optimize for your audience.</p>
+                                </div>
+                            </div>
+
+                            {/* Composable Blocks */}
+                            <div className="flex items-start gap-4">
+                                <div className="w-8 h-8 rounded-lg bg-foreground flex items-center justify-center flex-shrink-0 mt-1">
+                                    <CodeIcon className="w-4 h-4 text-background" />
+                                </div>
+                                <div className="flex-1">
+                                    <h3 className="font-semibold text-foreground/90 mb-1">Flexible Blocks</h3>
+                                    <p className="text-sm text-foreground/70 mb-2">Drag, sort, and edit content blocks with confidence.</p>
+                                    <div className="flex flex-wrap gap-1">
+                                        {blocks.map(({ label, Icon }) => (
+                                            <span key={label} className="inline-flex items-center gap-1 px-2 py-1 rounded-lg text-xs bg-foreground/5 text-foreground/60">
+                                                <Icon className="w-3 h-3" />
+                                                {label}
+                                            </span>
+                                        ))}
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* SEO Optimization */}
+                            <div className="flex items-start gap-4">
+                                <div className="w-8 h-8 rounded-lg bg-foreground flex items-center justify-center flex-shrink-0 mt-1">
+                                    <svg className="w-4 h-4 text-background" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+                                    </svg>
+                                </div>
+                                <div>
+                                    <h3 className="font-semibold text-foreground/90 mb-1">SEO Built-in</h3>
+                                    <p className="text-sm text-foreground/70">Real-time suggestions and optimization as you write.</p>
+                                </div>
+                            </div>
                         </div>
-                        <p className="mt-3 text-sm text-foreground/70">
-                            A clean editor surface designed for focus. No clutter, just the tools you need.
-                        </p>
+
+                        {/* Second row - 2 centered features */}
+                        <div className="flex justify-center">
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 lg:gap-8 max-w-2xl">
+                                {/* Workflow Management */}
+                                <div className="flex items-start gap-4">
+                                    <div className="w-8 h-8 rounded-lg bg-foreground flex items-center justify-center flex-shrink-0 mt-1">
+                                        <FileEdit className="w-4 h-4 text-background" />
+                                    </div>
+                                    <div>
+                                        <h3 className="font-semibold text-foreground/90 mb-1">Drafts & Reviews</h3>
+                                        <p className="text-sm text-foreground/70">Stage changes, collect feedback, and roll back when needed.</p>
+                                    </div>
+                                </div>
+
+                                {/* Team Collaboration */}
+                                <div className="flex items-start gap-4">
+                                    <div className="w-8 h-8 rounded-lg bg-foreground flex items-center justify-center flex-shrink-0 mt-1">
+                                        <MessageSquare className="w-4 h-4 text-background" />
+                                    </div>
+                                    <div>
+                                        <h3 className="font-semibold text-foreground/90 mb-1">Team Ready</h3>
+                                        <p className="text-sm text-foreground/70">Multi-user editing with permissions and real-time collaboration.</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </section>
 
-            {/* Feature: SEO Optimization */}
-            <section id="seo" className="mx-auto w-full max-w-7xl px-6 py-16 md:py-24 border-t">
-                <div className="grid grid-cols-1 gap-10 md:grid-cols-2 md:items-center">
-                    <div>
-                        <h2 className="text-2xl font-semibold tracking-tight md:text-3xl">Designed to boost your content SEO</h2>
-                        <p className="mt-3 text-foreground/70">
-                            Get actionable SEO guidance while you write. Improve structure, readability, and discoverability without leaving the editor.
-                        </p>
-                        <ul className="mt-6 space-y-2 text-sm">
-                            {[
-                                'Real-time SEO suggestions and readability tips',
-                                'Metadata, titles, and descriptions with previews',
-                                'Keyword coverage and internal link prompts',
-                                'Schema-ready structure hints for better crawlability',
-                            ].map((item) => (
-                                <li key={item} className="flex items-start gap-3">
-                                    <span className="mt-1 h-2 w-2 rounded-full bg-foreground/60" aria-hidden />
-                                    <span className="text-foreground/80">{item}</span>
-                                </li>
-                            ))}
-                        </ul>
+            {/* API Section */}
+            <section id="api" className="mx-auto w-full max-w-7xl px-6 py-16 md:py-24 border-t">
+                <div className="mx-auto max-w-5xl">
+                    <div className="text-center mb-12">
+                        <h2 className="text-2xl font-semibold tracking-tight md:text-3xl mb-3">Thoughtfully designed for developers</h2>
+                        <p className="text-foreground/70">Simple REST API that integrates seamlessly with your existing workflow.</p>
                     </div>
-                    <div className="rounded-xl border bg-card p-6">
-                        <div className="aspect-[16/10] w-full rounded-lg border overflow-hidden">
-                            <img 
-                                src="/features/seo.png" 
-                                alt="SEO Optimization Interface - Real-time suggestions and metadata management"
-                                className="h-full w-full object-cover object-left"
-                            />
-                        </div>
-                        <p className="mt-3 text-sm text-foreground/70">
-                            Clear, contextual guidance that elevates content quality and reach.
-                        </p>
-                        </div>
-                    </div>
-                </section>
 
-            {/* Feature: Drafts, Reviews, Versioning */}
-            <section id="workflow" className="mx-auto w-full max-w-7xl px-6 py-16 md:py-24 border-t">
-                <div className="grid grid-cols-1 gap-10 md:grid-cols-2 md:items-center">
-                    <div>
-                        <h2 className="text-2xl font-semibold tracking-tight md:text-3xl">Drafts, reviews, and versioning</h2>
-                        <p className="mt-3 text-foreground/70">
-                            Keep work moving without losing context. Stage changes, collect feedback, and roll back when you need to.
-                        </p>
-                        <ul className="mt-6 space-y-3 text-sm">
-                            {workflowFeatures.map(({ title, desc, Icon }) => (
-                                <li key={title} className="flex items-start gap-3 rounded-md border px-3 py-2">
-                                    <Icon className="mt-1 h-4 w-4 text-foreground/70" aria-hidden />
-                                    <div>
-                                        <div className="font-medium text-foreground/90">{title}</div>
-                                        <p className="text-foreground/70">{desc}</p>
+                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-center">
+                        {/* Features */}
+                        <div className="space-y-6">
+                            <div className="flex items-start gap-4">
+                                <div className="w-8 h-8 rounded-lg bg-foreground flex items-center justify-center flex-shrink-0 mt-1">
+                                    <CodeIcon className="w-4 h-4 text-background" />
+                                </div>
+                                <div>
+                                    <h3 className="font-semibold text-foreground/90 mb-1">RESTful Design</h3>
+                                    <p className="text-sm text-foreground/70">Clean, predictable endpoints that follow REST conventions.</p>
+                                </div>
+                            </div>
+
+                            <div className="flex items-start gap-4">
+                                <div className="w-8 h-8 rounded-lg bg-foreground flex items-center justify-center flex-shrink-0 mt-1">
+                                    <svg className="w-4 h-4 text-background" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                                    </svg>
+                                </div>
+                                <div>
+                                    <h3 className="font-semibold text-foreground/90 mb-1">Secure by Default</h3>
+                                    <p className="text-sm text-foreground/70">Built-in authentication, rate limiting, and data validation.</p>
+                                </div>
+                            </div>
+
+                            <div className="flex items-start gap-4">
+                                <div className="w-8 h-8 rounded-lg bg-foreground flex items-center justify-center flex-shrink-0 mt-1">
+                                    <svg className="w-4 h-4 text-background" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+                                    </svg>
+                                </div>
+                                <div>
+                                    <h3 className="font-semibold text-foreground/90 mb-1">Fast & Reliable</h3>
+                                    <p className="text-sm text-foreground/70">Sub-100ms response times with 99.9% uptime guarantee.</p>
+                                </div>
+                            </div>
+
+                            <div className="pt-4">
+                                <a 
+                                    href="https://appwrite.io/docs" 
+                                    target="_blank" 
+                                    rel="noopener noreferrer"
+                                    className="inline-flex items-center gap-2 px-4 py-2 rounded-md text-sm font-medium border hover:bg-foreground/5 transition-colors"
+                                >
+                                    <CodeIcon className="w-4 h-4" />
+                                    View API Documentation
+                                </a>
+                            </div>
+                        </div>
+
+                        {/* Code Example */}
+                        <div className="relative">
+                            <div className="rounded-xl border border-foreground/20 overflow-hidden">
+                                <div className="px-5 pt-5 pb-2 flex items-center gap-2">
+                                    <div className="flex gap-1.5">
+                                        <div className="w-3 h-3 rounded-full bg-foreground"></div>
+                                        <div className="w-3 h-3 rounded-full bg-foreground"></div>
+                                        <div className="w-3 h-3 rounded-full bg-foreground"></div>
                                     </div>
-                                </li>
-                            ))}
-                        </ul>
+                                    <span className="text-xs font-normal text-foreground">index.ts</span>
+                                </div>
+                                <div className="p-5 font-mono text-xs leading-relaxed">
+                                    <div className="text-foreground">
+                                        <span className="text-gray-500">// Create article with type safety</span>
+                                        <br />
+                                        <span className="text-blue-500 dark:text-blue-400">interface</span> <span className="text-yellow-500 dark:text-yellow-400">Article</span> {`{`}
+                                    </div>
+                                    <div className="mt-1 text-foreground ml-2">
+                                        <span className="text-green-500 dark:text-green-400">  title</span>: <span className="text-blue-500 dark:text-blue-400">string</span>;<br />
+                                        <span className="text-green-500 dark:text-green-400">  content</span>: <span className="text-yellow-500 dark:text-yellow-400">Block</span>[];<br />
+                                        <span className="text-green-500 dark:text-green-400">  status</span>: <span className="text-orange-500 dark:text-orange-400">'draft'</span> | <span className="text-orange-500 dark:text-orange-400">'published'</span>;<br />
+                                        <span className="text-green-500 dark:text-green-400">  createdAt</span>: <span className="text-yellow-500 dark:text-yellow-400">Date</span>;<br />
+                                        {`}`}
+                                    </div>
+                                    <div className="mt-3 text-foreground">
+                                        <span className="text-gray-500">// Type-safe API calls</span>
+                                        <br />
+                                        <span className="text-blue-500 dark:text-blue-400">const</span> <span className="text-green-500 dark:text-green-400">createArticle</span> = <span className="text-blue-500 dark:text-blue-400">async</span> (
+                                    </div>
+                                    <div className="mt-1 text-foreground ml-2">
+                                        <span className="text-green-500 dark:text-green-400">  article</span>: <span className="text-yellow-500 dark:text-yellow-400">Article</span><br />
+                                        ): <span className="text-yellow-500 dark:text-yellow-400">Promise</span>&lt;<span className="text-yellow-500 dark:text-yellow-400">Article</span>&gt; =&gt; {`{`}<br />
+                                        <span className="text-blue-500 dark:text-blue-400">  return</span> <span className="text-blue-500 dark:text-blue-400">await</span> <span className="text-green-500 dark:text-green-400">api</span>.<span className="text-blue-500 dark:text-blue-400">post</span>(<span className="text-orange-500 dark:text-orange-400">'/articles'</span>, <span className="text-green-500 dark:text-green-400">article</span>);<br />
+                                        {`};`}
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
                     </div>
-                    <div className="rounded-xl border bg-card p-6">
-                        <div className="aspect-[16/10] w-full rounded-lg border bg-gradient-to-tr from-violet-500/10 to-transparent" aria-hidden />
-                        <p className="mt-3 text-sm text-foreground/70">
-                            Safe collaboration with clear history and approvals.
-                        </p>
-                    </div>
-                    </div>
-                </section>
+                </div>
+            </section>
 
             {/* Pricing */}
             <section id="pricing" className="mx-auto w-full max-w-7xl px-6 py-16 md:py-24 border-t">
@@ -338,7 +387,7 @@ function Index() {
                 </div>
                 <div className="mt-10 grid grid-cols-1 gap-6 md:mt-12 md:grid-cols-3">
                     {/* Free */}
-                    <div className="rounded-xl border bg-card p-6 flex flex-col">
+                    <div className="rounded-xl border p-6 flex flex-col">
                         <div>
                             <h3 className="text-lg font-semibold">Free</h3>
                             <p className="mt-1 text-sm text-foreground/70">Get started at no cost</p>
@@ -364,7 +413,7 @@ function Index() {
                     </div>
 
                     {/* Pro */}
-                    <div className="rounded-xl border bg-card p-6 flex flex-col">
+                    <div className="rounded-xl border p-6 flex flex-col">
                         <div>
                             <div className="inline-flex items-center rounded-full border px-2 py-0.5 text-xs text-foreground/80">Most popular</div>
                             <h3 className="mt-2 text-lg font-semibold">Pro</h3>
@@ -392,7 +441,7 @@ function Index() {
                     </div>
 
                     {/* Enterprise */}
-                    <div className="rounded-xl border bg-card p-6 flex flex-col">
+                    <div className="rounded-xl border p-6 flex flex-col">
                         <div>
                             <h3 className="text-lg font-semibold">Enterprise</h3>
                             <p className="mt-1 text-sm text-foreground/70">Tailored for your organization</p>
@@ -420,7 +469,7 @@ function Index() {
 
             {/* CTA */}
             <section id="cta" className="mx-auto w-full max-w-7xl px-6 py-16 md:py-24 border-t">
-                <div className="rounded-2xl border px-6 py-10 md:px-10 md:py-14 text-center bg-card">
+                <div className="rounded-2xl border px-6 py-10 md:px-10 md:py-14 text-center">
                     <h3 className="text-2xl font-semibold tracking-tight">Start building with Cortext</h3>
                     <p className="mt-2 text-foreground/70">Join thousands of teams using our focused, reliable CMS for modern content management.</p>
                     <div className="mt-6 flex items-center justify-center gap-3">
@@ -445,9 +494,9 @@ function Index() {
                 <div className="mx-auto max-w-7xl px-6 h-16 flex items-center justify-between text-sm">
                     <span className="text-foreground/60">© {new Date().getFullYear()} Cortext</span>
                     <div className="flex items-center gap-4">
-                        <a className="text-foreground/60 hover:text-foreground" href="#coauthor">Features</a>
+                        <a className="text-foreground/60 hover:text-foreground" href="#features">Features</a>
+                        <a className="text-foreground/60 hover:text-foreground" href="#api">API</a>
                         <a className="text-foreground/60 hover:text-foreground" href="#pricing">Pricing</a>
-                        <a className="text-foreground/60 hover:text-foreground" href="https://appwrite.io/docs" target="_blank" rel="noopener noreferrer">API</a>
                         <Link className="text-foreground/60 hover:text-foreground" to="/sign-up">Get started</Link>
                     </div>
                 </div>
