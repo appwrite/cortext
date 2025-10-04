@@ -114,14 +114,14 @@ function Index() {
                     <p className="mt-4 text-base text-foreground/70 md:text-lg">
                         Organize rich content with flexible, sortable blocks. Co-write with an AI assistant trained to boost quality, SEO, and team productivity.
                         </p>
-                        <div className="mt-8 flex items-center justify-center gap-3 mb-8">
+                        <div className="mt-8 flex flex-col sm:flex-row items-center justify-center gap-3 mb-8">
                         <Link
                             to="/sign-up"
-                            className="px-5 py-3 rounded-md text-sm font-semibold text-white bg-neutral-900 hover:bg-neutral-800 dark:bg-white dark:text-neutral-900 dark:hover:bg-white/90 transition-colors"
+                            className="w-full sm:w-auto px-5 py-3 rounded-md text-sm font-semibold text-white bg-neutral-900 hover:bg-neutral-800 dark:bg-white dark:text-neutral-900 dark:hover:bg-white/90 transition-colors text-center"
                         >
                             Get started
                                 </Link>
-                        <a href="#coauthor" className="px-5 py-3 rounded-md text-sm font-medium border hover:bg-foreground/5 transition-colors">
+                        <a href="#coauthor" className="w-full sm:w-auto px-5 py-3 rounded-md text-sm font-medium border hover:bg-foreground/5 transition-colors text-center">
                             Learn more
                         </a>
                     </div>
@@ -153,7 +153,7 @@ function Index() {
             <section className="mx-auto w-full max-w-7xl px-6 py-12 border-t">
                 <div className="mx-auto max-w-4xl text-center">
                     <p className="text-sm font-medium text-foreground/70 mb-8">Trusted by</p>
-                    <div className="flex items-center justify-center gap-12">
+                    <div className="flex items-center justify-center gap-6 sm:gap-8 md:gap-12">
                         <a 
                             href="https://appwrite.io" 
                             target="_blank" 
@@ -289,7 +289,7 @@ function Index() {
 
                     <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-center">
                         {/* Features */}
-                        <div className="space-y-6">
+                        <div className="space-y-6 order-2 lg:order-1">
                             <div className="flex items-start gap-4">
                                 <div className="w-8 h-8 rounded-lg bg-foreground flex items-center justify-center flex-shrink-0 mt-1">
                                     <CodeIcon className="w-4 h-4 text-background" />
@@ -338,7 +338,7 @@ function Index() {
                         </div>
 
                         {/* Code Example */}
-                        <div className="relative">
+                        <div className="relative order-1 lg:order-2">
                             <div className="rounded-xl border border-foreground/20 overflow-hidden">
                                 <div className="px-5 pt-5 pb-2 flex items-center gap-2">
                                     <div className="flex gap-1.5">
@@ -472,16 +472,16 @@ function Index() {
                 <div className="rounded-2xl border px-6 py-10 md:px-10 md:py-14 text-center">
                     <h3 className="text-2xl font-semibold tracking-tight">Start building with Cortext</h3>
                     <p className="mt-2 text-foreground/70">Join thousands of teams using our focused, reliable CMS for modern content management.</p>
-                    <div className="mt-6 flex items-center justify-center gap-3">
+                    <div className="mt-6 flex flex-col sm:flex-row items-center justify-center gap-3">
                         <Link
                             to="/sign-up"
-                            className="px-5 py-3 rounded-md text-sm font-semibold text-white bg-neutral-900 hover:bg-neutral-800 dark:bg-white dark:text-neutral-900 dark:hover:bg-white/90 transition-colors"
+                            className="w-full sm:w-auto px-5 py-3 rounded-md text-sm font-semibold text-white bg-neutral-900 hover:bg-neutral-800 dark:bg-white dark:text-neutral-900 dark:hover:bg-white/90 transition-colors text-center"
                         >
                             Get started
                         </Link>
                         <Link
                             to="/sign-in"
-                            className="px-5 py-3 rounded-md text-sm font-medium border hover:bg-foreground/5 transition-colors"
+                            className="w-full sm:w-auto px-5 py-3 rounded-md text-sm font-medium border hover:bg-foreground/5 transition-colors text-center"
                         >
                             I already have an account
                         </Link>
@@ -491,14 +491,14 @@ function Index() {
 
             {/* Footer */}
             <footer className="mt-auto border-t">
-                <div className="mx-auto max-w-7xl px-6 h-16 flex items-center justify-between text-sm">
-                    <span className="text-foreground/60">© {new Date().getFullYear()} Cortext</span>
-                    <div className="flex items-center gap-4">
+                <div className="mx-auto max-w-7xl px-6 py-4 sm:py-0 sm:h-16 flex flex-col sm:flex-row items-center justify-between text-sm gap-3 sm:gap-0">
+                    <div className="flex flex-wrap items-center justify-center gap-4 order-1 sm:order-2">
                         <a className="text-foreground/60 hover:text-foreground" href="#features">Features</a>
                         <a className="text-foreground/60 hover:text-foreground" href="#api">API</a>
                         <a className="text-foreground/60 hover:text-foreground" href="#pricing">Pricing</a>
                         <Link className="text-foreground/60 hover:text-foreground" to="/sign-up">Get started</Link>
                     </div>
+                    <span className="text-foreground/60 order-2 sm:order-1">© {new Date().getFullYear()} Cortext</span>
                 </div>
             </footer>
         </div>
