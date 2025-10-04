@@ -18,7 +18,7 @@ function Nav() {
                     Cortext
                 </a>
                 <nav className="hidden md:flex absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 gap-6 text-sm items-center">
-                    <a href="#features" className="text-foreground/70 hover:text-foreground transition-colors">Features</a>
+                    <a href="#coauthor" className="text-foreground/70 hover:text-foreground transition-colors">Features</a>
                     <a href="#pricing" className="text-foreground/70 hover:text-foreground transition-colors">Pricing</a>
                     <a href="https://appwrite.io/docs" target="_blank" rel="noopener noreferrer" className="text-foreground/70 hover:text-foreground transition-colors">API</a>
                     <a
@@ -119,7 +119,7 @@ function Index() {
                         >
                             Get started
                                 </Link>
-                        <a href="#features" className="px-5 py-3 rounded-md text-sm font-medium border hover:bg-foreground/5 transition-colors">
+                        <a href="#coauthor" className="px-5 py-3 rounded-md text-sm font-medium border hover:bg-foreground/5 transition-colors">
                             Learn more
                         </a>
                     </div>
@@ -439,7 +439,7 @@ function Index() {
                 <div className="mx-auto max-w-7xl px-6 h-16 flex items-center justify-between text-sm">
                     <span className="text-foreground/60">© {new Date().getFullYear()} Cortext</span>
                     <div className="flex items-center gap-4">
-                        <a className="text-foreground/60 hover:text-foreground" href="#features">Features</a>
+                        <a className="text-foreground/60 hover:text-foreground" href="#coauthor">Features</a>
                         <a className="text-foreground/60 hover:text-foreground" href="#pricing">Pricing</a>
                         <a className="text-foreground/60 hover:text-foreground" href="https://appwrite.io/docs" target="_blank" rel="noopener noreferrer">API</a>
                         <Link className="text-foreground/60 hover:text-foreground" to="/sign-up">Get started</Link>

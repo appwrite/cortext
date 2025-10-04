@@ -12,8 +12,10 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { Checkbox } from '@/components/ui/checkbox'
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog'
+import { Separator } from '@/components/ui/separator'
 import { toast } from '@/hooks/use-toast'
-import { Image as ImageIcon, Plus, Trash2, Save, Video, MapPin, Type as TypeIcon, Upload, ArrowLeft, LogOut, GripVertical, Brain, Loader2, Heading1, Quote, Pin as PinIcon, FileText, Quote as QuoteIcon, Code, ChevronLeft, ChevronRight } from 'lucide-react'
+import { Image as ImageIcon, Plus, Trash2, Save, Video, MapPin, Type as TypeIcon, Upload, ArrowLeft, LogOut, GripVertical, Brain, Loader2, Heading1, Quote, Pin as PinIcon, FileText, Quote as QuoteIcon, Code, ChevronLeft, ChevronRight, MoreHorizontal, Copy } from 'lucide-react'
 import { AgentChat } from '@/components/agent/agent-chat'
 import { AuthorSelector } from '@/components/author'
 import { CategorySelector } from '@/components/category'
@@ -25,7 +27,7 @@ import { UserAvatar } from '@/components/user-avatar'
 import { useTeamBlog } from '@/hooks/use-team-blog'
 import { TeamBlogProvider, useTeamBlogContext } from '@/contexts/team-blog-context'
 import { useDocumentTitle } from '@/hooks/use-document-title'
-import { formatDateForDisplay, formatDateCompact } from '@/lib/date-utils'
+import { formatDateForDisplay, formatDateCompact, formatDateRelative } from '@/lib/date-utils'
 
 export const Route = createFileRoute('/_protected/dashboard')({
     component: RouteComponent,
@@ -80,7 +82,7 @@ function Header({ userId, onSignOut, user }: { userId: string; onSignOut: () => 
         <header className="sticky top-0 z-20 border-b bg-background/80 backdrop-blur supports-[backdrop-filter]:bg-background/70">
             <div className="px-6 h-16 flex items-center justify-between">
                 {/* Left side - Team/Blog Selector */}
-                <div className="flex items-center gap-6">
+                <div className="flex items-center gap-6 -ml-2">
                     <nav className="flex items-center gap-4 text-sm text-muted-foreground">
                         <TeamBlogSelector userId={userId} />
                     </nav>
@@ -199,7 +201,7 @@ const SearchInput = memo(({
     const [isSearchFocused, setIsSearchFocused] = useState(false)
 
     return (
-        <div className="relative max-w-xl">
+        <div className="relative max-w-sm w-full">
             <Input
                 ref={searchInputRef}
                 value={query}
@@ -297,10 +299,8 @@ function ArticlesList({ userId }: { userId: string }) {
 
     const ColGroup = () => (
         <colgroup>
-            <col className="w-[55%]" />
-            <col className="hidden sm:table-column w-[20%]" />
-            <col className="hidden md:table-column w-[10%]" />
-            <col className="w-[15%]" />
+            <col className="w-[85%]" />
+            <col className="hidden sm:table-column w-[15%]" />
         </colgroup>
     )
 
@@ -312,48 +312,37 @@ function ArticlesList({ userId }: { userId: string }) {
                     <TableRow>
                         <TableHead>Title</TableHead>
                         <TableHead className="hidden sm:table-cell">Updated</TableHead>
-                        <TableHead className="hidden md:table-cell">Status</TableHead>
-                        <TableHead className="text-right">Actions</TableHead>
                     </TableRow>
                 </TableHeader>
                 <TableBody>
                     {rows.map((a) => (
-                        <TableRow key={a.$id}>
+                        <TableRow key={a.$id} className="group">
                             <TableCell className="max-w-[420px] truncate">
                                 <div className="flex items-center gap-2">
                                     <Button
                                         variant="ghost"
                                         size="sm"
-                                        className="cursor-pointer p-1 h-auto"
+                                        className={`cursor-pointer p-1 h-auto ${a.pinned ? 'opacity-100' : 'opacity-60 group-hover:opacity-100'}`}
                                         onClick={() => togglePin.mutate({ id: a.$id, next: !a.pinned })}
                                         title={a.pinned ? 'Unpin' : 'Pin'}
                                     >
                                         <PinIcon 
-                                            className={`h-4 w-4 ${a.pinned ? 'text-primary' : ''}`} 
+                                            className={`h-4 w-4 ${a.pinned ? 'text-primary' : 'text-muted-foreground'}`} 
                                             fill={a.pinned ? 'currentColor' : 'none'}
                                         />
                                     </Button>
                                     <Link to="/dashboard" search={{ articleId: a.$id }} className="hover:underline">
                                         {a.title || 'Untitled'}
                                     </Link>
+                                    {!a.published && (
+                                        <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-600">
+                                            Draft
+                                        </span>
+                                    )}
                                 </div>
                             </TableCell>
-                            <TableCell className="hidden sm:table-cell text-muted-foreground">
-                                {formatDateCompact(a.$updatedAt)}
-                            </TableCell>
-                            <TableCell className="hidden md:table-cell">
-                                {a.published ? (
-                                    <span className="text-green-600">Published</span>
-                                ) : (
-                                    <span className="text-amber-600">Draft</span>
-                                )}
-                            </TableCell>
-                            <TableCell className="text-right">
-                                <div className="flex items-center gap-1 justify-end">
-                                    <Link to="/dashboard" search={{ articleId: a.$id }}>
-                                        <Button variant="ghost" size="sm" className="cursor-pointer">Edit</Button>
-                                    </Link>
-                                </div>
+                            <TableCell className="hidden sm:table-cell text-muted-foreground text-sm">
+                                {formatDateRelative(a.$updatedAt)}
                             </TableCell>
                         </TableRow>
                     ))}
@@ -365,50 +354,49 @@ function ArticlesList({ userId }: { userId: string }) {
     return (
         <main className="flex-1">
             <div className="px-6 py-6 space-y-6">
-                <div className="flex items-end justify-between gap-4">
-                    <div>
-                        <h1 className="text-xl font-semibold tracking-tight">Your Articles</h1>
-                        <p className="text-sm text-muted-foreground">Create, select, and manage your articles.</p>
-                    </div>
-                    <div className="hidden sm:flex items-center gap-2">
-                        <Button 
-                            size="sm" 
-                            variant="outline" 
-                            className="cursor-pointer"
-                            onClick={async () => {
-                                try {
-                                    const payload: Omit<Articles, keyof Models.Document> = {
-                                        trailer: null,
-                                        title: 'Untitled',
-                                        status: 'unpublished',
-                                        subtitle: null,
-                                        images: null,
-                                        body: null,
-                                        authors: null,
-                                        live: false,
-                                        pinned: false,
-                                        redirect: null,
-                                        categories: null,
-                                        createdBy: userId,
-                                        published: false,
-                                        slug: null,
-                                        publishedAt: null,
-                                        blogId: currentBlog?.$id || null,
-                                    }
-                                    const article = await db.articles.create(payload, currentTeam?.$id)
-                                    navigate({ to: '/dashboard', search: { articleId: article.$id } })
-                                } catch (error) {
-                                    toast({ 
-                                        title: 'Failed to create article', 
-                                        description: error instanceof Error ? error.message : 'Unknown error',
-                                        variant: 'destructive'
-                                    })
+                <div className="flex items-center justify-between gap-4">
+                    <SearchInput
+                        query={query}
+                        onQueryChange={setQuery}
+                        isFetching={isFetching}
+                    />
+                    <Button 
+                        size="sm" 
+                        variant="outline" 
+                        className="cursor-pointer"
+                        onClick={async () => {
+                            try {
+                                const payload: Omit<Articles, keyof Models.Document> = {
+                                    trailer: null,
+                                    title: 'Untitled',
+                                    status: 'unpublished',
+                                    subtitle: null,
+                                    images: null,
+                                    body: null,
+                                    authors: null,
+                                    live: false,
+                                    pinned: false,
+                                    redirect: null,
+                                    categories: null,
+                                    createdBy: userId,
+                                    published: false,
+                                    slug: null,
+                                    publishedAt: null,
+                                    blogId: currentBlog?.$id || null,
                                 }
-                            }}
-                        >
-                            <Plus className="h-4 w-4 mr-1" /> New Article
-                        </Button>
-                    </div>
+                                const article = await db.articles.create(payload, currentTeam?.$id)
+                                navigate({ to: '/dashboard', search: { articleId: article.$id } })
+                            } catch (error) {
+                                toast({ 
+                                    title: 'Failed to create article', 
+                                    description: error instanceof Error ? error.message : 'Unknown error',
+                                    variant: 'destructive'
+                                })
+                            }
+                        }}
+                    >
+                        <Plus className="h-4 w-4 mr-1" /> New Article
+                    </Button>
                 </div>
 
                 {loadingArticles && !articleList ? (
@@ -416,14 +404,6 @@ function ArticlesList({ userId }: { userId: string }) {
                 ) : all.length === 0 ? (
                     <EmptyArticlesState currentBlog={currentBlog} userId={userId} />
                 ) : (
-                    <>
-                        <div className="flex items-center gap-2">
-                            <SearchInput
-                                query={query}
-                                onQueryChange={setQuery}
-                                isFetching={isFetching}
-                            />
-                        </div>
                     <div className="space-y-6">
                         {pinned.length > 0 && (
                             <section className="space-y-2">
@@ -503,7 +483,6 @@ function ArticlesList({ userId }: { userId: string }) {
                         )}
 
                     </div>
-                    </>
                 )}
             </div>
         </main>
@@ -610,7 +589,25 @@ function CreateArticleView({ userId, onDone, onCancel }: { userId: string; onDon
 
 function ArticleEditor({ articleId, userId, onBack }: { articleId: string; userId: string; onBack: () => void }) {
     const qc = useQueryClient()
-    const { currentBlog } = useTeamBlogContext()
+    const navigate = useNavigate()
+    const { currentBlog, currentTeam } = useTeamBlogContext()
+    const [isMenuOpen, setIsMenuOpen] = useState(false)
+    const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
+    const menuRef = useRef<HTMLDivElement>(null)
+
+    // Close menu when clicking outside
+    useEffect(() => {
+        function handleClickOutside(event: MouseEvent) {
+            if (menuRef.current && !menuRef.current.contains(event.target as Node)) {
+                setIsMenuOpen(false)
+            }
+        }
+
+        if (isMenuOpen) {
+            document.addEventListener('mousedown', handleClickOutside)
+            return () => document.removeEventListener('mousedown', handleClickOutside)
+        }
+    }, [isMenuOpen])
 
     const { data: article, isPending } = useQuery({
         queryKey: ['article', articleId],
@@ -644,6 +641,73 @@ function ArticleEditor({ articleId, userId, onBack }: { articleId: string; userI
             qc.invalidateQueries({ queryKey: ['articles', userId, currentBlog?.$id] })
         },
         onError: () => toast({ title: 'Failed to save article' }),
+    })
+
+    const deleteArticle = useMutation({
+        mutationFn: async () => {
+            const current = await db.articles.get(articleId)
+            if (current.createdBy !== userId) throw new Error('Forbidden')
+            return db.articles.delete(articleId)
+        },
+        onSuccess: () => {
+            qc.invalidateQueries({ queryKey: ['articles', userId, currentBlog?.$id] })
+            toast({ title: 'Article deleted successfully' })
+            onBack() // Navigate back to articles list
+        },
+        onError: (error) => {
+            console.error('Article deletion error:', error)
+            toast({ 
+                title: 'Failed to delete article', 
+                description: error instanceof Error ? error.message : 'Unknown error',
+                variant: 'destructive'
+            })
+        },
+    })
+
+    const duplicateArticle = useMutation({
+        mutationFn: async () => {
+            const current = await db.articles.get(articleId)
+            if (current.createdBy !== userId) throw new Error('Forbidden')
+            
+            // Create a copy of the article with a new ID
+            const duplicateData: Omit<Articles, keyof Models.Document> = {
+                trailer: current.trailer,
+                title: `${current.title} (Copy)`,
+                status: 'unpublished', // Always create as unpublished
+                subtitle: current.subtitle,
+                images: current.images,
+                body: current.body, // Copy all sections
+                authors: current.authors,
+                live: false, // Always create as not live
+                pinned: false, // Don't copy pin status
+                redirect: current.redirect,
+                categories: current.categories,
+                createdBy: userId,
+                published: false, // Always create as unpublished
+                slug: null, // Will be generated from title
+                publishedAt: null,
+                blogId: current.blogId,
+            }
+            
+            return db.articles.create(duplicateData, currentTeam?.$id)
+        },
+        onSuccess: (newArticle) => {
+            qc.invalidateQueries({ queryKey: ['articles', userId, currentBlog?.$id] })
+            toast({ 
+                title: 'Article duplicated successfully',
+                description: `Created "${newArticle.title}"`
+            })
+            // Navigate to the new article
+            navigate({ to: '/dashboard', search: { articleId: newArticle.$id } })
+        },
+        onError: (error) => {
+            console.error('Article duplication error:', error)
+            toast({ 
+                title: 'Failed to duplicate article', 
+                description: error instanceof Error ? error.message : 'Unknown error',
+                variant: 'destructive'
+            })
+        },
     })
 
     const createSection = (type: string) => {
@@ -840,6 +904,75 @@ function ArticleEditor({ articleId, userId, onBack }: { articleId: string; userI
                     <Button variant="ghost" size="sm" onClick={onBack} className="cursor-pointer">
                         <ArrowLeft className="h-4 w-4 mr-1" /> Back to articles
                     </Button>
+                    
+                    <div ref={menuRef} className="relative">
+                        <Button 
+                            variant="ghost" 
+                            size="sm" 
+                            onClick={() => setIsMenuOpen(!isMenuOpen)}
+                            className="cursor-pointer"
+                        >
+                            <MoreHorizontal className="h-4 w-4" />
+                        </Button>
+                        
+                        {isMenuOpen && (
+                            <>
+                                {/* Arrow pointing to the button */}
+                                <div className="absolute right-3 top-full w-0 h-0 border-l-[6px] border-r-[6px] border-b-[6px] border-l-transparent border-r-transparent border-b-border z-50" />
+                                <div className="absolute right-0 top-full mt-1 w-56 bg-background border rounded-lg shadow-lg z-50 animate-in fade-in-0 zoom-in-95 duration-200">
+                                    <div className="p-1">
+                                        <Button
+                                            variant="ghost"
+                                            size="sm"
+                                            onClick={() => {
+                                                duplicateArticle.mutate()
+                                                setIsMenuOpen(false)
+                                            }}
+                                            disabled={duplicateArticle.isPending}
+                                            className="w-full justify-start cursor-pointer hover:bg-muted"
+                                        >
+                                            {duplicateArticle.isPending ? (
+                                                <>
+                                                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                                                    Duplicating...
+                                                </>
+                                            ) : (
+                                                <>
+                                                    <Copy className="h-4 w-4 mr-2" />
+                                                    Duplicate Article
+                                                </>
+                                            )}
+                                        </Button>
+                                        
+                                        <Separator className="my-1" />
+                                        
+                                        <Button
+                                            variant="ghost"
+                                            size="sm"
+                                            className="w-full justify-start cursor-pointer hover:bg-destructive/10 hover:text-destructive text-destructive"
+                                            onClick={() => {
+                                                setIsMenuOpen(false)
+                                                setShowDeleteConfirm(true)
+                                            }}
+                                            disabled={deleteArticle.isPending}
+                                        >
+                                            {deleteArticle.isPending ? (
+                                                <>
+                                                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                                                    Deleting...
+                                                </>
+                                            ) : (
+                                                <>
+                                                    <Trash2 className="h-4 w-4 mr-2" />
+                                                    Delete Article
+                                                </>
+                                            )}
+                                        </Button>
+                                    </div>
+                                </div>
+                            </>
+                        )}
+                    </div>
                 </div>
             </div>
             <div className="flex justify-center px-6 py-6 pb-24 ml-0 md:ml-[18rem] lg:ml-[20rem] xl:ml-[24rem]">
@@ -1005,6 +1138,7 @@ function ArticleEditor({ articleId, userId, onBack }: { articleId: string; userI
                     </div>
                 </section>
 
+
                 {/* Sticky bottom actions — stop before agent rail */}
                 <div className="fixed bottom-0 inset-x-0 md:left-[18rem] md:right-0 lg:left-[20rem] lg:right-0 xl:left-[24rem] xl:right-0 z-20 border-t bg-background/90 backdrop-blur supports-[backdrop-filter]:bg-background/70">
                     <div className="px-6 py-3 flex items-center justify-between max-w-6xl mx-auto">
@@ -1033,6 +1167,44 @@ function ArticleEditor({ articleId, userId, onBack }: { articleId: string; userI
                 </div>
                 </div>
             </div>
+
+            {/* Delete Confirmation Dialog */}
+            <AlertDialog open={showDeleteConfirm} onOpenChange={setShowDeleteConfirm}>
+                <AlertDialogContent className="max-w-md">
+                    <AlertDialogHeader>
+                        <AlertDialogTitle className="text-left">
+                            Delete Article
+                        </AlertDialogTitle>
+                        <AlertDialogDescription className="text-left">
+                            Are you sure you want to delete <strong>"{title || 'Untitled'}"</strong>? 
+                            This action cannot be undone and will permanently remove the article 
+                            and all its data from our servers.
+                        </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter className="gap-2 sm:gap-0">
+                        <AlertDialogCancel className="order-2 sm:order-1">
+                            Cancel
+                        </AlertDialogCancel>
+                        <AlertDialogAction
+                            onClick={() => {
+                                deleteArticle.mutate()
+                                setShowDeleteConfirm(false)
+                            }}
+                            className="order-1 sm:order-2 bg-red-600 text-white hover:bg-red-700 focus:ring-red-500 cursor-pointer"
+                            disabled={deleteArticle.isPending}
+                        >
+                            {deleteArticle.isPending ? (
+                                <>
+                                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                                    Deleting...
+                                </>
+                            ) : (
+                                'Yes, Delete Article'
+                            )}
+                        </AlertDialogAction>
+                    </AlertDialogFooter>
+                </AlertDialogContent>
+            </AlertDialog>
         </>
     )
 }
