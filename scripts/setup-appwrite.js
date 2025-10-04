@@ -208,7 +208,7 @@ const COLLECTIONS = {
     attributes: [
       { key: 'name', type: 'string', size: 255, required: true, array: false, default: null },
       { key: 'description', type: 'string', size: 1024, required: false, array: false, default: null },
-      { key: 'model', type: 'string', size: 100, required: true, array: false, default: 'gpt-4' },
+      { key: 'model', type: 'string', size: 100, required: true, array: false, default: null },
       { key: 'apiKey', type: 'string', size: 512, required: true, array: false, default: null }, // Encrypted
       { key: 'temperature', type: 'integer', required: false, array: false, default: 0.7 },
       { key: 'maxTokens', type: 'integer', required: false, array: false, default: 2000 },
