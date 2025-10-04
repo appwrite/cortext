@@ -1,7 +1,8 @@
 import { Monitor, Moon, Sun } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
-import { useThemeContext, Theme } from '@/contexts/theme-context'
+import { useThemeContext } from '@/contexts/theme-context'
+import { Theme } from '@/hooks/use-theme'
 
 interface ThemeSwitcherProps {
   className?: string
