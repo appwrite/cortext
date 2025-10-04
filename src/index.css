@@ -220,6 +220,65 @@
     -webkit-overflow-scrolling: touch;
     overflow-scrolling: touch;
   }
+  
+  /* iOS viewport height fixes to prevent extra space below footer */
+  @supports (-webkit-touch-callout: none) {
+    /* iOS Safari specific fixes */
+    .min-h-screen {
+      min-height: 100vh;
+      min-height: -webkit-fill-available;
+    }
+    
+    /* Ensure body takes full height on iOS */
+    html, body {
+      height: 100%;
+      height: -webkit-fill-available;
+    }
+    
+    /* Fix for iOS safe area insets */
+    .ios-safe-area {
+      padding-bottom: env(safe-area-inset-bottom);
+    }
+    
+    /* Prevent iOS from adding extra space below footer */
+    footer {
+      margin-bottom: 0;
+      padding-bottom: env(safe-area-inset-bottom, 0);
+    }
+  }
+  
+  /* General mobile viewport fixes */
+  @media screen and (max-width: 768px) {
+    .min-h-screen {
+      min-height: 100vh;
+      min-height: 100dvh; /* Dynamic viewport height for modern browsers */
+    }
+    
+    /* Ensure footer sticks to bottom on mobile */
+    .flex.flex-col {
+      min-height: 100vh;
+      min-height: 100dvh;
+    }
+  }
+  
+  /* iOS viewport fix class */
+  .ios-viewport-fix {
+    min-height: 100vh;
+    min-height: -webkit-fill-available;
+  }
+  
+  @supports (-webkit-touch-callout: none) {
+    .ios-viewport-fix {
+      min-height: 100vh;
+      min-height: -webkit-fill-available;
+    }
+    
+    /* Additional iOS Safari fixes */
+    .ios-viewport-fix {
+      position: relative;
+      overflow-x: hidden;
+    }
+  }
 }
 
 /* 3D Card Effects */

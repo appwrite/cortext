@@ -99,7 +99,7 @@ function Index() {
     ];
 
     return (
-        <div className="min-h-screen flex flex-col" id="home">
+        <div className="min-h-screen flex flex-col ios-viewport-fix" id="home">
             <Nav />
 
             {/* Hero */}
@@ -490,7 +490,7 @@ function Index() {
                 </section>
 
             {/* Footer */}
-            <footer className="mt-auto border-t">
+            <footer className="mt-auto border-t ios-safe-area">
                 <div className="mx-auto max-w-7xl px-6 py-4 sm:py-0 sm:h-16 flex flex-col sm:flex-row items-center justify-between text-sm gap-3 sm:gap-0">
                     <div className="flex flex-wrap items-center justify-center gap-4 order-1 sm:order-2">
                         <a className="text-foreground/60 hover:text-foreground" href="#features">Features</a>
