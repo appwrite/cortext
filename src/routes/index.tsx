@@ -3,6 +3,7 @@ import { useAuth } from "@/hooks/use-auth";
 import { Brain, Sparkles, Type as TypeIcon, Image as ImageIcon, Video as VideoIcon, Map as MapIcon, Quote as QuoteIcon, Code2 as CodeIcon, FileEdit, MessageSquare, History, Github } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useThemeContext } from "@/contexts/theme-context";
+import { OptimizedImage, useImagePreload } from "@/components/ui/optimized-image";
 
 export const Route = createFileRoute("/")({
     component: Index,
@@ -62,6 +63,10 @@ function Nav() {
 function Index() {
     const [count, setCount] = useState(0);
     const { effectiveTheme } = useThemeContext();
+    
+    // Preload the appropriate dashboard image based on theme
+    const dashboardImageSrc = effectiveTheme === 'dark' ? "/dashboard-dark.png" : "/dashboard-light.png";
+    useImagePreload(dashboardImageSrc, true);
 
     useEffect(() => {
         const target = 128; // seed value for early signups
@@ -134,10 +139,15 @@ function Index() {
                 <div className="relative mx-auto mt-10 md:mt-12 w-full max-w-6xl -mb-px">
                     <div className="rounded-t-xl border border-b-0 bg-card overflow-hidden">
                         <div className="aspect-[21/9] w-full relative">
-                            <img 
-                                src={effectiveTheme === 'dark' ? "/dashboard-dark.png" : "/dashboard-light.png"} 
+                            <OptimizedImage
+                                src={dashboardImageSrc}
                                 alt="Cortext Dashboard - Article Management Interface"
                                 className="h-full w-full object-cover object-top filter brightness-95 contrast-110 saturate-90"
+                                priority={true}
+                                sizes="(max-width: 768px) 100vw, (max-width: 1200px) 80vw, 1200px"
+                                quality={90}
+                                placeholder="blur"
+                                blurDataURL="data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDAAYEBQYFBAYGBQYHBwYIChAKCgkJChQODwwQFxQYGBcUFhYaHSUfGhsjHBYWICwgIyYnKSopGR8tMC0oMCUoKSj/2wBDAQcHBwoIChMKChMoGhYaKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCj/wAARCAABAAEDASIAAhEBAxEB/8QAFQABAQAAAAAAAAAAAAAAAAAAAAv/xAAUEAEAAAAAAAAAAAAAAAAAAAAA/8QAFQEBAQAAAAAAAAAAAAAAAAAAAAX/xAAUEQEAAAAAAAAAAAAAAAAAAAAA/9oADAMBAAIRAxEAPwCdABmX/9k="
                             />
                             <div className={`absolute inset-0 pointer-events-none ${
                                 effectiveTheme === 'dark' 

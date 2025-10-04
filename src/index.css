@@ -205,6 +205,33 @@
     will-change: transform;
   }
   
+  /* Image performance optimizations */
+  img {
+    image-rendering: -webkit-optimize-contrast;
+    image-rendering: crisp-edges;
+    image-rendering: optimize-contrast;
+    -ms-interpolation-mode: nearest-neighbor;
+  }
+  
+  /* WebP support detection and fallback */
+  .webp img {
+    image-rendering: auto;
+  }
+  
+  /* Optimized image loading states */
+  .optimized-image {
+    contain: layout style paint;
+    content-visibility: auto;
+  }
+  
+  .optimized-image img {
+    transition: opacity 0.3s ease-in-out;
+  }
+  
+  .optimized-image img[loading="lazy"] {
+    content-visibility: auto;
+  }
+  
   /* Smooth transitions for iOS */
   .aspect-ratio-container,
   .aspect-ratio-fallback {
