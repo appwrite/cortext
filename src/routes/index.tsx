@@ -448,7 +448,7 @@ function Index() {
                             <h3 className="mt-2 text-lg font-semibold">Pro</h3>
                             <p className="mt-1 text-sm text-foreground/70">Advanced features for teams</p>
                             <div className="mt-4 flex items-baseline gap-1">
-                                <span className="text-3xl font-semibold">$19</span>
+                                <span className="text-3xl font-semibold">$20</span>
                                 <span className="text-foreground/60">/mo</span>
                             </div>
                         </div>
