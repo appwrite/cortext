@@ -500,7 +500,7 @@ function Index() {
             <section id="cta" className="mx-auto w-full max-w-7xl px-6 py-16 md:py-24 border-t">
                 <div className="rounded-2xl border px-6 py-10 md:px-10 md:py-14 text-center">
                     <h3 className="text-2xl font-semibold tracking-tight">Start building with Cortext</h3>
-                    <p className="mt-2 text-foreground/70">Join thousands of teams using our focused, reliable CMS for modern content management.</p>
+                    <p className="mt-2 text-foreground/70">A focused, reliable CMS designed for modern content management and team collaboration.</p>
                     <div className="mt-6 flex flex-col sm:flex-row items-center justify-center gap-3">
                         <Link
                             to="/sign-up"

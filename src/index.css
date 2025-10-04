@@ -323,7 +323,8 @@
       min-height: 100vh;
       min-height: -webkit-fill-available;
     }
-    
+  }
+  
   /* iPad specific fixes */
   @media screen and (min-width: 768px) and (max-width: 1024px) {
     .ios-viewport-fix {
