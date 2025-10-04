@@ -390,6 +390,24 @@ function Index() {
                 </div>
             </section>
 
+            {/* Testimonial */}
+            <section className="mx-auto w-full max-w-7xl px-6 py-16 md:py-24 border-t">
+                <div className="mx-auto max-w-4xl text-center">
+                    <div className="mb-8">
+                        <svg className="mx-auto h-12 w-12 text-foreground" fill="currentColor" viewBox="0 0 24 24">
+                            <path d="M14.017 21v-7.391c0-5.704 3.731-9.57 8.983-10.609l.995 2.151c-2.432.917-3.995 3.638-3.995 5.849h4v9.391h-9.983zm-14.017 0v-7.391c0-5.704 3.748-9.57 9-10.609l.996 2.151c-2.433.917-3.996 3.638-3.996 5.849h4v9.391h-10z"/>
+                        </svg>
+                    </div>
+                    <blockquote className="text-lg md:text-xl text-foreground/90 font-medium leading-relaxed mb-6">
+                        "We were struggling with content consistency and SEO optimization across our team. Cortext changed that. The AI co-author doesn't just help us write faster - it actually improves the quality of our content and our search visibility. It's like having a senior content strategist on the team who never sleeps."
+                    </blockquote>
+                    <div className="flex flex-col items-center">
+                        <div className="text-foreground font-semibold">Laura Du Ry</div>
+                        <div className="text-foreground/60 text-sm">Growth Lead at Appwrite</div>
+                    </div>
+                </div>
+            </section>
+
             {/* Pricing */}
             <section id="pricing" className="mx-auto w-full max-w-7xl px-6 py-16 md:py-24 border-t">
                 <div className="mx-auto max-w-3xl text-center">
