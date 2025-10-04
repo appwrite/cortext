@@ -212,12 +212,12 @@ const COLLECTIONS = {
       { key: 'apiKey', type: 'string', size: 512, required: true, array: false, default: null }, // Encrypted
       // { key: 'temperature', type: 'float', required: false, array: false, default: 0.7, min: 0.1, max: 2.1 },
       // { key: 'maxTokens', type: 'integer', required: false, array: false, default: 2000 },
-      { key: 'systemPrompt', type: 'string', size: 10000, required: false, array: false, default: null },
+      { key: 'systemPrompt', type: 'string', size: 200000, required: false, array: false, default: null },
       { key: 'capabilities', type: 'string', size: 512, required: false, array: true, default: null },
       { key: 'isActive', type: 'boolean', required: false, array: false, default: true },
       { key: 'blogId', type: 'string', size: 255, required: true, array: false, default: null },
       { key: 'createdBy', type: 'string', size: 255, required: true, array: false, default: null },
-      { key: 'settings', type: 'string', size: 5000, required: false, array: false, default: null }, // JSON string for additional settings
+      { key: 'settings', type: 'string', size: 200000, required: false, array: false, default: null }, // JSON string for additional settings
     ],
     indexes: [
       { key: 'name', type: 'key', attributes: ['name'] },
