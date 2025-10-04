@@ -1,6 +1,6 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useAuth } from "@/hooks/use-auth";
-import { Sparkles, Type as TypeIcon, Image as ImageIcon, Video as VideoIcon, Map as MapIcon, Quote as QuoteIcon, Code2 as CodeIcon, FileEdit, MessageSquare, History, Github } from "lucide-react";
+import { Brain, Sparkles, Type as TypeIcon, Image as ImageIcon, Video as VideoIcon, Map as MapIcon, Quote as QuoteIcon, Code2 as CodeIcon, FileEdit, MessageSquare, History, Github } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useThemeContext } from "@/contexts/theme-context";
 
@@ -15,7 +15,7 @@ function Nav() {
         <header className="sticky top-0 z-40 w-full border-b bg-background/80 backdrop-blur supports-[backdrop-filter]:bg-background/60">
             <div className="relative mx-auto max-w-7xl px-6 h-16 flex items-center justify-between">
                 <a href="#home" className="font-semibold text-lg tracking-tight inline-flex items-center gap-2">
-                    <Sparkles aria-hidden="true" className="h-6 w-6 text-foreground/80" />
+                    <Brain className="h-6 w-6" />
                     Cortext
                 </a>
                 <nav className="hidden md:flex absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 gap-6 text-sm items-center">
