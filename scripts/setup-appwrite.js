@@ -373,14 +373,22 @@ async function ensureAttribute(collectionId, attribute) {
               attribute.array
             );
           case 'integer':
-            return databases.createIntegerAttribute(
+            const intParams = [
               DATABASE_ID,
               collectionId,
               attribute.key,
               attribute.required,
               attribute.default,
               attribute.array
-            );
+            ];
+            
+            // Add min and max only if both are explicitly defined
+            if (attribute.min !== undefined && attribute.max !== undefined) {
+              intParams.push(attribute.min);
+              intParams.push(attribute.max);
+            }
+            
+            return databases.createIntegerAttribute(...intParams);
           case 'float':
             console.log(`🔍 Creating float attribute '${attribute.key}':`);
             console.log(`   min: ${attribute.min} (type: ${typeof attribute.min})`);
