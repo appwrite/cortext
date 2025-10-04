@@ -110,7 +110,7 @@ export function AgentChat({
                         <div key={m.id} className={m.role === 'assistant' ? 'flex gap-2 items-start' : 'flex justify-end'}>
                             {m.role === 'assistant' && (
                                 <div className="mt-0.5 text-muted-foreground">
-                                    <Brain className="h-3.5 w-3.5" />
+                                    <Brain className="h-4 w-4" />
                                 </div>
                             )}
                             <div
