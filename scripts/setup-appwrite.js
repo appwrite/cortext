@@ -382,20 +382,8 @@ async function ensureAttribute(collectionId, attribute) {
               attribute.array
             ];
             
-            // Add min and max only if both are explicitly defined
-            if (attribute.min !== undefined && attribute.max !== undefined) {
-              intParams.push(attribute.min);
-              intParams.push(attribute.max);
-            }
-            
             return databases.createIntegerAttribute(...intParams);
           case 'float':
-            console.log(`🔍 Creating float attribute '${attribute.key}':`);
-            console.log(`   min: ${attribute.min} (type: ${typeof attribute.min})`);
-            console.log(`   max: ${attribute.max} (type: ${typeof attribute.max})`);
-            console.log(`   min !== undefined: ${attribute.min !== undefined}`);
-            console.log(`   max !== undefined: ${attribute.max !== undefined}`);
-            
             const floatParams = [
               DATABASE_ID,
               collectionId,
@@ -404,17 +392,7 @@ async function ensureAttribute(collectionId, attribute) {
               attribute.default,
               attribute.array
             ];
-            
-            // Add min and max only if both are explicitly defined
-            if (attribute.min !== undefined && attribute.max !== undefined) {
-              console.log(`   Adding min (${attribute.min}) and max (${attribute.max}) parameters`);
-              floatParams.push(attribute.min);
-              floatParams.push(attribute.max);
-            } else {
-              console.log(`   Skipping min/max parameters`);
-            }
-            
-            console.log(`   Final params:`, floatParams);
+
             return databases.createFloatAttribute(...floatParams);
           case 'boolean':
             return databases.createBooleanAttribute(
