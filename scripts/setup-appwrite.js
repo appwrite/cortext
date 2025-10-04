@@ -389,8 +389,8 @@ async function ensureAttribute(collectionId, attribute) {
               attribute.required,
               attribute.default,
               attribute.array,
-              attribute.min || null,
-              attribute.max || null
+              attribute.min !== undefined ? attribute.min : -999999999,
+              attribute.max !== undefined ? attribute.max : 999999999
             );
           case 'boolean':
             return databases.createBooleanAttribute(
