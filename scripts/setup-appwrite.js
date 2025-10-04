@@ -373,27 +373,43 @@ async function ensureAttribute(collectionId, attribute) {
               attribute.array
             );
           case 'integer':
-            const intParams = [
-              DATABASE_ID,
-              collectionId,
-              attribute.key,
-              attribute.required,
-              attribute.default,
-              attribute.array
-            ];
+            const intParams = {
+              databaseId: DATABASE_ID,
+              collectionId: collectionId,
+              key: attribute.key,
+              required: attribute.required,
+              default: attribute.default,
+              array: attribute.array
+            };
             
-            return databases.createIntegerAttribute(...intParams);
+            // Add min and max parameters if they exist
+            if (attribute.min !== undefined) {
+              intParams.min = attribute.min;
+            }
+            if (attribute.max !== undefined) {
+              intParams.max = attribute.max;
+            }
+            
+            return databases.createIntegerAttribute(intParams);
           case 'float':
-            const floatParams = [
-              DATABASE_ID,
-              collectionId,
-              attribute.key,
-              attribute.required,
-              attribute.default,
-              attribute.array
-            ];
+            const floatParams = {
+              databaseId: DATABASE_ID,
+              collectionId: collectionId,
+              key: attribute.key,
+              required: attribute.required,
+              default: attribute.default,
+              array: attribute.array
+            };
+            
+            // Add min and max parameters if they exist
+            if (attribute.min !== undefined) {
+              floatParams.min = attribute.min;
+            }
+            if (attribute.max !== undefined) {
+              floatParams.max = attribute.max;
+            }
 
-            return databases.createFloatAttribute(...floatParams);
+            return databases.createFloatAttribute(floatParams);
           case 'boolean':
             return databases.createBooleanAttribute(
               DATABASE_ID,
