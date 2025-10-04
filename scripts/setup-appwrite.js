@@ -89,6 +89,7 @@ const COLLECTIONS = {
       { key: 'live', type: 'key', attributes: ['live'] },
       { key: 'pinned', type: 'key', attributes: ['pinned'] },
       { key: 'title', type: 'key', attributes: ['title'], lengths: [191] },
+      { key: 'title_fulltext', type: 'fulltext', attributes: ['title'] },
       { key: 'blogId', type: 'key', attributes: ['blogId'] },
       { key: 'blogId_published', type: 'key', attributes: ['blogId', 'published'] },
       { key: 'blogId_status', type: 'key', attributes: ['blogId', 'status'] },

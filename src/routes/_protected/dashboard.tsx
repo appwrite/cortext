@@ -1,6 +1,6 @@
 import { createFileRoute, Link, useNavigate, useSearch } from '@tanstack/react-router'
 import { useAuth } from '@/hooks/use-auth'
-import { useEffect, useMemo, useRef, useState, useCallback } from 'react'
+import { useEffect, useMemo, useRef, useState, useCallback, memo } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { db } from '@/lib/appwrite/db'
 import { files } from '@/lib/appwrite/storage'
@@ -21,6 +21,7 @@ import { ImageGallery } from '@/components/image'
 import { NotificationBell } from '@/components/notification'
 import { TeamBlogSelector } from '@/components/team-blog'
 import { CodeEditor } from '@/components/ui/code-editor'
+import { UserAvatar } from '@/components/user-avatar'
 import { useTeamBlog } from '@/hooks/use-team-blog'
 import { TeamBlogProvider, useTeamBlogContext } from '@/contexts/team-blog-context'
 import { useDocumentTitle } from '@/hooks/use-document-title'
@@ -67,14 +68,14 @@ function RouteComponent() {
     return (
         <TeamBlogProvider userId={userId}>
             <div className="h-dvh overflow-y-auto overscroll-none flex flex-col">
-                <Header userId={userId} onSignOut={() => signOut.mutate()} />
+                <Header userId={userId} onSignOut={() => signOut.mutate()} user={user} />
                 <Dashboard userId={userId} />
             </div>
         </TeamBlogProvider>
     )
 }
 
-function Header({ userId, onSignOut }: { userId: string; onSignOut: () => void }) {
+function Header({ userId, onSignOut, user }: { userId: string; onSignOut: () => void; user: any }) {
     return (
         <header className="sticky top-0 z-20 border-b bg-background/80 backdrop-blur supports-[backdrop-filter]:bg-background/70">
             <div className="px-6 h-16 flex items-center justify-between">
@@ -96,10 +97,7 @@ function Header({ userId, onSignOut }: { userId: string; onSignOut: () => void }
                 {/* Right side - User actions */}
                 <div className="flex items-center gap-4">
                     <NotificationBell userId={userId} />
-                    <Button variant="outline" size="sm" onClick={onSignOut} className="cursor-pointer">
-                        <LogOut className="h-4 w-4" />
-                        <span className="sr-only sm:not-sr-only sm:ml-1">Sign out</span>
-                    </Button>
+                    <UserAvatar user={user} onSignOut={onSignOut} />
                 </div>
             </div>
         </header>
@@ -187,6 +185,42 @@ function EmptyArticlesState({ currentBlog, userId }: { currentBlog: any; userId:
 }
 
 
+// Memoized search input component to prevent unnecessary re-renders
+const SearchInput = memo(({ 
+    query, 
+    onQueryChange, 
+    isFetching 
+}: { 
+    query: string
+    onQueryChange: (value: string) => void
+    isFetching: boolean 
+}) => {
+    const searchInputRef = useRef<HTMLInputElement>(null)
+    const [isSearchFocused, setIsSearchFocused] = useState(false)
+
+    return (
+        <div className="relative max-w-xl">
+            <Input
+                ref={searchInputRef}
+                value={query}
+                onChange={(e) => onQueryChange(e.target.value)}
+                onFocus={() => setIsSearchFocused(true)}
+                onBlur={() => setIsSearchFocused(false)}
+                placeholder="Search articles..."
+                className="h-9 pr-8"
+                aria-label="Search articles"
+            />
+            {isFetching && (
+                <div className="absolute right-2 top-1/2 -translate-y-1/2">
+                    <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+                </div>
+            )}
+        </div>
+    )
+})
+
+SearchInput.displayName = 'SearchInput'
+
 function ArticlesList({ userId }: { userId: string }) {
     const qc = useQueryClient()
     const navigate = useNavigate()
@@ -196,9 +230,19 @@ function ArticlesList({ userId }: { userId: string }) {
     const [currentPage, setCurrentPage] = useState(1)
     const pageSize = 10 // Fixed page size
     const [query, setQuery] = useState('')
+    const [debouncedQuery, setDebouncedQuery] = useState('')
 
-    const { data: articleList, isPending: loadingArticles } = useQuery({
-        queryKey: ['articles', userId, currentBlog?.$id, currentPage, pageSize],
+    // Debounce search query to avoid excessive API calls
+    useEffect(() => {
+        const timer = setTimeout(() => {
+            setDebouncedQuery(query)
+        }, 300) // 300ms debounce
+
+        return () => clearTimeout(timer)
+    }, [query])
+
+    const { data: articleList, isPending: loadingArticles, isFetching } = useQuery({
+        queryKey: ['articles', userId, currentBlog?.$id, currentPage, pageSize, debouncedQuery],
         queryFn: async () => {
             const queries = [
                 Query.equal('createdBy', [userId]),
@@ -211,11 +255,17 @@ function ArticlesList({ userId }: { userId: string }) {
             if (currentBlog?.$id) {
                 queries.push(Query.equal('blogId', currentBlog.$id))
             }
+
+            // Add search query if provided
+            if (debouncedQuery.trim()) {
+                queries.push(Query.search('title', debouncedQuery.trim()))
+            }
             
             const res = await db.articles.list(queries)
             return res
         },
-        enabled: !!userId
+        enabled: !!userId,
+        placeholderData: (previousData) => previousData // Keep previous data while fetching new data
     })
 
     const togglePin = useMutation({
@@ -233,15 +283,11 @@ function ArticlesList({ userId }: { userId: string }) {
     // Reset to first page when search query changes
     useEffect(() => {
         setCurrentPage(1)
-    }, [query])
+    }, [debouncedQuery])
 
     const all = articleList?.documents ?? []
-    const filtered = query
-        ? all.filter((a) => (a.title || 'Untitled').toLowerCase().includes(query.toLowerCase()))
-        : all
-
-    const pinned = filtered.filter((a) => a.pinned)
-    const others = filtered.filter((a) => !a.pinned)
+    const pinned = all.filter((a) => a.pinned)
+    const others = all.filter((a) => !a.pinned)
 
     // Calculate pagination info
     const totalCount = articleList?.total ?? 0
@@ -274,9 +320,23 @@ function ArticlesList({ userId }: { userId: string }) {
                     {rows.map((a) => (
                         <TableRow key={a.$id}>
                             <TableCell className="max-w-[420px] truncate">
-                                <Link to="/dashboard" search={{ articleId: a.$id }} className="hover:underline">
-                                    {a.title || 'Untitled'}
-                                </Link>
+                                <div className="flex items-center gap-2">
+                                    <Button
+                                        variant="ghost"
+                                        size="sm"
+                                        className="cursor-pointer p-1 h-auto"
+                                        onClick={() => togglePin.mutate({ id: a.$id, next: !a.pinned })}
+                                        title={a.pinned ? 'Unpin' : 'Pin'}
+                                    >
+                                        <PinIcon 
+                                            className={`h-4 w-4 ${a.pinned ? 'text-primary' : ''}`} 
+                                            fill={a.pinned ? 'currentColor' : 'none'}
+                                        />
+                                    </Button>
+                                    <Link to="/dashboard" search={{ articleId: a.$id }} className="hover:underline">
+                                        {a.title || 'Untitled'}
+                                    </Link>
+                                </div>
                             </TableCell>
                             <TableCell className="hidden sm:table-cell text-muted-foreground">
                                 {formatDateCompact(a.$updatedAt)}
@@ -290,15 +350,6 @@ function ArticlesList({ userId }: { userId: string }) {
                             </TableCell>
                             <TableCell className="text-right">
                                 <div className="flex items-center gap-1 justify-end">
-                                    <Button
-                                        variant="ghost"
-                                        size="sm"
-                                        className="cursor-pointer"
-                                        onClick={() => togglePin.mutate({ id: a.$id, next: !a.pinned })}
-                                        title={a.pinned ? 'Unpin' : 'Pin'}
-                                    >
-                                        <PinIcon className={`h-4 w-4 mr-1 ${a.pinned ? 'text-primary' : ''}`} /> {a.pinned ? 'Unpin' : 'Pin'}
-                                    </Button>
                                     <Link to="/dashboard" search={{ articleId: a.$id }}>
                                         <Button variant="ghost" size="sm" className="cursor-pointer">Edit</Button>
                                     </Link>
@@ -360,19 +411,17 @@ function ArticlesList({ userId }: { userId: string }) {
                     </div>
                 </div>
 
-                {loadingArticles ? (
+                {loadingArticles && !articleList ? (
                     <div className="text-sm text-muted-foreground">Loading…</div>
                 ) : all.length === 0 ? (
                     <EmptyArticlesState currentBlog={currentBlog} userId={userId} />
                 ) : (
                     <>
                         <div className="flex items-center gap-2">
-                            <Input
-                                value={query}
-                                onChange={(e) => setQuery(e.target.value)}
-                                placeholder="Search articles..."
-                                className="h-9 max-w-md"
-                                aria-label="Search articles"
+                            <SearchInput
+                                query={query}
+                                onQueryChange={setQuery}
+                                isFetching={isFetching}
                             />
                         </div>
                     <div className="space-y-6">
@@ -386,7 +435,9 @@ function ArticlesList({ userId }: { userId: string }) {
                         <section className="space-y-2">
                             <h2 className="text-sm font-medium tracking-tight">All articles</h2>
                             {others.length === 0 ? (
-                                <p className="text-sm text-muted-foreground">No matching articles.</p>
+                                <p className="text-sm text-muted-foreground">
+                                    {debouncedQuery ? 'No articles match your search.' : 'No articles found.'}
+                                </p>
                             ) : (
                                 <ArticlesTable rows={others as Articles[]} />
                             )}
@@ -396,7 +447,11 @@ function ArticlesList({ userId }: { userId: string }) {
                         {totalPages > 1 && (
                             <div className="flex items-center justify-between">
                                 <div className="text-sm text-muted-foreground">
-                                    Showing {((currentPage - 1) * pageSize) + 1} to {Math.min(currentPage * pageSize, totalCount)} of {totalCount} articles
+                                    {debouncedQuery ? (
+                                        <>Showing {((currentPage - 1) * pageSize) + 1} to {Math.min(currentPage * pageSize, totalCount)} of {totalCount} search results</>
+                                    ) : (
+                                        <>Showing {((currentPage - 1) * pageSize) + 1} to {Math.min(currentPage * pageSize, totalCount)} of {totalCount} articles</>
+                                    )}
                                 </div>
                                 <div className="flex items-center gap-2">
                                     <Button

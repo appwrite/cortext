@@ -121,7 +121,7 @@ export function TeamBlogSelector({ userId }: TeamBlogSelectorProps) {
         variant="ghost"
         size="sm"
         onClick={() => setIsOpen(!isOpen)}
-        className="flex items-center gap-2 text-sm font-medium hover:bg-accent border border-border/50 cursor-pointer"
+        className="flex items-center gap-2 text-sm font-medium hover:bg-accent cursor-pointer"
       >
         {getButtonIcon()}
         <span className="hidden sm:inline">{getButtonText()}</span>
