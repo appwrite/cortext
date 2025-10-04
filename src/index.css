@@ -119,6 +119,17 @@
   body {
     background-color: var(--background);
     color: var(--foreground);
+    margin: 0;
+    padding: 0;
+  }
+  
+  /* iPad specific body fixes */
+  @media screen and (min-width: 768px) and (max-width: 1024px) {
+    body {
+      height: 100vh;
+      height: -webkit-fill-available;
+      overflow-x: hidden;
+    }
   }
   label {
     display: inline-block;
@@ -270,13 +281,21 @@
     
     /* Fix for iOS safe area insets */
     .ios-safe-area {
-      padding-bottom: env(safe-area-inset-bottom);
+      padding-bottom: env(safe-area-inset-bottom, 0);
     }
     
     /* Prevent iOS from adding extra space below footer */
     footer {
       margin-bottom: 0;
-      padding-bottom: env(safe-area-inset-bottom, 0);
+      padding-bottom: 0;
+    }
+    
+    /* Ensure footer doesn't create extra space on iPad */
+    @media screen and (min-width: 768px) and (max-width: 1024px) {
+      footer {
+        margin-bottom: 0;
+        padding-bottom: 0;
+      }
     }
   }
   
@@ -297,7 +316,6 @@
   /* iOS viewport fix class */
   .ios-viewport-fix {
     min-height: 100vh;
-    min-height: -webkit-fill-available;
   }
   
   @supports (-webkit-touch-callout: none) {
@@ -306,10 +324,27 @@
       min-height: -webkit-fill-available;
     }
     
-    /* Additional iOS Safari fixes */
-    .ios-viewport-fix {
-      position: relative;
-      overflow-x: hidden;
+    /* iPad specific fixes */
+    @media screen and (min-width: 768px) and (max-width: 1024px) {
+      .ios-viewport-fix {
+        min-height: 100vh;
+        height: auto;
+        display: flex;
+        flex-direction: column;
+      }
+      
+      .ios-safe-area {
+        padding-bottom: 0;
+      }
+      
+      /* Ensure content fills properly on iPad */
+      .ios-viewport-fix > * {
+        flex-shrink: 0;
+      }
+      
+      .ios-viewport-fix > footer {
+        margin-top: auto;
+      }
     }
   }
 }
