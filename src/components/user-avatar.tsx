@@ -117,11 +117,11 @@ export function UserAvatar({ user, onSignOut }: UserAvatarProps) {
         variant="ghost"
         size="sm"
         onClick={() => setIsOpen(!isOpen)}
-        className="h-8 w-8 rounded-full p-0 cursor-pointer hover:bg-accent"
+        className="h-6 w-6 rounded-full p-0 cursor-pointer hover:bg-accent"
         aria-label="User menu"
       >
-        <Avatar className="h-8 w-8">
-          <AvatarFallback className="bg-black text-white text-sm font-medium">
+        <Avatar className="h-6 w-6">
+          <AvatarFallback className="bg-black text-white text-xs font-medium">
             {getInitials()}
           </AvatarFallback>
         </Avatar>
