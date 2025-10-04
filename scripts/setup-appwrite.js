@@ -210,7 +210,7 @@ const COLLECTIONS = {
       { key: 'description', type: 'string', size: 1024, required: false, array: false, default: null },
       { key: 'model', type: 'string', size: 100, required: true, array: false, default: null },
       { key: 'apiKey', type: 'string', size: 512, required: true, array: false, default: null }, // Encrypted
-      { key: 'temperature', type: 'integer', required: false, array: false, default: 0.7 },
+      { key: 'temperature', type: 'float', required: false, array: false, default: 0.7 },
       { key: 'maxTokens', type: 'integer', required: false, array: false, default: 2000 },
       { key: 'systemPrompt', type: 'string', size: 10000, required: false, array: false, default: null },
       { key: 'capabilities', type: 'string', size: 512, required: false, array: true, default: null },
@@ -374,6 +374,15 @@ async function ensureAttribute(collectionId, attribute) {
             );
           case 'integer':
             return databases.createIntegerAttribute(
+              DATABASE_ID,
+              collectionId,
+              attribute.key,
+              attribute.required,
+              attribute.default,
+              attribute.array
+            );
+          case 'float':
+            return databases.createFloatAttribute(
               DATABASE_ID,
               collectionId,
               attribute.key,
