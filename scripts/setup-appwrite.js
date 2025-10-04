@@ -65,7 +65,7 @@ const DATABASE_NAME = 'Imagine Project Database';
 const COLLECTIONS = {
   articles: {
     name: 'Articles',
-    permissions: [],
+    permissions: [Permission.create(Role.any())],
     attributes: [
       { key: 'trailer', type: 'string', size: 512, required: false, array: false, default: null },
       { key: 'title', type: 'string', size: 1024, required: false, array: false, default: null },
@@ -99,7 +99,7 @@ const COLLECTIONS = {
   },
   authors: {
     name: 'Authors',
-    permissions: [],
+    permissions: [Permission.create(Role.any())],
     attributes: [
       { key: 'firstname', type: 'string', size: 255, required: false, array: false, default: null },
       { key: 'lastname', type: 'string', size: 255, required: false, array: false, default: null },
@@ -125,7 +125,7 @@ const COLLECTIONS = {
   },
   categories: {
     name: 'Categories',
-    permissions: [],
+    permissions: [Permission.create(Role.any())],
     attributes: [
       { key: 'name', type: 'string', size: 255, required: false, array: false, default: null },
       { key: 'slug', type: 'string', size: 255, required: false, array: false, default: null },
@@ -142,7 +142,7 @@ const COLLECTIONS = {
   },
   images: {
     name: 'Images',
-    permissions: [],
+    permissions: [Permission.create(Role.any())],
     attributes: [
       { key: 'file', type: 'string', size: 256, required: true, array: false, default: null },
       { key: 'caption', type: 'string', size: 2048, required: false, array: false, default: null },
@@ -179,7 +179,7 @@ const COLLECTIONS = {
   },
   blogs: {
     name: 'Blogs',
-    permissions: [],
+    permissions: [Permission.create(Role.any())],
     attributes: [
       { key: 'name', type: 'string', size: 255, required: true, array: false, default: null },
       { key: 'slug', type: 'string', size: 255, required: true, array: false, default: null },
@@ -200,6 +200,91 @@ const COLLECTIONS = {
       { key: 'status', type: 'key', attributes: ['status'] },
       { key: 'ownerId_status', type: 'key', attributes: ['ownerId', 'status'] },
       // Note: description, settings are large fields - if indexed in future, use lengths: [191]
+    ],
+  },
+  agents: {
+    name: 'Agents',
+    permissions: [Permission.create(Role.any())],
+    attributes: [
+      { key: 'name', type: 'string', size: 255, required: true, array: false, default: null },
+      { key: 'description', type: 'string', size: 1024, required: false, array: false, default: null },
+      { key: 'model', type: 'string', size: 100, required: true, array: false, default: 'gpt-4' },
+      { key: 'apiKey', type: 'string', size: 512, required: true, array: false, default: null }, // Encrypted
+      { key: 'temperature', type: 'integer', required: false, array: false, default: 0.7 },
+      { key: 'maxTokens', type: 'integer', required: false, array: false, default: 2000 },
+      { key: 'systemPrompt', type: 'string', size: 10000, required: false, array: false, default: null },
+      { key: 'capabilities', type: 'string', size: 512, required: false, array: true, default: null },
+      { key: 'isActive', type: 'boolean', required: false, array: false, default: true },
+      { key: 'blogId', type: 'string', size: 255, required: true, array: false, default: null },
+      { key: 'createdBy', type: 'string', size: 255, required: true, array: false, default: null },
+      { key: 'settings', type: 'string', size: 5000, required: false, array: false, default: null }, // JSON string for additional settings
+    ],
+    indexes: [
+      { key: 'name', type: 'key', attributes: ['name'] },
+      { key: 'model', type: 'key', attributes: ['model'] },
+      { key: 'isActive', type: 'key', attributes: ['isActive'] },
+      { key: 'blogId', type: 'key', attributes: ['blogId'] },
+      { key: 'createdBy', type: 'key', attributes: ['createdBy'] },
+      { key: 'blogId_isActive', type: 'key', attributes: ['blogId', 'isActive'] },
+      { key: 'blogId_createdBy', type: 'key', attributes: ['blogId', 'createdBy'] },
+    ],
+  },
+  conversations: {
+    name: 'Conversations',
+    permissions: [Permission.create(Role.any())],
+    attributes: [
+      { key: 'title', type: 'string', size: 512, required: false, array: false, default: null },
+      { key: 'userId', type: 'string', size: 255, required: true, array: false, default: null },
+      { key: 'agentId', type: 'string', size: 255, required: true, array: false, default: null },
+      { key: 'articleId', type: 'string', size: 255, required: false, array: false, default: null },
+      { key: 'blogId', type: 'string', size: 255, required: true, array: false, default: null },
+      { key: 'status', type: 'string', size: 50, required: false, array: false, default: 'active' },
+      { key: 'context', type: 'string', size: 5000, required: false, array: false, default: null }, // JSON string for conversation context
+      { key: 'lastMessageAt', type: 'datetime', required: false, array: false, default: null },
+      { key: 'messageCount', type: 'integer', required: false, array: false, default: 0 },
+      { key: 'isArchived', type: 'boolean', required: false, array: false, default: false },
+    ],
+    indexes: [
+      { key: 'userId', type: 'key', attributes: ['userId'] },
+      { key: 'agentId', type: 'key', attributes: ['agentId'] },
+      { key: 'articleId', type: 'key', attributes: ['articleId'] },
+      { key: 'blogId', type: 'key', attributes: ['blogId'] },
+      { key: 'status', type: 'key', attributes: ['status'] },
+      { key: 'isArchived', type: 'key', attributes: ['isArchived'] },
+      { key: 'lastMessageAt', type: 'key', attributes: ['lastMessageAt'] },
+      { key: 'userId_blogId', type: 'key', attributes: ['userId', 'blogId'] },
+      { key: 'agentId_blogId', type: 'key', attributes: ['agentId', 'blogId'] },
+      { key: 'articleId_blogId', type: 'key', attributes: ['articleId', 'blogId'] },
+      { key: 'userId_status', type: 'key', attributes: ['userId', 'status'] },
+      { key: 'blogId_status', type: 'key', attributes: ['blogId', 'status'] },
+    ],
+  },
+  messages: {
+    name: 'Messages',
+    permissions: [Permission.create(Role.any())],
+    attributes: [
+      { key: 'conversationId', type: 'string', size: 255, required: true, array: false, default: null },
+      { key: 'content', type: 'string', size: 50000, required: true, array: false, default: null },
+      { key: 'role', type: 'string', size: 20, required: true, array: false, default: null }, // 'user', 'assistant', 'system'
+      { key: 'userId', type: 'string', size: 255, required: false, array: false, default: null },
+      { key: 'agentId', type: 'string', size: 255, required: false, array: false, default: null },
+      { key: 'blogId', type: 'string', size: 255, required: true, array: false, default: null },
+      { key: 'metadata', type: 'string', size: 2000, required: false, array: false, default: null }, // JSON string for additional metadata
+      { key: 'tokens', type: 'integer', required: false, array: false, default: null },
+      { key: 'isEdited', type: 'boolean', required: false, array: false, default: false },
+      { key: 'parentMessageId', type: 'string', size: 255, required: false, array: false, default: null }, // For message threading
+    ],
+    indexes: [
+      { key: 'conversationId', type: 'key', attributes: ['conversationId'] },
+      { key: 'role', type: 'key', attributes: ['role'] },
+      { key: 'userId', type: 'key', attributes: ['userId'] },
+      { key: 'agentId', type: 'key', attributes: ['agentId'] },
+      { key: 'blogId', type: 'key', attributes: ['blogId'] },
+      { key: 'isEdited', type: 'key', attributes: ['isEdited'] },
+      { key: 'parentMessageId', type: 'key', attributes: ['parentMessageId'] },
+      { key: 'conversationId_role', type: 'key', attributes: ['conversationId', 'role'] },
+      { key: 'conversationId_createdAt', type: 'key', attributes: ['conversationId', '$createdAt'] },
+      { key: 'blogId_conversationId', type: 'key', attributes: ['blogId', 'conversationId'] },
     ],
   },
 };
