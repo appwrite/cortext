@@ -211,7 +211,7 @@ const COLLECTIONS = {
       { key: 'model', type: 'string', size: 100, required: true, array: false, default: null },
       { key: 'apiKey', type: 'string', size: 512, required: true, array: false, default: null }, // Encrypted
       // { key: 'temperature', type: 'float', required: false, array: false, default: 0.7, min: 0.1, max: 2.1 },
-      { key: 'maxTokens', type: 'integer', required: false, array: false, default: 2000 },
+      // { key: 'maxTokens', type: 'integer', required: false, array: false, default: 2000 },
       { key: 'systemPrompt', type: 'string', size: 10000, required: false, array: false, default: null },
       { key: 'capabilities', type: 'string', size: 512, required: false, array: true, default: null },
       { key: 'isActive', type: 'boolean', required: false, array: false, default: true },
