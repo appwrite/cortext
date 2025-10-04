@@ -210,7 +210,7 @@ const COLLECTIONS = {
       { key: 'description', type: 'string', size: 1024, required: false, array: false, default: null },
       { key: 'model', type: 'string', size: 100, required: true, array: false, default: null },
       { key: 'apiKey', type: 'string', size: 512, required: true, array: false, default: null }, // Encrypted
-      { key: 'temperature', type: 'float', required: false, array: false, default: 0.7, min: 0.0, max: 2.0 },
+      { key: 'temperature', type: 'float', required: false, array: false, default: 0.7, min: null, max: null },
       { key: 'maxTokens', type: 'integer', required: false, array: false, default: 2000 },
       { key: 'systemPrompt', type: 'string', size: 10000, required: false, array: false, default: null },
       { key: 'capabilities', type: 'string', size: 512, required: false, array: true, default: null },
@@ -391,11 +391,9 @@ async function ensureAttribute(collectionId, attribute) {
               attribute.array
             ];
             
-            // Only add min and max if they are explicitly defined
-            if (attribute.min !== undefined) {
+            // Add min and max only if both are explicitly defined
+            if (attribute.min !== undefined && attribute.max !== undefined) {
               floatParams.push(attribute.min);
-            }
-            if (attribute.max !== undefined) {
               floatParams.push(attribute.max);
             }
             
