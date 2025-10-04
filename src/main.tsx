@@ -7,6 +7,7 @@ import "./index.css";
 import { routeTree } from "./routeTree.gen";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { queryClient } from "./lib/react-query";
+import { ThemeProvider } from "./contexts/theme-context";
 
 export interface RouterContext {
   queryClient: QueryClient;
@@ -20,7 +21,11 @@ export function App() {
     queryClient,
   };
 
-  return <RouterProvider router={router} context={initialContext} />;
+  return (
+    <ThemeProvider>
+      <RouterProvider router={router} context={initialContext} />
+    </ThemeProvider>
+  );
 }
 
 // Render the app
@@ -30,7 +35,7 @@ if (!rootElement.innerHTML) {
   root.render(
     <StrictMode>
       <QueryClientProvider client={queryClient}>
-          <App />
+        <App />
       </QueryClientProvider>
     </StrictMode>
   );

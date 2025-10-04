@@ -2,6 +2,7 @@ import { useState, useRef, useEffect } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { useNavigate } from '@tanstack/react-router'
 import { Button } from '@/components/ui/button'
+import { StandardAvatar } from '@/components/ui/standard-avatar'
 import { ChevronDown, Plus, Users, FileText } from 'lucide-react'
 import { TeamBlogDropdown } from './team-blog-dropdown'
 import { CreateTeamModal } from './create-team-modal'
@@ -73,9 +74,10 @@ export function TeamBlogSelector({ userId }: TeamBlogSelectorProps) {
       return <FileText className="h-4 w-4" />
     }
     return (
-      <div className="w-6 h-6 rounded-full bg-gray-800 flex items-center justify-center text-white text-xs font-medium">
-        {currentBlog.name.split(' ').map(word => word[0]).join('').slice(0, 2).toUpperCase()}
-      </div>
+      <StandardAvatar 
+        className="w-6 h-6"
+        initials={currentBlog.name.split(' ').map(word => word[0]).join('').slice(0, 2).toUpperCase()}
+      />
     )
   }
 

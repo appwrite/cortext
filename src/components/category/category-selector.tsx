@@ -69,7 +69,7 @@ function SortableCategoryItem({ category, onRemove }: SortableCategoryItemProps)
       ref={setNodeRef}
       style={style}
       className={cn(
-        "inline-flex items-center gap-1 px-2 py-1 bg-gray-100 text-gray-700 rounded-md text-sm mr-2",
+        "inline-flex items-center gap-1 px-2 py-1 bg-black text-white rounded-md text-sm mr-2",
         isDragging && "opacity-50"
       )}
     >
@@ -84,7 +84,7 @@ function SortableCategoryItem({ category, onRemove }: SortableCategoryItemProps)
       <Button
         variant="ghost"
         size="sm"
-        className="h-4 w-4 p-0 hover:bg-gray-200"
+        className="h-4 w-4 p-0 hover:bg-white/20"
         onClick={(e) => {
           e.stopPropagation()
           onRemove(category.$id)
@@ -295,7 +295,7 @@ export function CategorySelector({ selectedCategoryIds, onCategoriesChange, user
                   />
                 ))
               ) : (
-                <div className="inline-flex items-center px-2 py-1 bg-gray-50 text-gray-400 rounded-md text-sm mr-2 mb-2 border border-dashed border-gray-300">
+                <div className="inline-flex items-center px-2 py-1 bg-white text-black rounded-md text-sm mr-2 mb-2 border border-dashed border-black/20">
                   <span>None selected</span>
                 </div>
               )}

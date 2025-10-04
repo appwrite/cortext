@@ -1,9 +1,10 @@
 import { useState, useRef, useEffect } from 'react'
-import { LogOut, User, Mail, Calendar, Settings, Shield, Copy, Check } from 'lucide-react'
-import { Avatar, AvatarFallback } from '@/components/ui/avatar'
+import { LogOut, User, Mail, Calendar, Settings, Shield, Copy, Check, Palette } from 'lucide-react'
+import { StandardAvatar } from '@/components/ui/standard-avatar'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Separator } from '@/components/ui/separator'
+import { ThemeSwitcherCompact } from '@/components/ui/theme-switcher'
 import { cn } from '@/lib/utils'
 import { toast } from '@/hooks/use-toast'
 
@@ -120,11 +121,10 @@ export function UserAvatar({ user, onSignOut }: UserAvatarProps) {
         className="h-6 w-6 rounded-full p-0 cursor-pointer hover:bg-accent"
         aria-label="User menu"
       >
-        <Avatar className="h-6 w-6">
-          <AvatarFallback className="bg-black text-white text-xs font-medium">
-            {getInitials()}
-          </AvatarFallback>
-        </Avatar>
+        <StandardAvatar 
+          className="h-6 w-6"
+          initials={getInitials()}
+        />
       </Button>
       
       {isOpen && (
@@ -169,7 +169,7 @@ export function UserAvatar({ user, onSignOut }: UserAvatarProps) {
                     <div className={cn(
                       "w-2 h-2 rounded-full",
                       getUserStatus().variant === 'default' ? "bg-green-500" : 
-                      getUserStatus().variant === 'secondary' ? "bg-yellow-500" : "bg-gray-400"
+                      getUserStatus().variant === 'secondary' ? "bg-yellow-500" : "bg-black"
                     )} />
                     <p className="font-medium">{getUserStatus().text}</p>
                   </div>
@@ -207,12 +207,30 @@ export function UserAvatar({ user, onSignOut }: UserAvatarProps) {
 
             <Separator />
 
+            {/* Theme Settings */}
+            <div className="p-3">
+              <div className="flex items-center justify-between text-sm">
+                <div className="flex items-center gap-3">
+                  <div className="flex-shrink-0 w-8 h-8 rounded-full bg-muted flex items-center justify-center">
+                    <Palette className="h-4 w-4 text-muted-foreground" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-muted-foreground text-xs">Theme</p>
+                    <p className="font-medium text-sm">Appearance</p>
+                  </div>
+                </div>
+                <ThemeSwitcherCompact />
+              </div>
+            </div>
+
+            <Separator />
+
             {/* Actions */}
             <div className="p-3 space-y-1">
               <Button
                 variant="ghost"
                 size="sm"
-                className="w-full justify-start cursor-pointer hover:bg-muted"
+                className="w-full justify-start cursor-pointer hover:bg-accent"
               >
                 <Settings className="h-4 w-4 mr-2" />
                 Account Settings

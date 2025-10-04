@@ -93,7 +93,7 @@ function SortableImageItem({ image, onRemove }: SortableImageItemProps) {
           </div>
           <div className="absolute top-2 right-2">
             <button
-              className="h-5 w-5 rounded-full bg-black border-2 border-white flex items-center justify-center hover:bg-gray-800 transition-colors"
+              className="h-5 w-5 rounded-full bg-black border-2 border-white flex items-center justify-center hover:bg-white transition-colors"
               onClick={(e) => {
                 e.stopPropagation()
                 onRemove(image.$id)
@@ -528,7 +528,7 @@ function NewImageModal({ open, onOpenChange, onImageCreated, userId }: NewImageM
                     />
                     <button
                       type="button"
-                      className="absolute top-2 right-2 h-5 w-5 rounded-full bg-black border-2 border-white flex items-center justify-center hover:bg-gray-800 transition-colors"
+                      className="absolute top-2 right-2 h-5 w-5 rounded-full bg-black border-2 border-white flex items-center justify-center hover:bg-white transition-colors"
                       onClick={() => {
                         setSelectedFile(null)
                         setPreviewUrl(null)

@@ -6,6 +6,7 @@ import { Query } from 'appwrite'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { ScrollArea } from '@/components/ui/scroll-area'
+import { StandardAvatar } from '@/components/ui/standard-avatar'
 import { 
   Search, 
   Plus, 
@@ -224,9 +225,10 @@ export function TeamBlogDropdown({ userId, onClose, onCreateTeam, onCreateBlog, 
                         isSelected && "bg-accent"
                       )}
                     >
-                    <div className="w-6 h-6 rounded-full bg-gray-800 flex items-center justify-center text-white text-xs font-medium flex-shrink-0">
-                      {team.name.split(' ').map(word => word[0]).join('').slice(0, 2).toUpperCase()}
-                    </div>
+                    <StandardAvatar 
+                      className="w-6 h-6 flex-shrink-0"
+                      initials={team.name.split(' ').map(word => word[0]).join('').slice(0, 2).toUpperCase()}
+                    />
                     <div className="flex-1 min-w-0">
                       <p className="text-sm font-medium" title={team.name}>
                         {truncateText(team.name, 25)}
@@ -308,9 +310,10 @@ export function TeamBlogDropdown({ userId, onClose, onCreateTeam, onCreateBlog, 
                       currentBlog?.$id === blog.$id && "bg-accent"
                     )}
                   >
-                    <div className="w-6 h-6 rounded-full bg-gray-800 flex items-center justify-center text-white text-xs font-medium flex-shrink-0">
-                      {blog.name.split(' ').map(word => word[0]).join('').slice(0, 2).toUpperCase()}
-                    </div>
+                    <StandardAvatar 
+                      className="w-6 h-6 flex-shrink-0"
+                      initials={blog.name.split(' ').map(word => word[0]).join('').slice(0, 2).toUpperCase()}
+                    />
                     <div className="flex-1 min-w-0">
                       <p className="text-sm font-medium" title={blog.name}>
                         {truncateText(blog.name, 25)}

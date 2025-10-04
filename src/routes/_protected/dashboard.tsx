@@ -335,7 +335,7 @@ function ArticlesList({ userId }: { userId: string }) {
                                         {a.title || 'Untitled'}
                                     </Link>
                                     {!a.published && (
-                                        <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-600">
+                                        <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-white text-black border border-black/20">
                                             Draft
                                         </span>
                                     )}
@@ -929,7 +929,7 @@ function ArticleEditor({ articleId, userId, onBack }: { articleId: string; userI
                                                 setIsMenuOpen(false)
                                             }}
                                             disabled={duplicateArticle.isPending}
-                                            className="w-full justify-start cursor-pointer hover:bg-muted"
+                                            className="w-full justify-start cursor-pointer hover:bg-accent"
                                         >
                                             {duplicateArticle.isPending ? (
                                                 <>
