@@ -382,16 +382,24 @@ async function ensureAttribute(collectionId, attribute) {
               attribute.array
             );
           case 'float':
-            return databases.createFloatAttribute(
+            const floatParams = [
               DATABASE_ID,
               collectionId,
               attribute.key,
               attribute.required,
               attribute.default,
-              attribute.array,
-              attribute.min !== undefined ? attribute.min : -999999999,
-              attribute.max !== undefined ? attribute.max : 999999999
-            );
+              attribute.array
+            ];
+            
+            // Only add min and max if they are explicitly defined
+            if (attribute.min !== undefined) {
+              floatParams.push(attribute.min);
+            }
+            if (attribute.max !== undefined) {
+              floatParams.push(attribute.max);
+            }
+            
+            return databases.createFloatAttribute(...floatParams);
           case 'boolean':
             return databases.createBooleanAttribute(
               DATABASE_ID,
