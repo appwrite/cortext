@@ -232,6 +232,12 @@
     content-visibility: auto;
   }
   
+  /* Dashboard image specific optimizations */
+  .dashboard-screenshot img {
+    object-position: top center !important;
+    object-fit: cover;
+  }
+  
   /* Smooth transitions for iOS */
   .aspect-ratio-container,
   .aspect-ratio-fallback {

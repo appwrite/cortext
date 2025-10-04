@@ -12,6 +12,7 @@ interface OptimizedImageProps {
   blurDataURL?: string;
   onLoad?: () => void;
   onError?: () => void;
+  style?: React.CSSProperties;
 }
 
 export function OptimizedImage({
@@ -25,6 +26,7 @@ export function OptimizedImage({
   blurDataURL,
   onLoad,
   onError,
+  style,
   ...props
 }: OptimizedImageProps) {
   const [isLoaded, setIsLoaded] = useState(false);
@@ -105,6 +107,7 @@ export function OptimizedImage({
               'w-full h-full object-cover transition-opacity duration-300',
               isLoaded ? 'opacity-100' : 'opacity-0'
             )}
+            style={style}
             loading={priority ? 'eager' : 'lazy'}
             decoding="async"
             onLoad={handleLoad}

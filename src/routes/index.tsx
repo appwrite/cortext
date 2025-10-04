@@ -138,11 +138,12 @@ function Index() {
                 {/* Dashboard screenshot that merges with the next separator */}
                 <div className="relative mx-auto mt-10 md:mt-12 w-full max-w-6xl -mb-px">
                     <div className="rounded-t-xl border border-b-0 bg-card overflow-hidden">
-                        <div className="aspect-[21/9] w-full relative">
+                        <div className="aspect-[16/9] w-full relative dashboard-screenshot">
                             <OptimizedImage
                                 src={dashboardImageSrc}
                                 alt="Cortext Dashboard - Article Management Interface"
-                                className="h-full w-full object-cover object-top filter brightness-95 contrast-110 saturate-90"
+                                className="h-full w-full object-cover filter brightness-95 contrast-110 saturate-90"
+                                style={{ objectPosition: 'top center' }}
                                 priority={true}
                                 sizes="(max-width: 768px) 100vw, (max-width: 1200px) 80vw, 1200px"
                                 quality={90}
@@ -151,8 +152,8 @@ function Index() {
                             />
                             <div className={`absolute inset-0 pointer-events-none ${
                                 effectiveTheme === 'dark' 
-                                    ? 'bg-gradient-to-t from-black/60 via-black/20 to-transparent' 
-                                    : 'bg-gradient-to-t from-white/80 via-white/30 to-transparent'
+                                    ? 'bg-gradient-to-t from-black/30 via-black/5 to-transparent' 
+                                    : 'bg-gradient-to-t from-white/40 via-white/10 to-transparent'
                             }`}></div>
                         </div>
                     </div>
