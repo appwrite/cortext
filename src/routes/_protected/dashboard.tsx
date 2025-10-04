@@ -539,7 +539,7 @@ function CreateArticleView({ userId, onDone, onCancel }: { userId: string; onDon
         <main className="flex-1">
             <div className="max-w-3xl mx-auto px-6 py-6 space-y-6">
                 <div className="flex items-center justify-between">
-                    <Button variant="ghost" size="sm" onClick={onCancel} className="cursor-pointer">
+                    <Button variant="ghost" size="sm" onClick={onCancel}>
                         <ArrowLeft className="h-4 w-4 mr-1" /> Back to articles
                     </Button>
                 </div>
@@ -577,7 +577,7 @@ function CreateArticleView({ userId, onDone, onCancel }: { userId: string; onDon
                         <Input id="new-redirect" value={redirect} onChange={(e) => setRedirect(e.target.value)} placeholder="Redirect URL (optional)" />
                     </div>
                     <div className="flex gap-2">
-                        <Button onClick={() => createArticle.mutate()} disabled={createArticle.isPending} className="cursor-pointer">
+                        <Button onClick={() => createArticle.mutate()} disabled={createArticle.isPending}>
                             <Plus className="h-4 w-4 mr-1" /> {createArticle.isPending ? 'Creating…' : 'Create'}
                         </Button>
                     </div>
@@ -901,7 +901,7 @@ function ArticleEditor({ articleId, userId, onBack }: { articleId: string; userI
             <AgentChat title={title} subtitle={subtitle} onSetTitle={setTitle} onSetSubtitle={setExcerpt} />
             <div className="px-6 pt-2 pb-8 ml-0 md:ml-[18rem] lg:ml-[20rem] xl:ml-[24rem]">
                 <div className="flex items-center justify-between">
-                    <Button variant="ghost" size="sm" onClick={onBack} className="cursor-pointer">
+                    <Button variant="ghost" size="sm" onClick={onBack}>
                         <ArrowLeft className="h-4 w-4 mr-1" /> Back to articles
                     </Button>
                     
@@ -1025,13 +1025,13 @@ function ArticleEditor({ articleId, userId, onBack }: { articleId: string; userI
                     <div>
                         <h2 className="text-base font-medium mb-3">Sections</h2>
                         <div className="flex flex-wrap gap-2">
-                            <Button size="sm" variant="outline" onClick={() => createSection('title')} className="cursor-pointer h-7 px-2 text-xs"><Heading1 className="h-3.5 w-3.5 mr-1" /> Title</Button>
-                            <Button size="sm" variant="outline" onClick={() => createSection('text')} className="cursor-pointer h-7 px-2 text-xs"><TypeIcon className="h-3.5 w-3.5 mr-1" /> Text</Button>
-                            <Button size="sm" variant="outline" onClick={() => createSection('quote')} className="cursor-pointer h-7 px-2 text-xs"><Quote className="h-3.5 w-3.5 mr-1" /> Quote</Button>
-                            <Button size="sm" variant="outline" onClick={() => createSection('image')} className="cursor-pointer h-7 px-2 text-xs"><ImageIcon className="h-3.5 w-3.5 mr-1" /> Image</Button>
-                            <Button size="sm" variant="outline" onClick={() => createSection('code')} className="cursor-pointer h-7 px-2 text-xs"><Code className="h-3.5 w-3.5 mr-1" /> Code</Button>
-                            <Button size="sm" variant="outline" onClick={() => createSection('video')} className="cursor-pointer h-7 px-2 text-xs"><Video className="h-3.5 w-3.5 mr-1" /> Video</Button>
-                            <Button size="sm" variant="outline" onClick={() => createSection('map')} className="cursor-pointer h-7 px-2 text-xs"><MapPin className="h-3.5 w-3.5 mr-1" /> Map</Button>
+                            <Button size="sm" variant="outline" onClick={() => createSection('title')} className="h-7 px-2 text-xs"><Heading1 className="h-3.5 w-3.5 mr-1" /> Title</Button>
+                            <Button size="sm" variant="outline" onClick={() => createSection('text')} className="h-7 px-2 text-xs"><TypeIcon className="h-3.5 w-3.5 mr-1" /> Text</Button>
+                            <Button size="sm" variant="outline" onClick={() => createSection('quote')} className="h-7 px-2 text-xs"><Quote className="h-3.5 w-3.5 mr-1" /> Quote</Button>
+                            <Button size="sm" variant="outline" onClick={() => createSection('image')} className="h-7 px-2 text-xs"><ImageIcon className="h-3.5 w-3.5 mr-1" /> Image</Button>
+                            <Button size="sm" variant="outline" onClick={() => createSection('code')} className="h-7 px-2 text-xs"><Code className="h-3.5 w-3.5 mr-1" /> Code</Button>
+                            <Button size="sm" variant="outline" onClick={() => createSection('video')} className="h-7 px-2 text-xs"><Video className="h-3.5 w-3.5 mr-1" /> Video</Button>
+                            <Button size="sm" variant="outline" onClick={() => createSection('map')} className="h-7 px-2 text-xs"><MapPin className="h-3.5 w-3.5 mr-1" /> Map</Button>
                         </div>
                     </div>
 
@@ -1104,7 +1104,7 @@ function ArticleEditor({ articleId, userId, onBack }: { articleId: string; userI
                                                     />
                                                 </TableCell>
                                                 <TableCell className="text-right">
-                                                    <Button variant="ghost" size="icon" onClick={() => deleteSection(s.id)} className="cursor-pointer">
+                                                    <Button variant="ghost" size="icon" onClick={() => deleteSection(s.id)}>
                                                         <Trash2 className="h-4 w-4" />
                                                     </Button>
                                                 </TableCell>
@@ -1154,7 +1154,7 @@ function ArticleEditor({ articleId, userId, onBack }: { articleId: string; userI
                             >
                                 {article.published ? 'Unpublish' : 'Publish'}
                             </Button>
-                            <Button onClick={handleMainSave} disabled={saving} className="cursor-pointer">
+                            <Button onClick={handleMainSave} disabled={saving}>
                                 {saving ? (
                                     <Loader2 className="h-4 w-4 mr-1 animate-spin" />
                                 ) : (

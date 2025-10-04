@@ -130,10 +130,10 @@ export function AgentChat({
 
             <div className="px-6 py-6 space-y-2">
                 <div className="flex gap-2">
-                    <Button variant="secondary" size="sm" className="gap-1 h-7 px-2 text-[11px] cursor-pointer" onClick={applySEOTitle}>
+                    <Button variant="secondary" size="sm" className="gap-1 h-7 px-2 text-[11px]" onClick={applySEOTitle}>
                         <Sparkles className="h-3.5 w-3.5" /> SEO title
                     </Button>
-                    <Button variant="secondary" size="sm" className="gap-1 h-7 px-2 text-[11px] cursor-pointer" onClick={generateMetaDescription}>
+                    <Button variant="secondary" size="sm" className="gap-1 h-7 px-2 text-[11px]" onClick={generateMetaDescription}>
                         <Sparkles className="h-3.5 w-3.5" /> Meta description
                     </Button>
                 </div>
@@ -150,7 +150,7 @@ export function AgentChat({
                             }
                         }}
                     />
-                    <Button size="sm" className="h-9 px-3 cursor-pointer" onClick={send}>
+                    <Button size="sm" className="h-9 px-3" onClick={send}>
                         <Send className="h-4 w-4" />
                     </Button>
                 </div>

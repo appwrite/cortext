@@ -80,7 +80,7 @@ function Header({ userId, onSignOut }: { userId: string; onSignOut: () => void }
           </nav>
         </div>
         <div className="flex items-center gap-2">
-          <Button variant="outline" size="sm" onClick={onSignOut} className="cursor-pointer">
+          <Button variant="outline" size="sm" onClick={onSignOut}>
             <LogOut className="h-4 w-4" />
             <span className="sr-only sm:not-sr-only sm:ml-1">Sign out</span>
           </Button>
