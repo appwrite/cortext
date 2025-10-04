@@ -13,7 +13,7 @@ const RTL_LANGUAGES = [
  * @returns true if the text contains RTL characters, false otherwise
  */
 export function isRTLText(text: string): boolean {
-  if (!text || text.trim().length === 0) return false
+  if (!text || typeof text !== 'string' || text.trim().length === 0) return false
   
   // Check for RTL Unicode ranges
   const rtlRegex = /[\u0590-\u05FF\u0600-\u06FF\u0750-\u077F\u08A0-\u08FF\uFB1D-\uFDFF\uFE70-\uFEFF]/
@@ -38,7 +38,7 @@ export function isRTLLanguage(languageCode: string): boolean {
  */
 export function getTextDirection(text: string, fallbackLanguage?: string): 'rtl' | 'ltr' {
   // If we have text, analyze it
-  if (text && text.trim().length > 0) {
+  if (text && typeof text === 'string' && text.trim().length > 0) {
     return isRTLText(text) ? 'rtl' : 'ltr'
   }
   

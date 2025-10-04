@@ -18,7 +18,7 @@ export interface TextareaProps
 
 const Textarea = React.forwardRef<HTMLTextAreaElement, TextareaProps>(
   ({ className, value, language, ...props }, ref) => {
-    const dir = getDirAttribute(value || '', language)
+    const dir = getDirAttribute(String(value || ''), language)
     
     return (
       <textarea

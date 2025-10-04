@@ -939,7 +939,7 @@ function ArticleEditor({ articleId, userId, onBack }: { articleId: string; userI
                                             ) : (
                                                 <>
                                                     <Copy className="h-4 w-4 mr-2" />
-                                                    Duplicate Article
+                                                    Duplicate
                                                 </>
                                             )}
                                         </Button>
@@ -964,7 +964,7 @@ function ArticleEditor({ articleId, userId, onBack }: { articleId: string; userI
                                             ) : (
                                                 <>
                                                     <Trash2 className="h-4 w-4 mr-2" />
-                                                    Delete Article
+                                                    Delete
                                                 </>
                                             )}
                                         </Button>
@@ -1394,8 +1394,8 @@ function MapEditor({ section, onLocalChange }: { section: any; onLocalChange: (d
                 </div>
             </div>
             {nlat && nlng ? (
-                <div className="w-full max-w-md h-44">
-                    <iframe className="w-full h-full rounded border" src={iframe} title="Map preview" />
+                <div className="w-full aspect-video rounded-lg border overflow-hidden">
+                    <iframe className="w-full h-full" src={iframe} title="Map preview" />
                 </div>
             ) : (
                 <p className="text-xs text-muted-foreground">Enter coordinates to preview</p>

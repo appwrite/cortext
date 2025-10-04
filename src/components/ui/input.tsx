@@ -17,7 +17,7 @@ export interface InputProps extends React.ComponentProps<"input"> {
 
 const Input = React.forwardRef<HTMLInputElement, InputProps>(
   ({ className, type, value, language, ...props }, ref) => {
-    const dir = getDirAttribute(value || '', language)
+    const dir = getDirAttribute(String(value || ''), language)
     
     return (
       <input

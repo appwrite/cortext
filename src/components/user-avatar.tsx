@@ -1,13 +1,15 @@
 import { useState, useRef, useEffect } from 'react'
-import { LogOut, User, Mail, Calendar, Settings, Shield } from 'lucide-react'
+import { LogOut, User, Mail, Calendar, Settings, Shield, Copy, Check } from 'lucide-react'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Separator } from '@/components/ui/separator'
 import { cn } from '@/lib/utils'
+import { toast } from '@/hooks/use-toast'
 
 interface UserAvatarProps {
   user: {
+    $id?: string
     name?: string
     email?: string
     $createdAt?: string
@@ -19,6 +21,7 @@ interface UserAvatarProps {
 
 export function UserAvatar({ user, onSignOut }: UserAvatarProps) {
   const [isOpen, setIsOpen] = useState(false)
+  const [copiedId, setCopiedId] = useState(false)
   const containerRef = useRef<HTMLDivElement>(null)
 
   // Close dropdown when clicking outside
@@ -85,6 +88,29 @@ export function UserAvatar({ user, onSignOut }: UserAvatarProps) {
     return 'Member'
   }
 
+  // Copy account ID to clipboard
+  const copyAccountId = async () => {
+    if (!user?.$id) return
+    
+    try {
+      await navigator.clipboard.writeText(user.$id)
+      setCopiedId(true)
+      toast({
+        title: 'Account ID copied',
+        description: 'Account ID has been copied to clipboard'
+      })
+      
+      // Reset the copied state after 2 seconds
+      setTimeout(() => setCopiedId(false), 2000)
+    } catch (error) {
+      toast({
+        title: 'Failed to copy',
+        description: 'Could not copy account ID to clipboard',
+        variant: 'destructive'
+      })
+    }
+  }
+
   return (
     <div ref={containerRef} className="relative">
       <Button
@@ -149,6 +175,34 @@ export function UserAvatar({ user, onSignOut }: UserAvatarProps) {
                   </div>
                 </div>
               </div>
+
+              {/* Account ID */}
+              {user?.$id && (
+                <div className="flex items-center gap-3 text-sm">
+                  <div className="flex-shrink-0 w-8 h-8 rounded-full bg-muted flex items-center justify-center">
+                    <User className="h-4 w-4 text-muted-foreground" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-muted-foreground text-xs">Account ID</p>
+                    <div className="flex items-center gap-2">
+                      <p className="font-mono text-xs font-medium truncate">{user.$id}</p>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={copyAccountId}
+                        className="h-6 w-6 p-0 hover:bg-accent cursor-pointer"
+                        title="Copy Account ID"
+                      >
+                        {copiedId ? (
+                          <Check className="h-3 w-3 text-green-600" />
+                        ) : (
+                          <Copy className="h-3 w-3 text-muted-foreground" />
+                        )}
+                      </Button>
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
 
             <Separator />

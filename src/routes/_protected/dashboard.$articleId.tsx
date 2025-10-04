@@ -633,7 +633,7 @@ function MapEditor({ section, onLocalChange }: { section: any; onLocalChange: (d
       {lat && lng && !isNaN(parseFloat(lat)) && !isNaN(parseFloat(lng)) && (
         <div className="space-y-1">
           <Label>Preview</Label>
-          <div className="aspect-video rounded-lg border overflow-hidden">
+          <div className="w-full aspect-video rounded-lg border overflow-hidden">
             <iframe src={toOSMEmbed(parseFloat(lat), parseFloat(lng))} className="w-full h-full" />
           </div>
         </div>
