@@ -1,5 +1,5 @@
 import { Client, Databases, ID, Permission, Role, type Models } from 'appwrite';
-import type { Articles, Authors, Categories, Images, Notifications, Blogs } from './appwrite.types';
+import type { Articles, Authors, Categories, Images, Notifications, Blogs, Comments } from './appwrite.types';
 
 // Environment variables validation
 const APPWRITE_ENDPOINT = import.meta.env.VITE_APPWRITE_ENDPOINT;
@@ -147,6 +147,28 @@ export const db = {
       databases.deleteDocument(APPWRITE_DATABASE_ID, 'blogs', id),
     list: (queries?: string[]) => 
       databases.listDocuments<Blogs>(APPWRITE_DATABASE_ID, 'blogs', queries),
+  },
+  comments: {
+    create: (data: Omit<Comments, keyof Models.Document>, teamId?: string) => 
+      databases.createDocument<Comments>(
+        APPWRITE_DATABASE_ID, 
+        'comments', 
+        ID.unique(), 
+        data,
+        teamId ? [
+          Permission.read(Role.team(teamId)),
+          Permission.update(Role.team(teamId)),
+          Permission.delete(Role.team(teamId))
+        ] : undefined
+      ),
+    get: (id: string) => 
+      databases.getDocument<Comments>(APPWRITE_DATABASE_ID, 'comments', id),
+    update: (id: string, data: Partial<Omit<Comments, keyof Models.Document>>) => 
+      databases.updateDocument<Comments>(APPWRITE_DATABASE_ID, 'comments', id, data),
+    delete: (id: string) => 
+      databases.deleteDocument(APPWRITE_DATABASE_ID, 'comments', id),
+    list: (queries?: string[]) => 
+      databases.listDocuments<Comments>(APPWRITE_DATABASE_ID, 'comments', queries),
   }
 };
 

@@ -287,6 +287,40 @@ const COLLECTIONS = {
       { key: 'blogId_conversationId', type: 'key', attributes: ['blogId', 'conversationId'] },
     ],
   },
+  comments: {
+    name: 'Comments',
+    permissions: [Permission.create(Role.any())],
+    attributes: [
+      { key: 'content', type: 'string', size: 5000, required: true, array: false, default: null },
+      { key: 'authorId', type: 'string', size: 255, required: true, array: false, default: null },
+      { key: 'authorName', type: 'string', size: 255, required: true, array: false, default: null },
+      { key: 'authorEmail', type: 'string', size: 255, required: true, array: false, default: null },
+      { key: 'articleId', type: 'string', size: 255, required: true, array: false, default: null },
+      { key: 'blogId', type: 'string', size: 255, required: true, array: false, default: null },
+      { key: 'targetType', type: 'string', size: 50, required: true, array: false, default: null }, // 'title', 'subtitle', 'body', 'section', 'image', etc.
+      { key: 'targetId', type: 'string', size: 255, required: false, array: false, default: null }, // For specific sections or blocks
+      { key: 'parentCommentId', type: 'string', size: 255, required: false, array: false, default: null }, // For replies
+      { key: 'isResolved', type: 'boolean', required: false, array: false, default: false },
+      { key: 'resolvedBy', type: 'string', size: 255, required: false, array: false, default: null },
+      { key: 'resolvedAt', type: 'datetime', required: false, array: false, default: null },
+      { key: 'metadata', type: 'string', size: 2000, required: false, array: false, default: null }, // JSON string for additional data
+    ],
+    indexes: [
+      { key: 'articleId', type: 'key', attributes: ['articleId'] },
+      { key: 'blogId', type: 'key', attributes: ['blogId'] },
+      { key: 'authorId', type: 'key', attributes: ['authorId'] },
+      { key: 'targetType', type: 'key', attributes: ['targetType'] },
+      { key: 'targetId', type: 'key', attributes: ['targetId'] },
+      { key: 'parentCommentId', type: 'key', attributes: ['parentCommentId'] },
+      { key: 'isResolved', type: 'key', attributes: ['isResolved'] },
+      { key: 'createdAt', type: 'key', attributes: ['$createdAt'] },
+      { key: 'articleId_targetType', type: 'key', attributes: ['articleId', 'targetType'] },
+      { key: 'articleId_targetId', type: 'key', attributes: ['articleId', 'targetId'] },
+      { key: 'blogId_articleId', type: 'key', attributes: ['blogId', 'articleId'] },
+      { key: 'parentCommentId_createdAt', type: 'key', attributes: ['parentCommentId', '$createdAt'] },
+      { key: 'isResolved_createdAt', type: 'key', attributes: ['isResolved', '$createdAt'] },
+    ],
+  },
 };
 
 // Storage configuration

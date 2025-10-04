@@ -76,3 +76,19 @@ export type Blogs = Models.Document & {
     seoKeywords: string[] | null;
 }
 
+export type Comments = Models.Document & {
+    content: string;
+    authorId: string;
+    authorName: string;
+    authorEmail: string;
+    articleId: string;
+    blogId: string;
+    targetType: string; // 'title', 'subtitle', 'body', 'section', 'image', etc.
+    targetId: string | null; // For specific sections or blocks
+    parentCommentId: string | null; // For replies
+    isResolved: boolean;
+    resolvedBy: string | null;
+    resolvedAt: string | null;
+    metadata: string | null; // JSON string for additional data
+}
+
