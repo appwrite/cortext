@@ -48,6 +48,35 @@
           document.documentElement.classList.add(theme);
         }
       })();
+      
+      // Fix Chrome on iPad viewport height doubling issue
+      (function() {
+        const isChromeOnIPad = /CriOS/.test(navigator.userAgent) && /iPad/.test(navigator.userAgent);
+        const isChromeOnTablet = /Chrome/.test(navigator.userAgent) && window.innerWidth >= 768 && window.innerWidth <= 1024;
+        
+        if (isChromeOnIPad || isChromeOnTablet) {
+          document.documentElement.classList.add('chrome-ipad-fix');
+          
+          // Force correct viewport height
+          function fixViewportHeight() {
+            const vh = window.innerHeight * 0.01;
+            document.documentElement.style.setProperty('--vh', vh + 'px');
+            
+            const mainContainer = document.querySelector('.ios-viewport-fix');
+            if (mainContainer) {
+              mainContainer.style.height = window.innerHeight + 'px';
+              mainContainer.style.maxHeight = window.innerHeight + 'px';
+            }
+          }
+          
+          // Apply fix immediately and on resize
+          fixViewportHeight();
+          window.addEventListener('resize', fixViewportHeight);
+          window.addEventListener('orientationchange', function() {
+            setTimeout(fixViewportHeight, 100);
+          });
+        }
+      })();
     </script>
   </head>
   <body>
