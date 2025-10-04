@@ -11,7 +11,7 @@ import { BlogSettingsModal } from './blog-settings-modal'
 import { useTeamBlog } from '@/hooks/use-team-blog'
 import { useTeamBlogContext } from '@/contexts/team-blog-context'
 import { getTeamsClient } from '@/lib/appwrite'
-import { cn } from '@/lib/utils'
+import { cn, truncateText } from '@/lib/utils'
 
 interface TeamBlogSelectorProps {
   userId: string
@@ -60,9 +60,9 @@ export function TeamBlogSelector({ userId }: TeamBlogSelectorProps) {
       return 'Create Team'
     }
     if (!currentBlog) {
-      return `${currentTeam.name} / Create Blog`
+      return `${truncateText(currentTeam.name, 15)} / Create Blog`
     }
-    return `${currentTeam.name} / ${currentBlog.name}`
+    return `${truncateText(currentTeam.name, 15)} / ${truncateText(currentBlog.name, 15)}`
   }
 
   const getButtonIcon = () => {
@@ -126,7 +126,7 @@ export function TeamBlogSelector({ userId }: TeamBlogSelectorProps) {
         {getButtonIcon()}
         <span className="hidden sm:inline">{getButtonText()}</span>
         <span className="sm:hidden">
-          {currentTeam ? currentTeam.name : 'Team'}
+          {currentTeam ? truncateText(currentTeam.name, 10) : 'Team'}
         </span>
         <ChevronDown className="h-4 w-4" />
       </Button>
@@ -149,6 +149,7 @@ export function TeamBlogSelector({ userId }: TeamBlogSelectorProps) {
                       setCurrentTeam={setCurrentTeam}
                       setCurrentBlog={setCurrentBlog}
                       onBlogSelect={handleBlogSelect}
+                      isOpen={isOpen}
                     />
           </div>
         </>

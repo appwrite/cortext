@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { db } from '@/lib/appwrite/db'
 import { getTeamsClient } from '@/lib/appwrite'
@@ -16,7 +16,7 @@ import {
 } from 'lucide-react'
 import { useTeamBlog } from '@/hooks/use-team-blog'
 import { useTeamBlogContext } from '@/contexts/team-blog-context'
-import { cn } from '@/lib/utils'
+import { cn, truncateText } from '@/lib/utils'
 import type { Blogs } from '@/lib/appwrite/appwrite.types'
 
 interface TeamBlogDropdownProps {
@@ -29,15 +29,23 @@ interface TeamBlogDropdownProps {
   setCurrentTeam: (team: any) => void
   setCurrentBlog: (blog: any) => void
   onBlogSelect?: () => void
+  isOpen?: boolean
 }
 
-export function TeamBlogDropdown({ userId, onClose, onCreateTeam, onCreateBlog, onTeamSettings, onBlogSettings, setCurrentTeam, setCurrentBlog, onBlogSelect }: TeamBlogDropdownProps) {
+export function TeamBlogDropdown({ userId, onClose, onCreateTeam, onCreateBlog, onTeamSettings, onBlogSettings, setCurrentTeam, setCurrentBlog, onBlogSelect, isOpen }: TeamBlogDropdownProps) {
   const [teamSearch, setTeamSearch] = useState('')
   const [blogSearch, setBlogSearch] = useState('')
   const { currentTeam, currentBlog } = useTeamBlogContext()
   
   // Initialize with current team from top nav
   const [selectedTeamForBlogs, setSelectedTeamForBlogs] = useState<any>(currentTeam)
+  
+  // Refs for scroll containers
+  const teamsScrollRef = useRef<HTMLDivElement>(null)
+  const blogsScrollRef = useRef<HTMLDivElement>(null)
+  
+  // Track if we've already scrolled on this popover open
+  const hasScrolledOnOpen = useRef(false)
 
   // Update selected team when current team changes
   useEffect(() => {
@@ -80,6 +88,41 @@ export function TeamBlogDropdown({ userId, onClose, onCreateTeam, onCreateBlog, 
   const filteredBlogs = blogs?.filter(blog => 
     blog.name.toLowerCase().includes(blogSearch.toLowerCase())
   ) || []
+
+  // Reset scroll flag when popover closes
+  useEffect(() => {
+    if (!isOpen) {
+      hasScrolledOnOpen.current = false
+    }
+  }, [isOpen])
+
+  // Scroll to selected team when popover opens (only once)
+  useEffect(() => {
+    if (isOpen && !hasScrolledOnOpen.current && teamsScrollRef.current && currentTeam && filteredTeams.length > 0) {
+      const selectedTeamElement = teamsScrollRef.current.querySelector(`[data-team-id="${currentTeam.$id}"]`)
+      if (selectedTeamElement) {
+        selectedTeamElement.scrollIntoView({ 
+          behavior: 'smooth', 
+          block: 'center' 
+        })
+        hasScrolledOnOpen.current = true
+      }
+    }
+  }, [isOpen, currentTeam, filteredTeams])
+
+  // Scroll to selected blog when popover opens (only once)
+  useEffect(() => {
+    if (isOpen && !hasScrolledOnOpen.current && blogsScrollRef.current && currentBlog && filteredBlogs.length > 0) {
+      const selectedBlogElement = blogsScrollRef.current.querySelector(`[data-blog-id="${currentBlog.$id}"]`)
+      if (selectedBlogElement) {
+        selectedBlogElement.scrollIntoView({ 
+          behavior: 'smooth', 
+          block: 'center' 
+        })
+        hasScrolledOnOpen.current = true
+      }
+    }
+  }, [isOpen, currentBlog, filteredBlogs])
 
   const handleTeamSelect = (team: any) => {
     // Only update local state for blog list filtering
@@ -149,7 +192,7 @@ export function TeamBlogDropdown({ userId, onClose, onCreateTeam, onCreateBlog, 
         
         <div className="p-4 flex-1 flex flex-col min-h-0">
           <h3 className="text-sm font-medium border-b pt-2 pb-2">Teams</h3>
-          <ScrollArea className="flex-1">
+          <ScrollArea className="flex-1" ref={teamsScrollRef}>
             <div className="pt-2 pb-2">
             {filteredTeams.length === 0 ? (
               <div className="text-center py-8">
@@ -174,6 +217,7 @@ export function TeamBlogDropdown({ userId, onClose, onCreateTeam, onCreateBlog, 
                   return (
                     <div
                       key={team.$id}
+                      data-team-id={team.$id}
                       onClick={() => handleTeamSelect(team)}
                       className={cn(
                         "flex items-center gap-2 px-2 py-1.5 rounded cursor-pointer transition-colors hover:bg-accent",
@@ -184,7 +228,9 @@ export function TeamBlogDropdown({ userId, onClose, onCreateTeam, onCreateBlog, 
                       {team.name.split(' ').map(word => word[0]).join('').slice(0, 2).toUpperCase()}
                     </div>
                     <div className="flex-1 min-w-0">
-                      <p className="text-sm font-medium truncate">{team.name}</p>
+                      <p className="text-sm font-medium" title={team.name}>
+                        {truncateText(team.name, 25)}
+                      </p>
                     </div>
                     <Button
                       variant="ghost"
@@ -233,7 +279,7 @@ export function TeamBlogDropdown({ userId, onClose, onCreateTeam, onCreateBlog, 
         
         <div className="p-4 flex-1 flex flex-col min-h-0">
           <h3 className="text-sm font-medium border-b pt-2 pb-2">Blogs</h3>
-          <ScrollArea className="flex-1">
+          <ScrollArea className="flex-1" ref={blogsScrollRef}>
             <div className="pt-2 pb-2">
             {!selectedTeamForBlogs ? (
               <div className="text-center py-8">
@@ -255,6 +301,7 @@ export function TeamBlogDropdown({ userId, onClose, onCreateTeam, onCreateBlog, 
                 {filteredBlogs.map((blog) => (
                   <div
                     key={blog.$id}
+                    data-blog-id={blog.$id}
                     onClick={() => handleBlogSelect(blog)}
                     className={cn(
                       "flex items-center gap-2 px-2 py-1.5 rounded cursor-pointer transition-colors hover:bg-accent",
@@ -265,10 +312,12 @@ export function TeamBlogDropdown({ userId, onClose, onCreateTeam, onCreateBlog, 
                       {blog.name.split(' ').map(word => word[0]).join('').slice(0, 2).toUpperCase()}
                     </div>
                     <div className="flex-1 min-w-0">
-                      <p className="text-sm font-medium truncate">{blog.name}</p>
+                      <p className="text-sm font-medium" title={blog.name}>
+                        {truncateText(blog.name, 25)}
+                      </p>
                       {blog.description && (
-                        <p className="text-xs text-muted-foreground truncate">
-                          {blog.description}
+                        <p className="text-xs text-muted-foreground" title={blog.description}>
+                          {truncateText(blog.description, 30)}
                         </p>
                       )}
                     </div>
