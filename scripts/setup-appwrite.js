@@ -210,7 +210,7 @@ const COLLECTIONS = {
       { key: 'description', type: 'string', size: 1024, required: false, array: false, default: null },
       { key: 'model', type: 'string', size: 100, required: true, array: false, default: null },
       { key: 'apiKey', type: 'string', size: 512, required: true, array: false, default: null }, // Encrypted
-      { key: 'temperature', type: 'float', required: false, array: false, default: 0.7, min: null, max: null },
+      { key: 'temperature', type: 'float', required: false, array: false, default: 0.7, min: undefined, max: undefined },
       { key: 'maxTokens', type: 'integer', required: false, array: false, default: 2000 },
       { key: 'systemPrompt', type: 'string', size: 10000, required: false, array: false, default: null },
       { key: 'capabilities', type: 'string', size: 512, required: false, array: true, default: null },
@@ -382,6 +382,12 @@ async function ensureAttribute(collectionId, attribute) {
               attribute.array
             );
           case 'float':
+            console.log(`🔍 Creating float attribute '${attribute.key}':`);
+            console.log(`   min: ${attribute.min} (type: ${typeof attribute.min})`);
+            console.log(`   max: ${attribute.max} (type: ${typeof attribute.max})`);
+            console.log(`   min !== undefined: ${attribute.min !== undefined}`);
+            console.log(`   max !== undefined: ${attribute.max !== undefined}`);
+            
             const floatParams = [
               DATABASE_ID,
               collectionId,
@@ -393,10 +399,14 @@ async function ensureAttribute(collectionId, attribute) {
             
             // Add min and max only if both are explicitly defined
             if (attribute.min !== undefined && attribute.max !== undefined) {
+              console.log(`   Adding min (${attribute.min}) and max (${attribute.max}) parameters`);
               floatParams.push(attribute.min);
               floatParams.push(attribute.max);
+            } else {
+              console.log(`   Skipping min/max parameters`);
             }
             
+            console.log(`   Final params:`, floatParams);
             return databases.createFloatAttribute(...floatParams);
           case 'boolean':
             return databases.createBooleanAttribute(
