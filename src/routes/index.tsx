@@ -295,7 +295,7 @@ function Index() {
                 <div className="mx-auto max-w-5xl">
                     <div className="text-center mb-12">
                         <h2 className="text-2xl font-semibold tracking-tight md:text-3xl mb-3">Thoughtfully designed for developers</h2>
-                        <p className="text-foreground/70">Simple REST API that integrates seamlessly with your existing workflow.</p>
+                        <p className="text-foreground/70">Built by the engineers behind Appwrite, Imagine, Open Runtimes and Refetch to integrates seamlessly with your existing workflow.</p>
                     </div>
 
                     <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-center">
