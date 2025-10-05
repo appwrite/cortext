@@ -9,6 +9,7 @@ interface CommentListProps {
   targetType: string;
   targetId?: string;
   onCommentAdded?: (commentId: string) => void;
+  showResolveButton?: boolean;
 }
 
 export interface CommentListRef {
@@ -20,7 +21,8 @@ export const CommentList = forwardRef<CommentListRef, CommentListProps>(({
   blogId, 
   targetType, 
   targetId,
-  onCommentAdded
+  onCommentAdded,
+  showResolveButton = true
 }, ref) => {
   const { 
     allComments,
@@ -118,6 +120,7 @@ export const CommentList = forwardRef<CommentListRef, CommentListProps>(({
               blogId={blogId}
               targetType={targetType}
               targetId={targetId}
+              showResolveButton={showResolveButton}
             />
           </div>
         ))}

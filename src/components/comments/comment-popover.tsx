@@ -156,6 +156,7 @@ export function CommentPopover({
                 blogId={blogId}
                 targetType={targetType}
                 targetId={targetId}
+                showResolveButton={false}
                 onCommentAdded={(commentId) => {
                   // Focus will be handled by CommentList
                 }}

@@ -19,6 +19,7 @@ interface CommentItemProps {
   blogId: string;
   targetType: string;
   targetId?: string;
+  showResolveButton?: boolean;
 }
 
 export function CommentItem({ 
@@ -29,7 +30,8 @@ export function CommentItem({
   articleId,
   blogId,
   targetType,
-  targetId
+  targetId,
+  showResolveButton = true
 }: CommentItemProps) {
   const { user } = useAuth();
   const [isResolving, setIsResolving] = useState(false);
@@ -228,7 +230,7 @@ export function CommentItem({
           )}
           
           <div className="flex items-center space-x-2 mt-2">
-            {canResolve && (
+            {canResolve && showResolveButton && (
               <Button
                 variant="ghost"
                 size="sm"
