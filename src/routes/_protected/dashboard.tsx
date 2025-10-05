@@ -922,6 +922,11 @@ function ArticleEditor({ articleId, userId, onBack }: { articleId: string; userI
                     textContent = section.content || ''
                     break
                 case 'image':
+                    textContent = section.caption || ''
+                    // Count actual selected images, not just image sections
+                    const imageIds = section.imageIds || (section.mediaId ? [section.mediaId] : [])
+                    totalAssets += imageIds.length
+                    break
                 case 'video':
                 case 'map':
                     textContent = section.caption || ''
