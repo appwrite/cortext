@@ -657,77 +657,86 @@ async function deployFunction(functionId, functionPath) {
     
     log(`Read function files: index.js (${indexContent.length} chars), package.json (${packageContent.length} chars)`, 'info');
     
-    // Create a simple zip-like structure manually
-    // This is a basic approach - for production, you might want to use a proper zip library
-    const { execSync } = await import('child_process');
-    const { tmpdir } = await import('os');
-    const { writeFileSync, unlinkSync, mkdirSync } = await import('fs');
+    // Create a simple tar.gz archive using Node.js without external CLI tools
+    const { createGzip } = await import('zlib');
+    const { pipeline } = await import('stream/promises');
+    const { Readable, PassThrough } = await import('stream');
     
-    const tempDir = tmpdir();
-    const tempFunctionDir = pathJoin(tempDir, `${functionId}-temp`);
-    const zipPath = pathJoin(tempDir, `${functionId}-deployment.zip`);
+    // Create tar-like structure manually
+    const createTarEntry = (name, content) => {
+      const header = Buffer.alloc(512);
+      const nameBuffer = Buffer.from(name, 'utf8');
+      
+      // Write filename (100 bytes)
+      nameBuffer.copy(header, 0, 0, Math.min(100, nameBuffer.length));
+      
+      // Write file mode (8 bytes) - 0644
+      header.write('0000644', 100, 7, 'utf8');
+      
+      // Write owner ID (8 bytes)
+      header.write('0000000', 108, 7, 'utf8');
+      
+      // Write group ID (8 bytes)
+      header.write('0000000', 116, 7, 'utf8');
+      
+      // Write file size (12 bytes)
+      const size = content.length;
+      header.write(size.toString(8).padStart(11, '0'), 124, 11, 'utf8');
+      
+      // Write modification time (12 bytes)
+      const mtime = Math.floor(Date.now() / 1000);
+      header.write(mtime.toString(8).padStart(11, '0'), 136, 11, 'utf8');
+      
+      // Write type flag (1 byte) - regular file
+      header.write('0', 156, 1, 'utf8');
+      
+      // Write checksum placeholder (8 bytes)
+      header.write('        ', 148, 8, 'utf8');
+      
+      // Calculate and write checksum
+      let checksum = 0;
+      for (let i = 0; i < 512; i++) {
+        checksum += header[i];
+      }
+      header.write(checksum.toString(8).padStart(6, '0') + ' ', 148, 8, 'utf8');
+      
+      return Buffer.concat([header, content, Buffer.alloc((512 - (content.length % 512)) % 512)]);
+    };
     
-    try {
-      // Create temporary directory
-      mkdirSync(tempFunctionDir, { recursive: true });
-      
-      // Copy files to temp directory
-      writeFileSync(pathJoin(tempFunctionDir, 'index.js'), indexContent);
-      writeFileSync(pathJoin(tempFunctionDir, 'package.json'), packageContent);
-      
-      // Create zip file
-      try {
-        execSync(`cd "${tempFunctionDir}" && zip -r "${zipPath}" .`, { stdio: 'pipe' });
-      } catch (zipError) {
-        // Fallback: try with different zip command
-        try {
-          const tarPath = zipPath.replace('.zip', '.tar.gz');
-          execSync(`cd "${tempFunctionDir}" && tar -czf "${tarPath}" .`, { stdio: 'pipe' });
-          // Rename tar.gz to zip (Appwrite accepts both)
-          execSync(`mv "${tarPath}" "${zipPath}"`, { stdio: 'pipe' });
-        } catch (tarError) {
-          throw new Error(`Failed to create deployment archive: ${zipError.message}. Tar error: ${tarError.message}`);
-        }
-      }
-      
-      // Verify zip file was created
-      if (!existsSync(zipPath)) {
-        throw new Error('Failed to create deployment archive - zip file not found');
-      }
-      
-      // Read the zip file
-      const zipBuffer = readFileSync(zipPath);
-      
-      if (zipBuffer.length === 0) {
-        throw new Error('Deployment archive is empty');
-      }
-      
-      log(`Created deployment archive (${zipBuffer.length} bytes)`, 'info');
-      
-      // Create deployment
-      const deployment = await functions.createDeployment(
-        functionId,
-        'main', // deploymentId
-        zipBuffer
-      );
-      
-      // Clean up temp files
-      unlinkSync(zipPath);
-      execSync(`rm -rf "${tempFunctionDir}"`, { stdio: 'pipe' });
-      
-      log(`Function '${functionId}' deployed successfully with ID: ${deployment.$id}`, 'success');
-      return deployment;
-      
-    } catch (error) {
-      // Clean up temp files on error
-      try {
-        if (existsSync(zipPath)) unlinkSync(zipPath);
-        if (existsSync(tempFunctionDir)) execSync(`rm -rf "${tempFunctionDir}"`, { stdio: 'pipe' });
-      } catch (cleanupError) {
-        // Ignore cleanup errors
-      }
-      throw error;
+    // Create tar entries
+    const indexEntry = createTarEntry('index.js', Buffer.from(indexContent, 'utf8'));
+    const packageEntry = createTarEntry('package.json', Buffer.from(packageContent, 'utf8'));
+    
+    // Combine entries
+    const tarData = Buffer.concat([indexEntry, packageEntry, Buffer.alloc(1024)]); // Two empty blocks at end
+    
+    log(`Created tar data (${tarData.length} bytes)`, 'info');
+    
+    // Compress with gzip
+    const gzip = createGzip();
+    const tarStream = Readable.from(tarData);
+    const gzipStream = new PassThrough();
+    
+    await pipeline(tarStream, gzip, gzipStream);
+    
+    // Collect compressed data
+    const chunks = [];
+    for await (const chunk of gzipStream) {
+      chunks.push(chunk);
     }
+    const zipBuffer = Buffer.concat(chunks);
+    
+    log(`Created compressed archive (${zipBuffer.length} bytes)`, 'info');
+    
+    // Create deployment
+    const deployment = await functions.createDeployment(
+      functionId,
+      'main', // deploymentId
+      zipBuffer
+    );
+    
+    log(`Function '${functionId}' deployed successfully with ID: ${deployment.$id}`, 'success');
+    return deployment;
     
   } catch (error) {
     log(`Failed to deploy function '${functionId}': ${error.message}`, 'error');
