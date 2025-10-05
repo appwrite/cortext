@@ -353,8 +353,10 @@ const APPWRITE_FUNCTIONS = {
     scopes: [
       'databases.read',
       'databases.write',
-      'databases.update',
-      'databases.delete'
+      'collections.read',
+      'collections.write',
+      'documents.read',
+      'documents.write'
     ],
     variables: {
       'APPWRITE_DATABASE_ID': DATABASE_ID
