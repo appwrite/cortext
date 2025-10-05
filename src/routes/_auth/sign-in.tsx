@@ -36,7 +36,7 @@ function RouteComponent() {
       account.createEmailPasswordSession(data.email, data.password),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["auth", "user"] });
-      navigate({ to: search.redirect ?? "/" });
+      navigate({ to: search.redirect ?? "/dashboard" });
     },
   });
 

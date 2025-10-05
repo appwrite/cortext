@@ -78,7 +78,7 @@ function RouteComponent() {
       },
       onSuccess: () => {
         queryClient.invalidateQueries({ queryKey: ["auth", "user"] });
-        navigate({ to: search.redirect ?? "/" });
+        navigate({ to: search.redirect ?? "/dashboard" });
       },
     });
   };
