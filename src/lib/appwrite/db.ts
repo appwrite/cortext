@@ -1,5 +1,5 @@
 import { Client, Databases, ID, Permission, Role, type Models } from 'appwrite';
-import type { Articles, Authors, Categories, Images, Notifications, Blogs, Comments } from './appwrite.types';
+import type { Articles, Authors, Categories, Images, Notifications, Blogs, Comments, Conversations, Messages } from './appwrite.types';
 
 // Environment variables validation
 const APPWRITE_ENDPOINT = import.meta.env.VITE_APPWRITE_ENDPOINT;
@@ -169,6 +169,60 @@ export const db = {
       databases.deleteDocument(APPWRITE_DATABASE_ID, 'comments', id),
     list: (queries?: string[]) => 
       databases.listDocuments<Comments>(APPWRITE_DATABASE_ID, 'comments', queries),
+  },
+  conversations: {
+    create: (data: Omit<Conversations, keyof Models.Document>, userId: string, teamId?: string) => 
+      databases.createDocument<Conversations>(
+        APPWRITE_DATABASE_ID, 
+        'conversations', 
+        ID.unique(), 
+        data,
+        [
+          Permission.read(Role.user(userId)),
+          Permission.update(Role.user(userId)),
+          Permission.delete(Role.user(userId)),
+          ...(teamId ? [
+            Permission.read(Role.team(teamId)),
+            Permission.update(Role.team(teamId)),
+            Permission.delete(Role.team(teamId))
+          ] : [])
+        ]
+      ),
+    get: (id: string) => 
+      databases.getDocument<Conversations>(APPWRITE_DATABASE_ID, 'conversations', id),
+    update: (id: string, data: Partial<Omit<Conversations, keyof Models.Document>>) => 
+      databases.updateDocument<Conversations>(APPWRITE_DATABASE_ID, 'conversations', id, data),
+    delete: (id: string) => 
+      databases.deleteDocument(APPWRITE_DATABASE_ID, 'conversations', id),
+    list: (queries?: string[]) => 
+      databases.listDocuments<Conversations>(APPWRITE_DATABASE_ID, 'conversations', queries),
+  },
+  messages: {
+    create: (data: Omit<Messages, keyof Models.Document>, userId: string, teamId?: string) => 
+      databases.createDocument<Messages>(
+        APPWRITE_DATABASE_ID, 
+        'messages', 
+        ID.unique(), 
+        data,
+        [
+          Permission.read(Role.user(userId)),
+          Permission.update(Role.user(userId)),
+          Permission.delete(Role.user(userId)),
+          ...(teamId ? [
+            Permission.read(Role.team(teamId)),
+            Permission.update(Role.team(teamId)),
+            Permission.delete(Role.team(teamId))
+          ] : [])
+        ]
+      ),
+    get: (id: string) => 
+      databases.getDocument<Messages>(APPWRITE_DATABASE_ID, 'messages', id),
+    update: (id: string, data: Partial<Omit<Messages, keyof Models.Document>>) => 
+      databases.updateDocument<Messages>(APPWRITE_DATABASE_ID, 'messages', id, data),
+    delete: (id: string) => 
+      databases.deleteDocument(APPWRITE_DATABASE_ID, 'messages', id),
+    list: (queries?: string[]) => 
+      databases.listDocuments<Messages>(APPWRITE_DATABASE_ID, 'messages', queries),
   }
 };
 

@@ -92,3 +92,23 @@ export type Comments = Models.Document & {
     metadata: string | null; // JSON string for additional data
 }
 
+export type Conversations = Models.Document & {
+    articleId: string;
+    title: string;
+    userId: string;
+    agentId: string;
+    blogId: string | null;
+    lastMessageAt: string | null;
+    messageCount: number;
+}
+
+export type Messages = Models.Document & {
+    conversationId: string;
+    role: 'user' | 'assistant';
+    content: string;
+    userId: string;
+    agentId: string;
+    blogId: string | null;
+    metadata: string | null; // JSON string for additional data like AI model used, etc.
+}
+

@@ -1,10 +1,14 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useRef, useState, useCallback } from 'react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { Drawer, DrawerContent, DrawerHeader, DrawerTitle } from '@/components/ui/drawer'
 import { Brain, Sparkles, Send, MessageCircle } from 'lucide-react'
 import { useIsMobile } from '@/hooks/use-mobile'
+import { useConversationManager, useMessages } from '@/hooks/use-conversations'
+import { ConversationSelector } from './conversation-selector'
+import { useAuth } from '@/hooks/use-auth'
+import type { Messages } from '@/lib/appwrite/appwrite.types'
 
 type Message = {
     id: string
@@ -17,27 +21,80 @@ export function AgentChat({
     subtitle,
     onSetTitle,
     onSetSubtitle,
+    articleId,
+    blogId,
 }: {
     title: string
     subtitle: string
     onSetTitle: (t: string) => void
     onSetSubtitle: (s: string) => void
+    articleId: string
+    blogId?: string
 }) {
+    const { user } = useAuth()
     const [input, setInput] = useState('')
-    const [messages, setMessages] = useState<Message[]>([
+    const [currentConversationId, setCurrentConversationId] = useState<string | null>(null)
+    const [isDrawerOpen, setIsDrawerOpen] = useState(false)
+    const isMobile = useIsMobile()
+
+    const {
+        conversations,
+        isLoadingConversations,
+        createConversation,
+        getOrCreateFirstConversation,
+    } = useConversationManager(articleId, user?.$id || '')
+
+    const {
+        messages: dbMessages,
+        isLoadingMessages,
+        createMessage,
+        isCreatingMessage,
+    } = useMessages(currentConversationId, blogId)
+
+    // Convert database messages to local format
+    const messages: Message[] = dbMessages.map((msg: Messages) => ({
+        id: msg.$id,
+        role: msg.role,
+        content: msg.content,
+    }))
+
+    // Memoize the conversation creation function to prevent infinite loops
+    const createInitialConversation = useCallback(async () => {
+        if (conversations.length === 0 && !currentConversationId && !isLoadingConversations) {
+            try {
+                const newConversation = await createConversation({
+                    title: 'New conversation',
+                    blogId,
+                })
+                setCurrentConversationId(newConversation.$id)
+            } catch (error) {
+                console.error('Failed to create initial conversation:', error)
+            }
+        }
+    }, [conversations.length, currentConversationId, isLoadingConversations, createConversation, blogId])
+
+    // Initialize conversation when component mounts or when conversations are loaded
+    useEffect(() => {
+        if (conversations.length > 0 && !currentConversationId) {
+            setCurrentConversationId(conversations[0].$id)
+        } else if (conversations.length === 0 && !currentConversationId && !isLoadingConversations) {
+            createInitialConversation()
+        }
+    }, [conversations, currentConversationId, isLoadingConversations, createInitialConversation])
+
+    // Show welcome messages if no conversation is selected and no messages exist
+    const displayMessages = messages.length > 0 ? messages : [
         {
-            id: 'm1',
-            role: 'assistant',
+            id: 'welcome-1',
+            role: 'assistant' as const,
             content: "Hi! I'm your AI co-writer. I can help punch up your title, draft a subtitle, or suggest section ideas.",
         },
         {
-            id: 'm2',
-            role: 'assistant',
+            id: 'welcome-2',
+            role: 'assistant' as const,
             content: 'Try one of the quick actions below or ask me to rewrite the intro.',
         },
-    ])
-    const [isDrawerOpen, setIsDrawerOpen] = useState(false)
-    const isMobile = useIsMobile()
+    ]
 
     // Precisely align with the app header; footer does not occupy the left rail
     const [topOffset, setTopOffset] = useState<number>(64) // header fallback
@@ -67,46 +124,74 @@ export function AgentChat({
     const bottomRef = useRef<HTMLDivElement | null>(null)
     useEffect(() => {
         bottomRef.current?.scrollIntoView({ behavior: 'smooth', block: 'end' })
-    }, [messages.length])
+    }, [displayMessages.length])
 
-    const send = () => {
+    const send = async () => {
         const text = input.trim()
-        if (!text) return
-        const id = `u-${Date.now()}`
-        setMessages((prev) => [...prev, { id, role: 'user', content: text }])
-        setInput('')
-        // Mock assistant reply
-        const replyId = `a-${Date.now()}`
-        const reply = mockReply(text, title)
-        setTimeout(() => {
-            setMessages((prev) => [...prev, { id: replyId, role: 'assistant', content: reply }])
-        }, 250)
+        if (!text || !currentConversationId) return
+
+        try {
+            // Create user message
+            await createMessage({
+                role: 'user',
+                content: text,
+                userId: user?.$id || '',
+            })
+
+            setInput('')
+
+            // Create assistant reply
+            const reply = mockReply(text, title)
+            await createMessage({
+                role: 'assistant',
+                content: reply,
+                userId: user?.$id || '',
+            })
+        } catch (error) {
+            console.error('Failed to send message:', error)
+        }
     }
 
-    const applySEOTitle = () => {
+    const applySEOTitle = async () => {
         const next = makeSEOTitle(title)
         onSetTitle(next)
-        setMessages((prev) => [
-            ...prev,
-            { id: `a-${Date.now()}`, role: 'assistant', content: `Updated title to: "${next}"` },
-        ])
+        
+        if (!currentConversationId) return
+
+        try {
+            await createMessage({
+                role: 'assistant',
+                content: `Updated title to: "${next}"`,
+                userId: user?.$id || '',
+            })
+        } catch (error) {
+            console.error('Failed to create message:', error)
+        }
     }
 
-    const generateMetaDescription = () => {
+    const generateMetaDescription = async () => {
         const base = title || 'this article'
         const next = `Learn about ${base.toLowerCase()} with practical insights, best practices, and actionable tips. Discover how to implement and optimize for better results.`
         onSetSubtitle(next)
-        setMessages((prev) => [
-            ...prev,
-            { id: `a-${Date.now()}`, role: 'assistant', content: 'Drafted a new meta description. Feel free to tweak it.' },
-        ])
+        
+        if (!currentConversationId) return
+
+        try {
+            await createMessage({
+                role: 'assistant',
+                content: 'Drafted a new meta description. Feel free to tweak it.',
+                userId: user?.$id || '',
+            })
+        } catch (error) {
+            console.error('Failed to create message:', error)
+        }
     }
 
     const chatContent = (
         <>
             <ScrollArea className="flex-1">
                 <div className="px-6 py-6 space-y-2">
-                    {messages.map((m) => (
+                    {displayMessages.map((m) => (
                         <div key={m.id} className={m.role === 'assistant' ? 'flex gap-2 items-start' : 'flex justify-end'}>
                             {m.role === 'assistant' && (
                                 <div className="mt-0.5 text-muted-foreground">
@@ -194,7 +279,19 @@ export function AgentChat({
             style={{ top: topOffset, bottom: 0 }}
         >
             <header className="h-12 px-6 border-b flex items-center">
-                <div className="text-xs font-medium">Conversation</div>
+                <ConversationSelector
+                    conversations={conversations}
+                    currentConversationId={currentConversationId}
+                    onSelectConversation={setCurrentConversationId}
+                    onCreateNewConversation={async () => {
+                        const newConversation = await createConversation({
+                            title: `Conversation ${conversations.length + 1}`,
+                            blogId,
+                        })
+                        setCurrentConversationId(newConversation.$id)
+                    }}
+                    isLoading={isLoadingConversations || isCreatingMessage}
+                />
             </header>
             {chatContent}
         </aside>

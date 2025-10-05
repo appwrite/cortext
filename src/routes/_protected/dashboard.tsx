@@ -1099,7 +1099,14 @@ function ArticleEditor({ articleId, userId, onBack }: { articleId: string; userI
 
     return (
         <>
-            <AgentChat title={title} subtitle={subtitle} onSetTitle={setTitle} onSetSubtitle={setExcerpt} />
+            <AgentChat 
+                title={title} 
+                subtitle={subtitle} 
+                onSetTitle={setTitle} 
+                onSetSubtitle={setExcerpt}
+                articleId={articleId}
+                blogId={currentBlog?.$id}
+            />
             <div className="px-6 pt-2 pb-8 ml-0 md:ml-[18rem] lg:ml-[20rem] xl:ml-[24rem]">
                 <div className="flex items-center justify-between">
                     <Button variant="ghost" size="sm" onClick={onBack}>
