@@ -5,6 +5,8 @@ import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Separator } from '@/components/ui/separator'
 import { ThemeSwitcherCompact } from '@/components/ui/theme-switcher'
+import { AccountSettingsModal } from '@/components/account/account-settings-modal'
+import { SessionsModal } from '@/components/account/sessions-modal'
 import { cn } from '@/lib/utils'
 import { toast } from '@/hooks/use-toast'
 import { getAccountClient } from '@/lib/appwrite'
@@ -23,6 +25,8 @@ interface UserAvatarProps {
 
 export function UserAvatar({ user, onSignOut }: UserAvatarProps) {
   const [isOpen, setIsOpen] = useState(false)
+  const [isSettingsOpen, setIsSettingsOpen] = useState(false)
+  const [isSessionsOpen, setIsSessionsOpen] = useState(false)
   const [copiedId, setCopiedId] = useState(false)
   const [isSendingVerification, setIsSendingVerification] = useState(false)
   const containerRef = useRef<HTMLDivElement>(null)
@@ -296,6 +300,22 @@ export function UserAvatar({ user, onSignOut }: UserAvatarProps) {
               <Button
                 variant="ghost"
                 size="sm"
+                onClick={() => {
+                  setIsSessionsOpen(true)
+                  setIsOpen(false)
+                }}
+                className="w-full justify-start cursor-pointer hover:bg-accent"
+              >
+                <Shield className="h-4 w-4 mr-2" />
+                Sessions
+              </Button>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => {
+                  setIsSettingsOpen(true)
+                  setIsOpen(false)
+                }}
                 className="w-full justify-start cursor-pointer hover:bg-accent"
               >
                 <Settings className="h-4 w-4 mr-2" />
@@ -317,6 +337,20 @@ export function UserAvatar({ user, onSignOut }: UserAvatarProps) {
           </div>
         </>
       )}
+      
+      {/* Account Settings Modal */}
+      <AccountSettingsModal
+        isOpen={isSettingsOpen}
+        onClose={() => setIsSettingsOpen(false)}
+        user={user}
+        onSignOut={onSignOut}
+      />
+      
+      {/* Sessions Modal */}
+      <SessionsModal
+        isOpen={isSessionsOpen}
+        onClose={() => setIsSessionsOpen(false)}
+      />
     </div>
   )
 }
