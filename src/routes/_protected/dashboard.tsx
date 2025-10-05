@@ -30,6 +30,7 @@ import { useTeamBlog } from '@/hooks/use-team-blog'
 import { TeamBlogProvider, useTeamBlogContext } from '@/contexts/team-blog-context'
 import { useDocumentTitle } from '@/hooks/use-document-title'
 import { formatDateForDisplay, formatDateCompact, formatDateRelative } from '@/lib/date-utils'
+import { cn } from '@/lib/utils'
 import { CommentableInput, CommentableSection, useCommentCounts, useAllComments, CommentPopover } from '@/components/comments'
 
 export const Route = createFileRoute('/_protected/dashboard')({
@@ -657,6 +658,44 @@ function ArticleEditor({ articleId, userId, onBack }: { articleId: string; userI
     const [rowPositions, setRowPositions] = useState<Record<string, { top: number; height: number }>>({})
     const rowRefs = useRef<Record<string, HTMLTableRowElement>>({})
     const [hideComments, setHideComments] = useState(false)
+    const [hoveredRowId, setHoveredRowId] = useState<string | null>(null)
+    const hoverTimeoutRef = useRef<NodeJS.Timeout | null>(null)
+
+    // Handle hover with delay to prevent flickering when moving to comment button
+    const handleRowMouseEnter = (rowId: string) => {
+        if (hoverTimeoutRef.current) {
+            clearTimeout(hoverTimeoutRef.current)
+        }
+        setHoveredRowId(rowId)
+    }
+
+    const handleRowMouseLeave = () => {
+        hoverTimeoutRef.current = setTimeout(() => {
+            setHoveredRowId(null)
+        }, 150) // 150ms delay
+    }
+
+    const handleCommentButtonMouseEnter = (rowId: string) => {
+        if (hoverTimeoutRef.current) {
+            clearTimeout(hoverTimeoutRef.current)
+        }
+        setHoveredRowId(rowId)
+    }
+
+    const handleCommentButtonMouseLeave = () => {
+        hoverTimeoutRef.current = setTimeout(() => {
+            setHoveredRowId(null)
+        }, 150) // 150ms delay
+    }
+
+    // Cleanup timeout on unmount
+    useEffect(() => {
+        return () => {
+            if (hoverTimeoutRef.current) {
+                clearTimeout(hoverTimeoutRef.current)
+            }
+        }
+    }, [])
 
     // Comment targets for the article
     const commentTargets = [
@@ -1279,7 +1318,10 @@ function ArticleEditor({ articleId, userId, onBack }: { articleId: string; userI
                                                     }}
                                                     onDragOver={(e) => onDragOverRow(s.id, e)}
                                                     onDrop={(e) => onDropRow(s.id, e)}
-                                                    className={`relative ${isTarget ? 'bg-accent/50' : ''} ${borderCue} hover:bg-transparent`}
+                                                    onMouseEnter={() => handleRowMouseEnter(s.id)}
+                                                    onMouseLeave={handleRowMouseLeave}
+                                                    className={`relative group ${isTarget ? 'bg-accent/50' : ''} ${borderCue} hover:bg-transparent`}
+                                                    data-row-id={s.id}
                                                 >
                                                     <TableCell>
                                                         <button
@@ -1340,14 +1382,22 @@ function ArticleEditor({ articleId, userId, onBack }: { articleId: string; userI
                                 const position = rowPositions[s.id]
                                 if (!position) return null // Don't render until position is measured
                                 
+                                const commentCount = getCommentCount('section', s.id).count;
+                                const isHovered = hoveredRowId === s.id;
                                 return (
                                     <div 
                                         key={`comment-${s.id}`}
-                                        className="absolute -right-[64px] flex items-start justify-center pt-2"
+                                        className={cn(
+                                            "absolute -right-[76px] flex items-start justify-center pt-2 transition-opacity duration-200 w-16",
+                                            commentCount > 0 ? "opacity-100" : (isHovered ? "opacity-100" : "opacity-0")
+                                        )}
                                         style={{ 
                                             top: `${position.top}px`,
                                             height: `${position.height}px`
                                         }}
+                                        data-row-id={s.id}
+                                        onMouseEnter={() => handleCommentButtonMouseEnter(s.id)}
+                                        onMouseLeave={handleCommentButtonMouseLeave}
                                     >
                                         <CommentPopover
                                             articleId={articleId}

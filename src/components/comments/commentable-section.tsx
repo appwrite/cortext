@@ -28,7 +28,10 @@ export function CommentableSection({
       </div>
       
       {/* Comment icon positioned in the sidelines outside form border */}
-        <div className="-mr-[64px] ml-6 flex items-center justify-end opacity-100 group-hover:opacity-100 transition-opacity">
+        <div className={cn(
+          "-mr-[64px] ml-6 flex items-center justify-end transition-opacity duration-200",
+          commentCount > 0 ? "opacity-100" : "opacity-0 group-hover:opacity-100"
+        )}>
         <CommentPopover
           articleId={articleId}
           blogId={blogId}
