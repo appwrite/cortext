@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { cn } from '@/lib/utils';
 import { CommentPopover } from './comment-popover';
 
@@ -21,6 +21,16 @@ export function CommentableSection({
   hasNewComments = false,
   className
 }: CommentableSectionProps) {
+  const [isPopoverOpen, setIsPopoverOpen] = useState(false);
+
+  const handlePopoverOpen = () => {
+    setIsPopoverOpen(true);
+  };
+
+  const handlePopoverClose = () => {
+    setIsPopoverOpen(false);
+  };
+
   return (
     <div className={cn("flex items-start group", className)}>
       <div className="flex-1">
@@ -30,7 +40,7 @@ export function CommentableSection({
       {/* Comment icon positioned in the sidelines outside form border */}
         <div className={cn(
           "-mr-[64px] ml-6 flex items-center justify-end transition-opacity duration-200",
-          commentCount > 0 ? "opacity-100" : "opacity-0 group-hover:opacity-100"
+          commentCount > 0 ? "opacity-100" : (isPopoverOpen ? "opacity-100" : "opacity-0 group-hover:opacity-100")
         )}>
         <CommentPopover
           articleId={articleId}
@@ -40,6 +50,8 @@ export function CommentableSection({
           commentCount={commentCount}
           hasNewComments={hasNewComments}
           side="left"
+          onOpen={handlePopoverOpen}
+          onClose={handlePopoverClose}
         />
       </div>
     </div>

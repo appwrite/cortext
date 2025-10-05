@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, forwardRef, useImperativeHandle } from 'react';
 import { Send } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
@@ -18,7 +18,11 @@ interface CommentFormProps {
   className?: string;
 }
 
-export function CommentForm({
+export interface CommentFormRef {
+  focus: () => void;
+}
+
+export const CommentForm = forwardRef<CommentFormRef, CommentFormProps>(({
   articleId,
   blogId,
   targetType,
@@ -27,12 +31,20 @@ export function CommentForm({
   onCommentAdded,
   placeholder = "Add a comment...",
   className
-}: CommentFormProps) {
+}, ref) => {
   const { user } = useAuth();
   const { currentTeam } = useTeamBlogContext();
   const [content, setContent] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const createComment = useCreateComment();
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
+
+  // Expose focus function to parent components
+  useImperativeHandle(ref, () => ({
+    focus: () => {
+      textareaRef.current?.focus();
+    }
+  }));
 
   const handleSubmit = async (e?: React.FormEvent) => {
     if (e) e.preventDefault();
@@ -93,6 +105,7 @@ export function CommentForm({
   return (
     <form onSubmit={handleSubmit} className={cn("space-y-2", className)}>
       <Textarea
+        ref={textareaRef}
         value={content}
         onChange={(e) => setContent(e.target.value)}
         onKeyDown={handleKeyDown}
@@ -125,4 +138,6 @@ export function CommentForm({
       </div>
     </form>
   );
-}
+});
+
+CommentForm.displayName = 'CommentForm';

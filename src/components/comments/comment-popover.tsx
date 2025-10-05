@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { CommentIcon } from './comment-icon';
 import { CommentList } from './comment-list';
-import { CommentForm } from './comment-form';
+import { CommentForm, CommentFormRef } from './comment-form';
 import { cn } from '@/lib/utils';
 
 interface CommentPopoverProps {
@@ -13,6 +13,8 @@ interface CommentPopoverProps {
   hasNewComments?: boolean;
   className?: string;
   side?: 'left' | 'right';
+  onOpen?: () => void;
+  onClose?: () => void;
 }
 
 export function CommentPopover({
@@ -23,13 +25,16 @@ export function CommentPopover({
   commentCount,
   hasNewComments = false,
   className,
-  side = 'right'
+  side = 'right',
+  onOpen,
+  onClose
 }: CommentPopoverProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [popoverPosition, setPopoverPosition] = useState<'bottom' | 'top'>('bottom');
   const containerRef = useRef<HTMLDivElement>(null);
   const popoverRef = useRef<HTMLDivElement>(null);
   const commentListRef = useRef<{ focusComment: (commentId: string) => void } | null>(null);
+  const commentFormRef = useRef<CommentFormRef>(null);
 
   // Calculate popover position and height
   const calculatePosition = () => {
@@ -78,9 +83,15 @@ export function CommentPopover({
     if (isOpen) {
       calculatePosition();
       
+      // Focus the textarea when popover opens
+      setTimeout(() => {
+        commentFormRef.current?.focus();
+      }, 100); // Small delay to ensure the popover is fully rendered
+      
       function handleClickOutside(event: MouseEvent) {
         if (containerRef.current && !containerRef.current.contains(event.target as Node)) {
           setIsOpen(false);
+          onClose?.();
         }
       }
 
@@ -95,7 +106,15 @@ export function CommentPopover({
         <CommentIcon
           commentCount={commentCount}
           hasNewComments={hasNewComments}
-          onClick={() => setIsOpen(!isOpen)}
+          onClick={() => {
+            const newIsOpen = !isOpen;
+            setIsOpen(newIsOpen);
+            if (newIsOpen) {
+              onOpen?.();
+            } else {
+              onClose?.();
+            }
+          }}
         />
       </div>
       
@@ -146,6 +165,7 @@ export function CommentPopover({
             {/* Fixed footer with comment form */}
             <div className="p-3 border-t flex-shrink-0">
               <CommentForm
+                ref={commentFormRef}
                 articleId={articleId}
                 blogId={blogId}
                 targetType={targetType}

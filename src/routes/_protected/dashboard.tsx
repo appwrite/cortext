@@ -659,6 +659,7 @@ function ArticleEditor({ articleId, userId, onBack }: { articleId: string; userI
     const rowRefs = useRef<Record<string, HTMLTableRowElement>>({})
     const [hideComments, setHideComments] = useState(false)
     const [hoveredRowId, setHoveredRowId] = useState<string | null>(null)
+    const [openPopoverId, setOpenPopoverId] = useState<string | null>(null)
     const hoverTimeoutRef = useRef<NodeJS.Timeout | null>(null)
 
     // Handle hover with delay to prevent flickering when moving to comment button
@@ -671,7 +672,10 @@ function ArticleEditor({ articleId, userId, onBack }: { articleId: string; userI
 
     const handleRowMouseLeave = () => {
         hoverTimeoutRef.current = setTimeout(() => {
-            setHoveredRowId(null)
+            // Only hide if no popover is open for this row
+            if (openPopoverId !== hoveredRowId) {
+                setHoveredRowId(null)
+            }
         }, 150) // 150ms delay
     }
 
@@ -684,8 +688,26 @@ function ArticleEditor({ articleId, userId, onBack }: { articleId: string; userI
 
     const handleCommentButtonMouseLeave = () => {
         hoverTimeoutRef.current = setTimeout(() => {
-            setHoveredRowId(null)
+            // Only hide if no popover is open for this row
+            if (openPopoverId !== hoveredRowId) {
+                setHoveredRowId(null)
+            }
         }, 150) // 150ms delay
+    }
+
+    // Handle popover open/close
+    const handlePopoverOpen = (rowId: string) => {
+        setOpenPopoverId(rowId)
+        setHoveredRowId(rowId) // Ensure the button stays visible
+    }
+
+    const handlePopoverClose = () => {
+        setOpenPopoverId(null)
+        // Clear any existing timeouts and hide the button immediately
+        if (hoverTimeoutRef.current) {
+            clearTimeout(hoverTimeoutRef.current)
+        }
+        setHoveredRowId(null)
     }
 
     // Cleanup timeout on unmount
@@ -1384,12 +1406,13 @@ function ArticleEditor({ articleId, userId, onBack }: { articleId: string; userI
                                 
                                 const commentCount = getCommentCount('section', s.id).count;
                                 const isHovered = hoveredRowId === s.id;
+                                const isPopoverOpen = openPopoverId === s.id;
                                 return (
                                     <div 
                                         key={`comment-${s.id}`}
                                         className={cn(
                                             "absolute -right-[76px] flex items-start justify-center pt-2 transition-opacity duration-200 w-16",
-                                            commentCount > 0 ? "opacity-100" : (isHovered ? "opacity-100" : "opacity-0")
+                                            commentCount > 0 ? "opacity-100" : (isHovered || isPopoverOpen ? "opacity-100" : "opacity-0")
                                         )}
                                         style={{ 
                                             top: `${position.top}px`,
@@ -1407,6 +1430,8 @@ function ArticleEditor({ articleId, userId, onBack }: { articleId: string; userI
                                             commentCount={getCommentCount('section', s.id).count}
                                             hasNewComments={getCommentCount('section', s.id).hasNewComments}
                                             side="left"
+                                            onOpen={() => handlePopoverOpen(s.id)}
+                                            onClose={handlePopoverClose}
                                         />
                                     </div>
                                 )

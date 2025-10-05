@@ -170,7 +170,7 @@ export function CommentItem({
         <div className="flex-1 min-w-0">
           <div className="mb-1">
             <div className="flex items-center space-x-2">
-              <span className="text-sm font-medium text-foreground">
+              <span className="text-sm font-medium text-foreground [&_a]:no-underline [&_a]:text-foreground [&_a]:cursor-default">
                 {comment.authorName}
               </span>
               {comment.isResolved && (
@@ -222,7 +222,7 @@ export function CommentItem({
               </div>
             </div>
           ) : (
-            <p className="text-sm text-foreground whitespace-pre-wrap">
+            <p className="text-sm text-foreground whitespace-pre-wrap [&_a]:no-underline [&_a]:text-foreground [&_a]:cursor-default" style={{ wordBreak: 'break-word' }}>
               {comment.content}
             </p>
           )}
