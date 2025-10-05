@@ -1,8 +1,9 @@
 #!/usr/bin/env node
 
-import { Client, Databases, Storage, ID, Permission, Role, Query } from 'node-appwrite';
+import { Client, Databases, Storage, Functions, ID, Permission, Role, Query } from 'node-appwrite';
 import { readFileSync } from 'fs';
 import { join } from 'path';
+import { createReadStream } from 'fs';
 
 /**
  * INDEX LENGTH STRATEGY:
@@ -56,6 +57,7 @@ const client = new Client()
 
 const databases = new Databases(client);
 const storage = new Storage(client);
+const functions = new Functions(client);
 
 // Database configuration
 const DATABASE_ID = APPWRITE_DATABASE_ID;
@@ -337,6 +339,29 @@ const STORAGE_BUCKETS = {
   },
 };
 
+// Functions configuration
+const APPWRITE_FUNCTIONS = {
+  'agent': {
+    name: 'Agent',
+    runtime: 'node-18.0',
+    entrypoint: 'index.js',
+    commands: 'npm install',
+    timeout: 300, // 5 minutes
+    enabled: true,
+    logging: true,
+    execute: ['any'], // Allow any authenticated user to execute
+    scopes: [
+      'databases.read',
+      'databases.write',
+      'databases.update',
+      'databases.delete'
+    ],
+    variables: {
+      'APPWRITE_DATABASE_ID': DATABASE_ID
+    }
+  }
+};
+
 // Utility functions
 function log(message, type = 'info') {
   const icons = { info: 'ℹ️', success: '✅', warning: '⚠️', error: '❌' };
@@ -540,6 +565,116 @@ async function ensureStorageBucket(bucketId, config) {
   }
 }
 
+async function ensureFunction(functionId, config) {
+  try {
+    const existingFunction = await functions.get(functionId);
+    log(`Function '${config.name}' already exists`, 'success');
+    return existingFunction;
+  } catch (error) {
+    if (error.code === 404) {
+      log(`Creating function '${config.name}'...`, 'info');
+      const newFunction = await functions.create({
+        functionId: functionId,
+        name: config.name,
+        runtime: config.runtime,
+        execute: config.execute,
+        timeout: config.timeout,
+        enabled: config.enabled,
+        logging: config.logging,
+        entrypoint: config.entrypoint,
+        commands: config.commands,
+        scopes: config.scopes
+      });
+      log(`Function '${config.name}' created successfully`, 'success');
+      return newFunction;
+    } else {
+      throw error;
+    }
+  }
+}
+
+async function ensureFunctionVariables(functionId, variables) {
+  for (const [key, value] of Object.entries(variables)) {
+    try {
+      // Check if variable exists
+      const existingVariables = await functions.listVariables(functionId);
+      const existingVar = existingVariables.variables.find(v => v.key === key);
+      
+      if (existingVar) {
+        // Update existing variable
+        await functions.updateVariable({
+          functionId: functionId,
+          variableId: existingVar.$id,
+          key: key,
+          value: value,
+          secret: false
+        });
+        log(`Updated function variable '${key}'`, 'success');
+      } else {
+        // Create new variable
+        await functions.createVariable({
+          functionId: functionId,
+          key: key,
+          value: value,
+          secret: false
+        });
+        log(`Created function variable '${key}'`, 'success');
+      }
+    } catch (error) {
+      log(`Failed to set function variable '${key}': ${error.message}`, 'error');
+    }
+  }
+}
+
+async function deployFunction(functionId, functionPath) {
+  try {
+    log(`Deploying function '${functionId}' from ${functionPath}...`, 'info');
+    
+    // Create a zip file of the function directory
+    const { execSync } = await import('child_process');
+    const { tmpdir } = await import('os');
+    const { join: pathJoin } = await import('path');
+    const { writeFileSync, unlinkSync } = await import('fs');
+    
+    const tempDir = tmpdir();
+    const zipPath = pathJoin(tempDir, `${functionId}-deployment.zip`);
+    
+    // Create zip file
+    try {
+      execSync(`cd ${functionPath} && zip -r ${zipPath} .`, { stdio: 'pipe' });
+    } catch (zipError) {
+      // Fallback: try with different zip command
+      try {
+        execSync(`cd ${functionPath} && tar -czf ${zipPath.replace('.zip', '.tar.gz')} .`, { stdio: 'pipe' });
+        // Rename tar.gz to zip (Appwrite accepts both)
+        execSync(`mv ${zipPath.replace('.zip', '.tar.gz')} ${zipPath}`, { stdio: 'pipe' });
+      } catch (tarError) {
+        throw new Error(`Failed to create deployment archive: ${zipError.message}`);
+      }
+    }
+    
+    // Read the zip file
+    const zipBuffer = readFileSync(zipPath);
+    
+    // Create deployment
+    const deployment = await functions.createDeployment(
+      functionId,
+      'main', // deploymentId
+      zipBuffer
+    );
+    
+    // Clean up temp file
+    unlinkSync(zipPath);
+    
+    log(`Function '${functionId}' deployed successfully`, 'success');
+    return deployment;
+    
+  } catch (error) {
+    log(`Failed to deploy function '${functionId}': ${error.message}`, 'error');
+    throw error;
+  }
+}
+
 // Main setup function
 async function setupAppwrite() {
   try {
@@ -572,7 +707,35 @@ async function setupAppwrite() {
       await ensureStorageBucket(bucketId, config);
     }
     
-    log('\n🎉 Appwrite database setup completed successfully!', 'success');
+    // Setup functions
+    log('\n⚡ Setting up functions...', 'info');
+    for (const [functionId, config] of Object.entries(APPWRITE_FUNCTIONS)) {
+      log(`\n📦 Setting up function '${functionId}'...`, 'info');
+      
+      // Create function
+      await ensureFunction(functionId, config);
+      
+      // Set function variables
+      if (config.variables) {
+        await ensureFunctionVariables(functionId, config.variables);
+      }
+      
+      // Deploy function
+      const functionPath = join(process.cwd(), 'functions', functionId);
+      try {
+        await deployFunction(functionId, functionPath);
+      } catch (deployError) {
+        log(`Warning: Could not deploy function '${functionId}': ${deployError.message}`, 'warning');
+        log(`You can manually deploy the function from the Appwrite Console`, 'info');
+      }
+    }
+    
+    log('\n🎉 Appwrite setup completed successfully!', 'success');
+    log('\n📋 Setup Summary:', 'info');
+    log(`   • Database: ${DATABASE_NAME}`, 'info');
+    log(`   • Collections: ${Object.keys(COLLECTIONS).length}`, 'info');
+    log(`   • Storage Buckets: ${Object.keys(STORAGE_BUCKETS).length}`, 'info');
+    log(`   • Functions: ${Object.keys(APPWRITE_FUNCTIONS).length}`, 'info');
     
   } catch (error) {
     log(`❌ Setup failed: ${error.message}`, 'error');

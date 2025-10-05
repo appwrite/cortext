@@ -1,0 +1,16 @@
+{
+  "name": "agent-function",
+  "version": "1.0.0",
+  "description": "Appwrite function for creating agent messages",
+  "main": "index.js",
+  "type": "module",
+  "scripts": {
+    "start": "node index.js"
+  },
+  "dependencies": {
+    "appwrite": "^21.0.0"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}
