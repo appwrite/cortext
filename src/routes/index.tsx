@@ -399,7 +399,7 @@ function Index() {
                         </svg>
                     </div>
                     <blockquote className="text-lg md:text-xl text-foreground/90 font-medium leading-relaxed mb-6">
-                        "We were struggling with content consistency and SEO optimization across our team. Cortext changed that. The AI co-author doesn't just help us write faster - it actually improves the quality of our content and our search visibility. It's like having a senior content strategist on the team who never sleeps."
+                        "Cortext transformed our content consistency and SEO. The AI co-author doesn't just speed up writing - it improves quality and search visibility. It's like having a senior content strategist who never sleeps."
                     </blockquote>
                     <div className="flex flex-col items-center">
                         <div className="text-foreground font-semibold">Laura Du Ry</div>

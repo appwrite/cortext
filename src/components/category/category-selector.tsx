@@ -62,6 +62,8 @@ function SortableCategoryItem({ category, onRemove }: SortableCategoryItemProps)
   const style = {
     transform: CSS.Transform.toString(transform),
     transition,
+    width: 'max-content',
+    minWidth: 'fit-content'
   }
 
   return (
@@ -69,7 +71,7 @@ function SortableCategoryItem({ category, onRemove }: SortableCategoryItemProps)
       ref={setNodeRef}
       style={style}
       className={cn(
-        "inline-flex items-center gap-1 px-2 py-1 bg-black text-white rounded-md text-sm mr-2",
+        "inline-flex items-center gap-1 px-2 py-1 bg-muted text-muted-foreground rounded-md text-sm mr-2",
         isDragging && "opacity-50"
       )}
     >
@@ -84,7 +86,7 @@ function SortableCategoryItem({ category, onRemove }: SortableCategoryItemProps)
       <Button
         variant="ghost"
         size="sm"
-        className="h-4 w-4 p-0 hover:bg-white/20"
+        className="h-4 w-4 p-0 hover:bg-muted-foreground/20"
         onClick={(e) => {
           e.stopPropagation()
           onRemove(category.$id)

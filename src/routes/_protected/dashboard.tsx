@@ -4,6 +4,7 @@ import { useEffect, useMemo, useRef, useState, useCallback, memo } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { db } from '@/lib/appwrite/db'
 import { files } from '@/lib/appwrite/storage'
+import { getAccountClient } from '@/lib/appwrite'
 import type { Articles } from '@/lib/appwrite/appwrite.types'
 import { Query, type Models } from 'appwrite'
 import { Button } from '@/components/ui/button'
@@ -12,10 +13,11 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { Checkbox } from '@/components/ui/checkbox'
+import { Switch } from '@/components/ui/switch'
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog'
 import { Separator } from '@/components/ui/separator'
 import { toast } from '@/hooks/use-toast'
-import { Image as ImageIcon, Plus, Trash2, Save, Video, MapPin, Type as TypeIcon, Upload, ArrowLeft, LogOut, GripVertical, Brain, Loader2, Heading1, Quote, Pin as PinIcon, FileText, Quote as QuoteIcon, Code, ChevronLeft, ChevronRight, MoreHorizontal, Copy } from 'lucide-react'
+import { Image as ImageIcon, Plus, Trash2, Save, Video, MapPin, Type as TypeIcon, Upload, ArrowLeft, LogOut, GripVertical, Brain, Loader2, Heading1, Quote, Pin as PinIcon, FileText, Quote as QuoteIcon, Code, ChevronLeft, ChevronRight, MoreHorizontal, Copy, MessageCircle, Eye, EyeOff } from 'lucide-react'
 import { AgentChat } from '@/components/agent/agent-chat'
 import { AuthorSelector } from '@/components/author'
 import { CategorySelector } from '@/components/category'
@@ -28,6 +30,7 @@ import { useTeamBlog } from '@/hooks/use-team-blog'
 import { TeamBlogProvider, useTeamBlogContext } from '@/contexts/team-blog-context'
 import { useDocumentTitle } from '@/hooks/use-document-title'
 import { formatDateForDisplay, formatDateCompact, formatDateRelative } from '@/lib/date-utils'
+import { CommentableInput, CommentableSection, useCommentCounts, useAllComments, CommentPopover } from '@/components/comments'
 
 export const Route = createFileRoute('/_protected/dashboard')({
     component: RouteComponent,
@@ -115,7 +118,7 @@ function Dashboard({ userId }: { userId: string }) {
     if (editingId) {
         return (
             <main className="flex-1">
-                <div className="px-6 py-6">
+                <div className="px-12 py-6">
                     <ArticleEditor key={editingId} articleId={editingId} userId={userId} onBack={() => navigate({ to: '/dashboard', search: {} })} />
                 </div>
             </main>
@@ -614,7 +617,97 @@ function ArticleEditor({ articleId, userId, onBack }: { articleId: string; userI
         queryFn: () => db.articles.get(articleId),
     })
 
+    // User preferences for hide comments
+    const account = getAccountClient()
+    const { data: userPrefs } = useQuery({
+        queryKey: ['auth', 'preferences'],
+        queryFn: () => account.getPrefs(),
+        retry: false,
+        staleTime: 5 * 60 * 1000, // 5 minutes
+    })
+
+    // Load hide comments preference
+    useEffect(() => {
+        if (userPrefs) {
+            setHideComments(userPrefs.hideComments || false)
+        }
+    }, [userPrefs])
+
+    // Mutation to update hide comments preference
+    const updateHideCommentsMutation = useMutation({
+        mutationFn: async (hide: boolean) => {
+            const currentPrefs = userPrefs || {}
+            const updatedPrefs = { ...currentPrefs, hideComments: hide }
+            return account.updatePrefs(updatedPrefs)
+        },
+        onSuccess: () => {
+            qc.invalidateQueries({ queryKey: ['auth', 'preferences'] })
+            setHideComments(!hideComments)
+        },
+        onError: () => {
+            toast({ 
+                title: 'Failed to update preference', 
+                description: 'Could not save comment visibility setting',
+                variant: 'destructive'
+            })
+        }
+    })
+
     const [localSections, setLocalSections] = useState<any[]>([])
+    const [rowPositions, setRowPositions] = useState<Record<string, { top: number; height: number }>>({})
+    const rowRefs = useRef<Record<string, HTMLTableRowElement>>({})
+    const [hideComments, setHideComments] = useState(false)
+
+    // Comment targets for the article
+    const commentTargets = [
+        { type: 'trailer' },
+        { type: 'title' },
+        { type: 'subtitle' },
+        { type: 'redirect' },
+        ...(localSections?.map(section => ({ type: 'section', id: section.id })) || [])
+    ]
+
+    const { getCommentCount } = useCommentCounts(
+        articleId,
+        currentBlog?.$id || '',
+        commentTargets
+    )
+
+    // Pre-load all comments for the article to eliminate layout shift
+    useAllComments(articleId, currentBlog?.$id || '')
+
+    // Function to measure and update row positions
+    const updateRowPositions = useCallback(() => {
+        const newPositions: Record<string, { top: number; height: number }> = {}
+        const tableContainer = document.querySelector('.sections-table-container')
+        
+        if (tableContainer) {
+            Object.entries(rowRefs.current).forEach(([sectionId, rowElement]) => {
+                if (rowElement) {
+                    const rect = rowElement.getBoundingClientRect()
+                    const containerRect = tableContainer.getBoundingClientRect()
+                    newPositions[sectionId] = {
+                        top: rect.top - containerRect.top,
+                        height: rect.height
+                    }
+                }
+            })
+            setRowPositions(newPositions)
+        }
+    }, [])
+
+    // Update row positions when sections change or after render
+    useEffect(() => {
+        const timer = setTimeout(updateRowPositions, 0) // Use setTimeout to ensure DOM is updated
+        return () => clearTimeout(timer)
+    }, [localSections, updateRowPositions])
+
+    // Update row positions on window resize
+    useEffect(() => {
+        const handleResize = () => updateRowPositions()
+        window.addEventListener('resize', handleResize)
+        return () => window.removeEventListener('resize', handleResize)
+    }, [updateRowPositions])
 
     useEffect(() => {
         if (article?.body) {
@@ -742,6 +835,48 @@ function ArticleEditor({ articleId, userId, onBack }: { articleId: string; userI
 
     const deleteSection = (id: string) => {
         setLocalSections(prev => prev.filter(section => section.id !== id))
+    }
+
+    // Function to count words, characters, and assets from sections
+    const getContentStats = () => {
+        if (!localSections) return { words: 0, characters: 0, assets: 0 }
+        
+        let totalWords = 0
+        let totalCharacters = 0
+        let totalAssets = 0
+        
+        localSections.forEach(section => {
+            let textContent = ''
+            
+            switch (section.type) {
+                case 'title':
+                case 'text':
+                case 'paragraph':
+                    textContent = section.content || ''
+                    break
+                case 'quote':
+                    textContent = (section.content || '') + ' ' + (section.speaker || '')
+                    break
+                case 'code':
+                    textContent = section.content || ''
+                    break
+                case 'image':
+                case 'video':
+                case 'map':
+                    textContent = section.caption || ''
+                    totalAssets += 1
+                    break
+                default:
+                    textContent = ''
+            }
+            
+            // Count words by splitting on whitespace and filtering out empty strings
+            const words = textContent.trim().split(/\s+/).filter(word => word.length > 0)
+            totalWords += words.length
+            totalCharacters += textContent.length
+        })
+        
+        return { words: totalWords, characters: totalCharacters, assets: totalAssets }
     }
 
 
@@ -946,6 +1081,26 @@ function ArticleEditor({ articleId, userId, onBack }: { articleId: string; userI
                                         
                                         <Separator className="my-1" />
                                         
+                                        <div className="flex items-center justify-between px-3 py-2">
+                                            <div className="flex items-center gap-2">
+                                                {hideComments ? (
+                                                    <EyeOff className="h-4 w-4 text-muted-foreground" />
+                                                ) : (
+                                                    <MessageCircle className="h-4 w-4 text-muted-foreground" />
+                                                )}
+                                                <span className="text-sm">Hide Comments</span>
+                                            </div>
+                                            <Switch
+                                                checked={hideComments}
+                                                onCheckedChange={(checked) => {
+                                                    updateHideCommentsMutation.mutate(checked)
+                                                }}
+                                                disabled={updateHideCommentsMutation.isPending}
+                                            />
+                                        </div>
+                                        
+                                        <Separator className="my-1" />
+                                        
                                         <Button
                                             variant="ghost"
                                             size="sm"
@@ -982,19 +1137,49 @@ function ArticleEditor({ articleId, userId, onBack }: { articleId: string; userI
                 <section className="space-y-4">
                     <div>
                         <Label htmlFor="trailer">Trailer</Label>
-                        <Input id="trailer" value={trailer} onChange={(e) => setTrailer(e.target.value)} placeholder="Breaking news, Exclusive..." />
+                        {hideComments ? (
+                            <Input id="trailer" value={trailer} onChange={(e) => setTrailer(e.target.value)} placeholder="Breaking news, Exclusive..." />
+                        ) : (
+                            <CommentableInput
+                                articleId={articleId}
+                                blogId={currentBlog?.$id || ''}
+                                targetType="trailer"
+                                commentCount={getCommentCount('trailer').count}
+                                hasNewComments={getCommentCount('trailer').hasNewComments}
+                            >
+                                <Input id="trailer" value={trailer} onChange={(e) => setTrailer(e.target.value)} placeholder="Breaking news, Exclusive..." />
+                            </CommentableInput>
+                        )}
                     </div>
                     <div className="md:col-span-2">
                         <Label htmlFor="title">Title</Label>
                         <div className="relative">
-                            <Input 
-                                id="title" 
-                                value={title} 
-                                onChange={(e) => setTitle(e.target.value)} 
-                                placeholder="Article title" 
-                                className="pr-32" 
-                            />
-                            <div className="absolute right-3 top-1/2 -translate-y-1/2 flex items-center space-x-2">
+                            {hideComments ? (
+                                <Input 
+                                    id="title" 
+                                    value={title} 
+                                    onChange={(e) => setTitle(e.target.value)} 
+                                    placeholder="Article title" 
+                                    className="pr-32" 
+                                />
+                            ) : (
+                                <CommentableInput
+                                    articleId={articleId}
+                                    blogId={currentBlog?.$id || ''}
+                                    targetType="title"
+                                    commentCount={getCommentCount('title').count}
+                                    hasNewComments={getCommentCount('title').hasNewComments}
+                                >
+                                    <Input 
+                                        id="title" 
+                                        value={title} 
+                                        onChange={(e) => setTitle(e.target.value)} 
+                                        placeholder="Article title" 
+                                        className="pr-32" 
+                                    />
+                                </CommentableInput>
+                            )}
+                            <div className="absolute right-3 mr-2 top-1/2 -translate-y-1/2 flex items-center space-x-2">
                                 <Checkbox id="live" checked={live} onCheckedChange={(checked) => setLive(checked === true)} />
                                 <Label htmlFor="live" className="text-xs text-muted-foreground inline-label">Live</Label>
                             </div>
@@ -1002,7 +1187,19 @@ function ArticleEditor({ articleId, userId, onBack }: { articleId: string; userI
                     </div>
                     <div>
                         <Label htmlFor="subtitle">Subtitle</Label>
-                        <Input id="subtitle" value={subtitle} onChange={(e) => setExcerpt(e.target.value)} placeholder="Short summary (optional)" />
+                        {hideComments ? (
+                            <Input id="subtitle" value={subtitle} onChange={(e) => setExcerpt(e.target.value)} placeholder="Short summary (optional)" />
+                        ) : (
+                            <CommentableInput
+                                articleId={articleId}
+                                blogId={currentBlog?.$id || ''}
+                                targetType="subtitle"
+                                commentCount={getCommentCount('subtitle').count}
+                                hasNewComments={getCommentCount('subtitle').hasNewComments}
+                            >
+                                <Input id="subtitle" value={subtitle} onChange={(e) => setExcerpt(e.target.value)} placeholder="Short summary (optional)" />
+                            </CommentableInput>
+                        )}
                     </div>
                     <div>
                         <AuthorSelector 
@@ -1057,75 +1254,113 @@ function ArticleEditor({ articleId, userId, onBack }: { articleId: string; userI
                             </div>
                         </div>
                     ) : (
-                        <div className="rounded-md border overflow-hidden">
-                            <Table className="[&_td]:align-top">
-                                <TableHeader>
-                                    <TableRow>
-                                        <TableHead className="w-[30px]">Order</TableHead>
-                                        <TableHead className="w-[40px]"></TableHead>
-                                        <TableHead>Content</TableHead>
-                                        <TableHead className="w-[40px] text-right"></TableHead>
-                                    </TableRow>
-                                </TableHeader>
-                                <TableBody>
-                                    {localSections?.map((s) => {
-                                        const isTarget = overInfo.id === s.id && (!!draggingId && draggingId !== s.id)
-                                        const borderCue = isTarget ? (overInfo.where === 'above' ? 'border-t-2 border-primary' : 'border-b-2 border-primary') : ''
-                                        return (
-                                            <TableRow
-                                                key={s.id}
-                                                onDragOver={(e) => onDragOverRow(s.id, e)}
-                                                onDrop={(e) => onDropRow(s.id, e)}
-                                                className={`relative transition-colors ${isTarget ? 'bg-accent/50' : ''} ${borderCue}`}
-                                            >
-                                                <TableCell>
-                                                    <button
-                                                        aria-label="Drag to reorder"
-                                                        draggable
-                                                        onDragStart={(e) => onDragStart(s.id, e)}
-                                                        onDragEnd={() => { setDraggingId(null); setOverInfo({ id: null, where: 'below' }) }}
-                                                        className={`p-1 rounded hover:bg-accent text-muted-foreground cursor-grab active:cursor-grabbing ${draggingId === s.id ? 'opacity-60 ring-2 ring-primary/40' : ''}`}
-                                                        title="Drag to reorder"
-                                                    >
-                                                        <GripVertical className="h-4 w-4" />
-                                                    </button>
-                                                </TableCell>
-                                                <TableCell>
-                                                    <div className="mt-1">
-                                                        {getSectionTypeIcon(s.type)}
-                                                    </div>
-                                                </TableCell>
-                                                <TableCell>
-                                                    <SectionEditor
-                                                        section={s}
-                                                        onLocalChange={onLocalChangeHandlers[s.id]}
-                                                        isDragging={!!draggingId}
-                                                        userId={userId}
-                                                    />
-                                                </TableCell>
-                                                <TableCell className="text-right">
-                                                    <Button variant="ghost" size="icon" onClick={() => deleteSection(s.id)}>
-                                                        <Trash2 className="h-4 w-4" />
-                                                    </Button>
-                                                </TableCell>
-                                            </TableRow>
-                                        )
-                                    })}
-                                </TableBody>
-                            </Table>
-                            {/* Bottom drop zone */}
-                            {localSections && localSections.length > 0 && (
-                                <div
-                                    onDragOver={onDragOverBottom}
-                                    onDrop={(e) => onDropRow('bottom', e)}
-                                    className={`w-full transition-all duration-200 cursor-pointer ${
-                                        overInfo.id === 'bottom' && !!draggingId 
-                                            ? 'h-4 bg-primary/20 border-t-2 border-primary' 
-                                            : 'h-3 bg-muted/20'
-                                    }`}
-                                    style={{ marginTop: '-1px' }}
-                                />
-                            )}
+                        <div className="relative sections-table-container">
+                            <div className="rounded-md border overflow-hidden">
+                                <Table className="[&_td]:align-top">
+                                    <TableHeader>
+                                        <TableRow>
+                                            <TableHead className="w-[30px]">Order</TableHead>
+                                            <TableHead className="w-[40px]"></TableHead>
+                                            <TableHead>Content</TableHead>
+                                            <TableHead className="w-[40px] text-right"></TableHead>
+                                        </TableRow>
+                                    </TableHeader>
+                                    <TableBody>
+                                        {localSections?.map((s) => {
+                                            const isTarget = overInfo.id === s.id && (!!draggingId && draggingId !== s.id)
+                                            const borderCue = isTarget ? (overInfo.where === 'above' ? 'border-t-2 border-primary' : 'border-b-2 border-primary') : ''
+                                            return (
+                                                <TableRow
+                                                    key={s.id}
+                                                    ref={(el) => {
+                                                        if (el) {
+                                                            rowRefs.current[s.id] = el
+                                                        }
+                                                    }}
+                                                    onDragOver={(e) => onDragOverRow(s.id, e)}
+                                                    onDrop={(e) => onDropRow(s.id, e)}
+                                                    className={`relative ${isTarget ? 'bg-accent/50' : ''} ${borderCue} hover:bg-transparent`}
+                                                >
+                                                    <TableCell>
+                                                        <button
+                                                            aria-label="Drag to reorder"
+                                                            draggable
+                                                            onDragStart={(e) => onDragStart(s.id, e)}
+                                                            onDragEnd={() => { setDraggingId(null); setOverInfo({ id: null, where: 'below' }) }}
+                                                            className={`p-1 rounded hover:bg-accent text-muted-foreground cursor-grab active:cursor-grabbing ${draggingId === s.id ? 'opacity-60 ring-2 ring-primary/40' : ''}`}
+                                                            title="Drag to reorder"
+                                                        >
+                                                            <GripVertical className="h-4 w-4" />
+                                                        </button>
+                                                    </TableCell>
+                                                    <TableCell>
+                                                        <div className="mt-1">
+                                                            {getSectionTypeIcon(s.type)}
+                                                        </div>
+                                                    </TableCell>
+                                                    <TableCell>
+                                                        <SectionEditor
+                                                            section={s}
+                                                            onLocalChange={onLocalChangeHandlers[s.id]}
+                                                            isDragging={!!draggingId}
+                                                            userId={userId}
+                                                        />
+                                                    </TableCell>
+                                                    <TableCell className="text-right">
+                                                        <Button variant="ghost" size="icon" onClick={() => deleteSection(s.id)}>
+                                                            <Trash2 className="h-4 w-4" />
+                                                        </Button>
+                                                    </TableCell>
+                                                </TableRow>
+                                            )
+                                        })}
+                                        {/* Content stats row - merged columns, no background, smaller */}
+                                        <TableRow className="hover:bg-transparent">
+                                            <TableCell colSpan={4} className="py-2">
+                                                <div className="text-xs text-muted-foreground">
+                                                    {(() => {
+                                                        const stats = getContentStats()
+                                                        return (
+                                                            <>
+                                                                <strong className="text-foreground">{stats.words}</strong> {stats.words === 1 ? 'word' : 'words'} • 
+                                                                <strong className="text-foreground"> {stats.characters}</strong> {stats.characters === 1 ? 'character' : 'characters'} • 
+                                                                <strong className="text-foreground"> {stats.assets}</strong> {stats.assets === 1 ? 'asset' : 'assets'}
+                                                            </>
+                                                        )
+                                                    })()}
+                                                </div>
+                                            </TableCell>
+                                        </TableRow>
+                                    </TableBody>
+                                </Table>
+                            </div>
+                            
+                            {/* Comment buttons positioned outside the table but relative to rows */}
+                            {!hideComments && localSections?.map((s) => {
+                                const position = rowPositions[s.id]
+                                if (!position) return null // Don't render until position is measured
+                                
+                                return (
+                                    <div 
+                                        key={`comment-${s.id}`}
+                                        className="absolute -right-[64px] flex items-start justify-center pt-2"
+                                        style={{ 
+                                            top: `${position.top}px`,
+                                            height: `${position.height}px`
+                                        }}
+                                    >
+                                        <CommentPopover
+                                            articleId={articleId}
+                                            blogId={currentBlog?.$id || ''}
+                                            targetType="section"
+                                            targetId={s.id}
+                                            commentCount={getCommentCount('section', s.id).count}
+                                            hasNewComments={getCommentCount('section', s.id).hasNewComments}
+                                            side="left"
+                                        />
+                                    </div>
+                                )
+                            })}
                         </div>
                     )}
                 </section>
@@ -1134,7 +1369,19 @@ function ArticleEditor({ articleId, userId, onBack }: { articleId: string; userI
                 <section className="space-y-4">
                     <div>
                         <Label htmlFor="redirect">Redirect URL</Label>
-                        <Input id="redirect" value={redirect} onChange={(e) => setRedirect(e.target.value)} placeholder="Redirect URL (optional)" />
+                        {hideComments ? (
+                            <Input id="redirect" value={redirect} onChange={(e) => setRedirect(e.target.value)} placeholder="Redirect URL (optional)" />
+                        ) : (
+                            <CommentableInput
+                                articleId={articleId}
+                                blogId={currentBlog?.$id || ''}
+                                targetType="redirect"
+                                commentCount={getCommentCount('redirect').count}
+                                hasNewComments={getCommentCount('redirect').hasNewComments}
+                            >
+                                <Input id="redirect" value={redirect} onChange={(e) => setRedirect(e.target.value)} placeholder="Redirect URL (optional)" />
+                            </CommentableInput>
+                        )}
                     </div>
                 </section>
 

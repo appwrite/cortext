@@ -16,7 +16,6 @@ import { Route as ProtectedDashboardRouteImport } from './routes/_protected/dash
 import { Route as AuthSignUpRouteImport } from './routes/_auth/sign-up'
 import { Route as AuthSignOutRouteImport } from './routes/_auth/sign-out'
 import { Route as AuthSignInRouteImport } from './routes/_auth/sign-in'
-import { Route as ProtectedDashboardArticleIdRouteImport } from './routes/_protected/dashboard.$articleId'
 
 const ProtectedRoute = ProtectedRouteImport.update({
   id: '/_protected',
@@ -51,28 +50,20 @@ const AuthSignInRoute = AuthSignInRouteImport.update({
   path: '/sign-in',
   getParentRoute: () => AuthRoute,
 } as any)
-const ProtectedDashboardArticleIdRoute =
-  ProtectedDashboardArticleIdRouteImport.update({
-    id: '/$articleId',
-    path: '/$articleId',
-    getParentRoute: () => ProtectedDashboardRoute,
-  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/sign-in': typeof AuthSignInRoute
   '/sign-out': typeof AuthSignOutRoute
   '/sign-up': typeof AuthSignUpRoute
-  '/dashboard': typeof ProtectedDashboardRouteWithChildren
-  '/dashboard/$articleId': typeof ProtectedDashboardArticleIdRoute
+  '/dashboard': typeof ProtectedDashboardRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/sign-in': typeof AuthSignInRoute
   '/sign-out': typeof AuthSignOutRoute
   '/sign-up': typeof AuthSignUpRoute
-  '/dashboard': typeof ProtectedDashboardRouteWithChildren
-  '/dashboard/$articleId': typeof ProtectedDashboardArticleIdRoute
+  '/dashboard': typeof ProtectedDashboardRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -82,26 +73,13 @@ export interface FileRoutesById {
   '/_auth/sign-in': typeof AuthSignInRoute
   '/_auth/sign-out': typeof AuthSignOutRoute
   '/_auth/sign-up': typeof AuthSignUpRoute
-  '/_protected/dashboard': typeof ProtectedDashboardRouteWithChildren
-  '/_protected/dashboard/$articleId': typeof ProtectedDashboardArticleIdRoute
+  '/_protected/dashboard': typeof ProtectedDashboardRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths:
-    | '/'
-    | '/sign-in'
-    | '/sign-out'
-    | '/sign-up'
-    | '/dashboard'
-    | '/dashboard/$articleId'
+  fullPaths: '/' | '/sign-in' | '/sign-out' | '/sign-up' | '/dashboard'
   fileRoutesByTo: FileRoutesByTo
-  to:
-    | '/'
-    | '/sign-in'
-    | '/sign-out'
-    | '/sign-up'
-    | '/dashboard'
-    | '/dashboard/$articleId'
+  to: '/' | '/sign-in' | '/sign-out' | '/sign-up' | '/dashboard'
   id:
     | '__root__'
     | '/'
@@ -111,7 +89,6 @@ export interface FileRouteTypes {
     | '/_auth/sign-out'
     | '/_auth/sign-up'
     | '/_protected/dashboard'
-    | '/_protected/dashboard/$articleId'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -171,13 +148,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthSignInRouteImport
       parentRoute: typeof AuthRoute
     }
-    '/_protected/dashboard/$articleId': {
-      id: '/_protected/dashboard/$articleId'
-      path: '/$articleId'
-      fullPath: '/dashboard/$articleId'
-      preLoaderRoute: typeof ProtectedDashboardArticleIdRouteImport
-      parentRoute: typeof ProtectedDashboardRoute
-    }
   }
 }
 
@@ -195,23 +165,12 @@ const AuthRouteChildren: AuthRouteChildren = {
 
 const AuthRouteWithChildren = AuthRoute._addFileChildren(AuthRouteChildren)
 
-interface ProtectedDashboardRouteChildren {
-  ProtectedDashboardArticleIdRoute: typeof ProtectedDashboardArticleIdRoute
-}
-
-const ProtectedDashboardRouteChildren: ProtectedDashboardRouteChildren = {
-  ProtectedDashboardArticleIdRoute: ProtectedDashboardArticleIdRoute,
-}
-
-const ProtectedDashboardRouteWithChildren =
-  ProtectedDashboardRoute._addFileChildren(ProtectedDashboardRouteChildren)
-
 interface ProtectedRouteChildren {
-  ProtectedDashboardRoute: typeof ProtectedDashboardRouteWithChildren
+  ProtectedDashboardRoute: typeof ProtectedDashboardRoute
 }
 
 const ProtectedRouteChildren: ProtectedRouteChildren = {
-  ProtectedDashboardRoute: ProtectedDashboardRouteWithChildren,
+  ProtectedDashboardRoute: ProtectedDashboardRoute,
 }
 
 const ProtectedRouteWithChildren = ProtectedRoute._addFileChildren(

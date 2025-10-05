@@ -1,0 +1,128 @@
+import React, { useState } from 'react';
+import { Send } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Textarea } from '@/components/ui/textarea';
+import { useAuth } from '@/hooks/use-auth';
+import { useCreateComment } from './use-comments';
+import { useTeamBlogContext } from '@/contexts/team-blog-context';
+import { cn } from '@/lib/utils';
+
+interface CommentFormProps {
+  articleId: string;
+  blogId: string;
+  targetType: string;
+  targetId?: string;
+  parentCommentId?: string;
+  onCommentAdded: (commentId?: string) => void;
+  placeholder?: string;
+  className?: string;
+}
+
+export function CommentForm({
+  articleId,
+  blogId,
+  targetType,
+  targetId,
+  parentCommentId,
+  onCommentAdded,
+  placeholder = "Add a comment...",
+  className
+}: CommentFormProps) {
+  const { user } = useAuth();
+  const { currentTeam } = useTeamBlogContext();
+  const [content, setContent] = useState('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const createComment = useCreateComment();
+
+  const handleSubmit = async (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
+    
+    if (!content.trim() || !user || isSubmitting) return;
+    
+    setIsSubmitting(true);
+    try {
+      const newComment = await createComment.mutateAsync({
+        content: content.trim(),
+        articleId,
+        blogId,
+        targetType,
+        targetId,
+        parentCommentId,
+        authorId: user.$id,
+        authorName: user.name || user.email || 'Anonymous',
+        authorEmail: user.email || '',
+        teamId: currentTeam?.$id,
+      });
+      
+      setContent('');
+      onCommentAdded(newComment.$id);
+    } catch (error) {
+      console.error('Failed to create comment:', error);
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    // Submit on Ctrl+Enter (or Cmd+Enter on Mac)
+    if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
+      e.preventDefault();
+      handleSubmit();
+    }
+  };
+
+  // Detect if user is on Mac to show correct shortcut text
+  const isMac = typeof navigator !== 'undefined' && /Mac|iPod|iPhone|iPad/.test(navigator.platform);
+  const shortcutText = isMac ? 'Cmd+Enter' : 'Ctrl+Enter';
+
+  // Cmd/Ctrl icon component
+  const KeyIcon = () => (
+    <div className="inline-flex items-center justify-center w-4 h-4 text-xs font-medium bg-muted rounded border">
+      {isMac ? '⌘' : 'Ctrl'}
+    </div>
+  );
+
+  if (!user) {
+    return (
+      <div className="text-sm text-muted-foreground text-center py-2">
+        Please sign in to comment
+      </div>
+    );
+  }
+
+  return (
+    <form onSubmit={handleSubmit} className={cn("space-y-2", className)}>
+      <Textarea
+        value={content}
+        onChange={(e) => setContent(e.target.value)}
+        onKeyDown={handleKeyDown}
+        placeholder={placeholder}
+        className="min-h-[80px] resize-none"
+        disabled={isSubmitting}
+      />
+      
+      <div className="flex items-center justify-between">
+        <div className="flex items-center space-x-1 text-xs text-muted-foreground">
+          <KeyIcon />
+          <span>+ Enter to submit</span>
+        </div>
+        <Button
+          type="submit"
+          size="sm"
+          disabled={!content.trim() || isSubmitting}
+          className="h-8"
+          title={`${parentCommentId ? 'Reply' : 'Comment'} (${shortcutText})`}
+        >
+          {isSubmitting ? (
+            <div className="h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent" />
+          ) : (
+            <>
+              <Send className="h-3 w-3 mr-1" />
+              {parentCommentId ? 'Reply' : 'Comment'}
+            </>
+          )}
+        </Button>
+      </div>
+    </form>
+  );
+}

@@ -93,13 +93,13 @@ function SortableImageItem({ image, onRemove }: SortableImageItemProps) {
           </div>
           <div className="absolute top-2 right-2">
             <button
-              className="h-5 w-5 rounded-full bg-black border-2 border-white flex items-center justify-center hover:bg-white transition-colors"
+              className="h-5 w-5 rounded-full bg-background/90 border-2 border-background/90 flex items-center justify-center hover:bg-background transition-colors backdrop-blur-sm cursor-pointer"
               onClick={(e) => {
                 e.stopPropagation()
                 onRemove(image.$id)
               }}
             >
-              <X className="h-3 w-3 text-white" />
+              <X className="h-3 w-3 text-foreground" />
             </button>
           </div>
           <div className="absolute bottom-2 left-2 right-2">
