@@ -1411,7 +1411,7 @@ function ArticleEditor({ articleId, userId, onBack }: { articleId: string; userI
                                     <div 
                                         key={`comment-${s.id}`}
                                         className={cn(
-                                            "absolute -right-[76px] flex items-start justify-center pt-2 transition-opacity duration-200 w-16",
+                                            "absolute -right-[66px] flex items-start justify-center pt-2 transition-opacity duration-200 w-16",
                                             commentCount > 0 ? "opacity-100" : (isHovered || isPopoverOpen ? "opacity-100" : "opacity-0")
                                         )}
                                         style={{ 
