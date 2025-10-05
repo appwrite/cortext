@@ -232,15 +232,11 @@ export function OnboardingJourney({
           const Icon = step.icon
           return (
             <div key={step.id} className="relative">
-              <div className={`p-4 rounded-lg border transition-all duration-200 ${
-                step.completed 
-                  ? 'border-primary/30 bg-primary/5' 
-                  : 'border-border bg-card hover:border-primary/50'
-              }`}>
+              <div className="p-4 rounded-lg border border-border bg-card hover:border-primary/50 transition-all duration-200">
                 <div className="flex items-start gap-3">
                   <div className={`flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center transition-all duration-200 ${
                     step.completed 
-                      ? 'bg-primary text-primary-foreground' 
+                      ? 'bg-green-100 dark:bg-green-900/20 text-green-600 dark:text-green-400' 
                       : 'bg-muted text-muted-foreground'
                   }`}>
                     {step.completed ? (
@@ -264,25 +260,18 @@ export function OnboardingJourney({
                     </p>
                     
                     <div className="mt-3 h-7 flex items-center">
-                      {!step.completed ? (
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          className="h-7 text-xs"
-                          onClick={() => handleStepAction(step.id)}
-                        >
-                          {step.id === 'create-article' && 'Create Article'}
-                          {step.id === 'choose-template' && 'Choose Template'}
-                          {step.id === 'invite-team' && 'Invite Team'}
-                          {step.id === 'share-on-x' && 'Share on X'}
-                          <ArrowRight className="w-3 h-3 ml-1" />
-                        </Button>
-                      ) : (
-                        <div className="flex items-center gap-2 text-xs text-green-600 dark:text-green-400">
-                          <Check className="w-3 h-3" />
-                          <span className="font-medium">Completed!</span>
-                        </div>
-                      )}
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="h-7 text-xs"
+                        onClick={() => handleStepAction(step.id)}
+                      >
+                        {step.id === 'create-article' && 'Create Article'}
+                        {step.id === 'choose-template' && 'Choose Template'}
+                        {step.id === 'invite-team' && 'Invite Team'}
+                        {step.id === 'share-on-x' && 'Share on X'}
+                        <ArrowRight className="w-3 h-3 ml-1" />
+                      </Button>
                     </div>
                   </div>
                 </div>
