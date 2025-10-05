@@ -343,7 +343,7 @@ const STORAGE_BUCKETS = {
 const APPWRITE_FUNCTIONS = {
   'agent': {
     name: 'Agent',
-    runtime: 'node-18.0',
+    runtime: 'node-22.0',
     entrypoint: 'index.js',
     commands: 'npm install',
     timeout: 300, // 5 minutes
@@ -632,44 +632,102 @@ async function deployFunction(functionId, functionPath) {
   try {
     log(`Deploying function '${functionId}' from ${functionPath}...`, 'info');
     
-    // Create a zip file of the function directory
-    const { execSync } = await import('child_process');
-    const { tmpdir } = await import('os');
-    const { join: pathJoin } = await import('path');
-    const { writeFileSync, unlinkSync } = await import('fs');
-    
-    const tempDir = tmpdir();
-    const zipPath = pathJoin(tempDir, `${functionId}-deployment.zip`);
-    
-    // Create zip file
-    try {
-      execSync(`cd ${functionPath} && zip -r ${zipPath} .`, { stdio: 'pipe' });
-    } catch (zipError) {
-      // Fallback: try with different zip command
-      try {
-        execSync(`cd ${functionPath} && tar -czf ${zipPath.replace('.zip', '.tar.gz')} .`, { stdio: 'pipe' });
-        // Rename tar.gz to zip (Appwrite accepts both)
-        execSync(`mv ${zipPath.replace('.zip', '.tar.gz')} ${zipPath}`, { stdio: 'pipe' });
-      } catch (tarError) {
-        throw new Error(`Failed to create deployment archive: ${zipError.message}`);
-      }
+    // Check if function directory exists
+    const { existsSync, readFileSync } = await import('fs');
+    if (!existsSync(functionPath)) {
+      throw new Error(`Function directory not found: ${functionPath}`);
     }
     
-    // Read the zip file
-    const zipBuffer = readFileSync(zipPath);
+    // Check if required files exist
+    const { join: pathJoin } = await import('path');
+    const indexFile = pathJoin(functionPath, 'index.js');
+    const packageFile = pathJoin(functionPath, 'package.json');
     
-    // Create deployment
-    const deployment = await functions.createDeployment(
-      functionId,
-      'main', // deploymentId
-      zipBuffer
-    );
+    if (!existsSync(indexFile)) {
+      throw new Error(`Entry point file not found: ${indexFile}`);
+    }
     
-    // Clean up temp file
-    unlinkSync(zipPath);
+    if (!existsSync(packageFile)) {
+      throw new Error(`Package file not found: ${packageFile}`);
+    }
     
-    log(`Function '${functionId}' deployed successfully`, 'success');
-    return deployment;
+    // Read the files directly
+    const indexContent = readFileSync(indexFile, 'utf8');
+    const packageContent = readFileSync(packageFile, 'utf8');
+    
+    log(`Read function files: index.js (${indexContent.length} chars), package.json (${packageContent.length} chars)`, 'info');
+    
+    // Create a simple zip-like structure manually
+    // This is a basic approach - for production, you might want to use a proper zip library
+    const { execSync } = await import('child_process');
+    const { tmpdir } = await import('os');
+    const { writeFileSync, unlinkSync, mkdirSync } = await import('fs');
+    
+    const tempDir = tmpdir();
+    const tempFunctionDir = pathJoin(tempDir, `${functionId}-temp`);
+    const zipPath = pathJoin(tempDir, `${functionId}-deployment.zip`);
+    
+    try {
+      // Create temporary directory
+      mkdirSync(tempFunctionDir, { recursive: true });
+      
+      // Copy files to temp directory
+      writeFileSync(pathJoin(tempFunctionDir, 'index.js'), indexContent);
+      writeFileSync(pathJoin(tempFunctionDir, 'package.json'), packageContent);
+      
+      // Create zip file
+      try {
+        execSync(`cd "${tempFunctionDir}" && zip -r "${zipPath}" .`, { stdio: 'pipe' });
+      } catch (zipError) {
+        // Fallback: try with different zip command
+        try {
+          const tarPath = zipPath.replace('.zip', '.tar.gz');
+          execSync(`cd "${tempFunctionDir}" && tar -czf "${tarPath}" .`, { stdio: 'pipe' });
+          // Rename tar.gz to zip (Appwrite accepts both)
+          execSync(`mv "${tarPath}" "${zipPath}"`, { stdio: 'pipe' });
+        } catch (tarError) {
+          throw new Error(`Failed to create deployment archive: ${zipError.message}. Tar error: ${tarError.message}`);
+        }
+      }
+      
+      // Verify zip file was created
+      if (!existsSync(zipPath)) {
+        throw new Error('Failed to create deployment archive - zip file not found');
+      }
+      
+      // Read the zip file
+      const zipBuffer = readFileSync(zipPath);
+      
+      if (zipBuffer.length === 0) {
+        throw new Error('Deployment archive is empty');
+      }
+      
+      log(`Created deployment archive (${zipBuffer.length} bytes)`, 'info');
+      
+      // Create deployment
+      const deployment = await functions.createDeployment(
+        functionId,
+        'main', // deploymentId
+        zipBuffer
+      );
+      
+      // Clean up temp files
+      unlinkSync(zipPath);
+      execSync(`rm -rf "${tempFunctionDir}"`, { stdio: 'pipe' });
+      
+      log(`Function '${functionId}' deployed successfully with ID: ${deployment.$id}`, 'success');
+      return deployment;
+      
+    } catch (error) {
+      // Clean up temp files on error
+      try {
+        if (existsSync(zipPath)) unlinkSync(zipPath);
+        if (existsSync(tempFunctionDir)) execSync(`rm -rf "${tempFunctionDir}"`, { stdio: 'pipe' });
+      } catch (cleanupError) {
+        // Ignore cleanup errors
+      }
+      throw error;
+    }
     
   } catch (error) {
     log(`Failed to deploy function '${functionId}': ${error.message}`, 'error');
