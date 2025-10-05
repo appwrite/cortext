@@ -731,174 +731,12 @@ async function deployFunction(functionId, functionPath) {
       }
       
     } catch (error) {
-      log(`Approach 1 failed: ${error.message}`, 'info');
-    }
-    
-    // Only try other approaches if the first one failed
-    if (!deploymentBuffer) {
-      log('Approach 1 did not produce a deployment buffer, trying other approaches...', 'info');
-      
-      // Approach 2: Manual TAR.GZ creation
-      try {
-        log('Trying approach 2: Manual TAR.GZ creation...', 'info');
-        const { createGzip } = await import('zlib');
-        const { pipeline } = await import('stream/promises');
-        const { Readable, PassThrough } = await import('stream');
-        
-        // Create tar-like structure manually
-        const createTarEntry = (name, content) => {
-          const header = Buffer.alloc(512);
-          const nameBuffer = Buffer.from(name, 'utf8');
-          
-          // Write filename (100 bytes)
-          nameBuffer.copy(header, 0, 0, Math.min(100, nameBuffer.length));
-          
-          // Write file mode (8 bytes) - 0644
-          header.write('0000644', 100, 7, 'utf8');
-          
-          // Write owner ID (8 bytes)
-          header.write('0000000', 108, 7, 'utf8');
-          
-          // Write group ID (8 bytes)
-          header.write('0000000', 116, 7, 'utf8');
-          
-          // Write file size (12 bytes)
-          const size = content.length;
-          header.write(size.toString(8).padStart(11, '0'), 124, 11, 'utf8');
-          
-          // Write modification time (12 bytes)
-          const mtime = Math.floor(Date.now() / 1000);
-          header.write(mtime.toString(8).padStart(11, '0'), 136, 11, 'utf8');
-          
-          // Write type flag (1 byte) - regular file
-          header.write('0', 156, 1, 'utf8');
-          
-          // Write checksum placeholder (8 bytes)
-          header.write('        ', 148, 8, 'utf8');
-          
-          // Calculate and write checksum
-          let checksum = 0;
-          for (let i = 0; i < 512; i++) {
-            checksum += header[i];
-          }
-          header.write(checksum.toString(8).padStart(6, '0') + ' ', 148, 8, 'utf8');
-          
-          return Buffer.concat([header, content, Buffer.alloc((512 - (content.length % 512)) % 512)]);
-        };
-        
-        // Create tar entries
-        const indexEntry = createTarEntry('index.js', Buffer.from(indexContent, 'utf8'));
-        const packageEntry = createTarEntry('package.json', Buffer.from(packageContent, 'utf8'));
-        
-        // Combine entries
-        const tarData = Buffer.concat([indexEntry, packageEntry, Buffer.alloc(1024)]); // Two empty blocks at end
-        
-        log(`Created tar data (${tarData.length} bytes)`, 'info');
-        
-        // Compress with gzip
-        const gzip = createGzip();
-        const tarStream = Readable.from(tarData);
-        const gzipStream = new PassThrough();
-        
-        await pipeline(tarStream, gzip, gzipStream);
-        
-        // Collect compressed data
-        const chunks = [];
-        for await (const chunk of gzipStream) {
-          chunks.push(chunk);
-        }
-        deploymentBuffer = Buffer.concat(chunks);
-        deploymentMethod = 'manual-tar-gz';
-        log(`Created manual tar.gz archive (${deploymentBuffer.length} bytes)`, 'info');
-        
-        } catch (error) {
-          log(`Approach 2 failed: ${error.message}`, 'info');
-        }
-        
-        // Approach 3: Simple ZIP-like format
-        if (!deploymentBuffer) {
-          try {
-            log('Trying approach 3: Simple ZIP-like format...', 'info');
-            
-            // Create a simple archive format
-            const archiveData = {
-              'index.js': indexContent,
-              'package.json': packageContent
-            };
-            
-            // Convert to JSON and compress
-            const { createGzip } = await import('zlib');
-            const { pipeline } = await import('stream/promises');
-            const { Readable, PassThrough } = await import('stream');
-            
-            const jsonData = JSON.stringify(archiveData);
-            const gzip = createGzip();
-            const jsonStream = Readable.from(Buffer.from(jsonData, 'utf8'));
-            const gzipStream = new PassThrough();
-            
-            await pipeline(jsonStream, gzip, gzipStream);
-            
-            const chunks = [];
-            for await (const chunk of gzipStream) {
-              chunks.push(chunk);
-            }
-            deploymentBuffer = Buffer.concat(chunks);
-            deploymentMethod = 'json-gzip';
-            log(`Created JSON-GZIP archive (${deploymentBuffer.length} bytes)`, 'info');
-            
-          } catch (error) {
-            log(`Approach 3 failed: ${error.message}`, 'info');
-          }
-        }
-        
-        // Approach 4: Try different deployment method - maybe the issue is with createDeployment
-        if (!deploymentBuffer) {
-          try {
-            log('Trying approach 4: Alternative deployment method...', 'info');
-            
-            // Create a simple zip-like structure using Node.js streams
-            const { createGzip } = await import('zlib');
-            const { pipeline } = await import('stream/promises');
-            const { Readable, PassThrough } = await import('stream');
-            
-            // Create a simple file structure
-            const files = [
-              { name: 'index.js', content: indexContent },
-              { name: 'package.json', content: packageContent }
-            ];
-            
-            // Create a simple archive format
-            let archiveContent = '';
-            for (const file of files) {
-              archiveContent += `FILE:${file.name}\n`;
-              archiveContent += `SIZE:${file.content.length}\n`;
-              archiveContent += `CONTENT:\n${file.content}\n`;
-              archiveContent += `---END---\n`;
-            }
-            
-            // Compress the archive
-            const gzip = createGzip();
-            const archiveStream = Readable.from(Buffer.from(archiveContent, 'utf8'));
-            const gzipStream = new PassThrough();
-            
-            await pipeline(archiveStream, gzip, gzipStream);
-            
-            const chunks = [];
-            for await (const chunk of gzipStream) {
-              chunks.push(chunk);
-            }
-            deploymentBuffer = Buffer.concat(chunks);
-            deploymentMethod = 'custom-archive';
-            log(`Created custom archive (${deploymentBuffer.length} bytes)`, 'info');
-            
-          } catch (error) {
-            log(`Approach 4 failed: ${error.message}`, 'info');
-          }
-        }
+      log(`TAR.GZ creation failed: ${error.message}`, 'error');
+      throw new Error(`Failed to create TAR.GZ archive: ${error.message}`);
     }
     
     if (!deploymentBuffer) {
-      throw new Error('All deployment approaches failed');
+      throw new Error('Failed to create deployment archive');
     }
     
     log(`Using deployment method: ${deploymentMethod}`, 'info');
@@ -946,7 +784,8 @@ async function deployFunction(functionId, functionPath) {
         deployment = await functions.createDeployment(
           functionId,
           deploymentId,
-          deploymentFile
+          deploymentFile,
+          true // activate the deployment
         );
         
         deploymentSuccess = true;
