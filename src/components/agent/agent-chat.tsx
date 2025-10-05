@@ -7,6 +7,7 @@ import { Brain, Sparkles, Send, MessageCircle } from 'lucide-react'
 import { useIsMobile } from '@/hooks/use-mobile'
 import { useConversationManager, useMessages } from '@/hooks/use-conversations'
 import { ConversationSelector } from './conversation-selector'
+import { ConversationPlaceholder } from './conversation-placeholder'
 import { useAuth } from '@/hooks/use-auth'
 import type { Messages } from '@/lib/appwrite/appwrite.types'
 
@@ -82,19 +83,8 @@ export function AgentChat({
         }
     }, [conversations, currentConversationId, isLoadingConversations, createInitialConversation])
 
-    // Show welcome messages if no conversation is selected and no messages exist
-    const displayMessages = messages.length > 0 ? messages : [
-        {
-            id: 'welcome-1',
-            role: 'assistant' as const,
-            content: "Hi! I'm your AI co-writer. I can help punch up your title, draft a subtitle, or suggest section ideas.",
-        },
-        {
-            id: 'welcome-2',
-            role: 'assistant' as const,
-            content: 'Try one of the quick actions below or ask me to rewrite the intro.',
-        },
-    ]
+    // Show messages if they exist, otherwise show placeholder
+    const hasMessages = messages.length > 0
 
     // Precisely align with the app header; footer does not occupy the left rail
     const [topOffset, setTopOffset] = useState<number>(64) // header fallback
@@ -124,7 +114,7 @@ export function AgentChat({
     const bottomRef = useRef<HTMLDivElement | null>(null)
     useEffect(() => {
         bottomRef.current?.scrollIntoView({ behavior: 'smooth', block: 'end' })
-    }, [displayMessages.length])
+    }, [messages.length])
 
     const send = async () => {
         const text = input.trim()
@@ -190,27 +180,54 @@ export function AgentChat({
     const chatContent = (
         <>
             <ScrollArea className="flex-1">
-                <div className="px-6 py-6 space-y-2">
-                    {displayMessages.map((m) => (
-                        <div key={m.id} className={m.role === 'assistant' ? 'flex gap-2 items-start' : 'flex justify-end'}>
-                            {m.role === 'assistant' && (
-                                <div className="mt-0.5 text-muted-foreground">
-                                    <Brain className="h-4 w-4" />
+                {hasMessages ? (
+                    <div className="px-6 py-6 space-y-2">
+                        {messages.map((m) => (
+                            <div key={m.id} className={m.role === 'assistant' ? 'flex gap-2 items-start' : 'flex justify-end'}>
+                                {m.role === 'assistant' && (
+                                    <div className="mt-0.5 text-muted-foreground">
+                                        <Brain className="h-4 w-4" />
+                                    </div>
+                                )}
+                                <div
+                                    className={
+                                        m.role === 'assistant'
+                                            ? 'rounded-md bg-accent px-2.5 py-1.5 text-xs max-w-[220px]'
+                                            : 'rounded-md bg-primary text-primary-foreground px-2.5 py-1.5 text-xs max-w-[220px]'
+                                    }
+                                >
+                                    {m.content}
                                 </div>
-                            )}
-                            <div
-                                className={
-                                    m.role === 'assistant'
-                                        ? 'rounded-md bg-accent px-2.5 py-1.5 text-xs max-w-[220px]'
-                                        : 'rounded-md bg-primary text-primary-foreground px-2.5 py-1.5 text-xs max-w-[220px]'
-                                }
-                            >
-                                {m.content}
                             </div>
-                        </div>
-                    ))}
-                    <div ref={bottomRef} />
-                </div>
+                        ))}
+                        <div ref={bottomRef} />
+                    </div>
+                ) : (
+                    <div className="flex items-center justify-center min-h-full">
+                        <ConversationPlaceholder onSendMessage={async (message) => {
+                            if (!currentConversationId) return
+                            
+                            try {
+                                // Create user message
+                                await createMessage({
+                                    role: 'user',
+                                    content: message,
+                                    userId: user?.$id || '',
+                                })
+
+                                // Create assistant reply
+                                const reply = mockReply(message, title)
+                                await createMessage({
+                                    role: 'assistant',
+                                    content: reply,
+                                    userId: user?.$id || '',
+                                })
+                            } catch (error) {
+                                console.error('Failed to send message:', error)
+                            }
+                        }} />
+                    </div>
+                )}
             </ScrollArea>
 
             <div className="px-6 py-6 space-y-2">

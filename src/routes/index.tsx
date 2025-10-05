@@ -104,7 +104,7 @@ function Index() {
     ];
 
     return (
-        <div className="min-h-screen flex flex-col ios-viewport-fix" id="home">
+        <div className="min-h-screen flex flex-col" id="home">
             <Nav />
 
             {/* Hero */}

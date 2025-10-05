@@ -123,14 +123,6 @@
     padding: 0;
   }
   
-  /* iPad specific body fixes */
-  @media screen and (min-width: 768px) and (max-width: 1024px) {
-    body {
-      height: 100vh;
-      height: -webkit-fill-available;
-      overflow-x: hidden;
-    }
-  }
   label {
     display: inline-block;
     margin-bottom: 10px!important;
@@ -262,7 +254,6 @@
   .aspect-ratio-container,
   .aspect-ratio-fallback {
     -webkit-overflow-scrolling: touch;
-    overflow-scrolling: touch;
   }
   
   /* iOS viewport height fixes to prevent extra space below footer */
@@ -273,29 +264,9 @@
       min-height: -webkit-fill-available;
     }
     
-    /* Ensure body takes full height on iOS */
-    html, body {
-      height: 100%;
-      height: -webkit-fill-available;
-    }
-    
     /* Fix for iOS safe area insets */
     .ios-safe-area {
       padding-bottom: env(safe-area-inset-bottom, 0);
-    }
-    
-    /* Prevent iOS from adding extra space below footer */
-    footer {
-      margin-bottom: 0;
-      padding-bottom: 0;
-    }
-    
-    /* Ensure footer doesn't create extra space on iPad */
-    @media screen and (min-width: 768px) and (max-width: 1024px) {
-      footer {
-        margin-bottom: 0;
-        padding-bottom: 0;
-      }
     }
   }
   
@@ -313,96 +284,8 @@
     }
   }
   
-  /* iOS viewport fix class */
-  .ios-viewport-fix {
-    min-height: 100vh;
-  }
   
-  @supports (-webkit-touch-callout: none) {
-    .ios-viewport-fix {
-      min-height: 100vh;
-      min-height: -webkit-fill-available;
-    }
-  }
   
-  /* iPad specific fixes */
-  @media screen and (min-width: 768px) and (max-width: 1024px) {
-    .ios-viewport-fix {
-      min-height: 100vh;
-      height: auto;
-      display: flex;
-      flex-direction: column;
-    }
-    
-    .ios-safe-area {
-      padding-bottom: 0;
-    }
-    
-    /* Ensure content fills properly on iPad */
-    .ios-viewport-fix > * {
-      flex-shrink: 0;
-    }
-    
-    .ios-viewport-fix > footer {
-      margin-top: auto;
-    }
-  }
-  
-  /* Chrome on iPad specific fixes - prevents viewport height doubling */
-  @media screen and (min-width: 768px) and (max-width: 1024px) and (-webkit-min-device-pixel-ratio: 2) {
-    .ios-viewport-fix {
-      min-height: 100vh;
-      height: 100vh;
-      max-height: 100vh;
-      overflow: hidden;
-      position: relative;
-    }
-    
-    /* Reset any problematic viewport calculations */
-    html, body {
-      height: 100vh;
-      max-height: 100vh;
-      overflow-x: hidden;
-      position: relative;
-    }
-    
-    /* Ensure footer doesn't create extra space in Chrome */
-    footer {
-      margin-bottom: 0;
-      padding-bottom: 0;
-      flex-shrink: 0;
-      position: relative;
-    }
-    
-    /* Force proper height calculation for Chrome */
-    .ios-viewport-fix::before {
-      content: '';
-      display: block;
-      height: 0;
-      width: 0;
-    }
-  }
-  
-  /* Additional Chrome iPad fix using user agent detection */
-  @supports (-webkit-touch-callout: none) and (min-width: 768px) and (max-width: 1024px) {
-    .chrome-ipad-fix {
-      height: 100vh !important;
-      max-height: 100vh !important;
-      overflow: hidden !important;
-    }
-    
-    .chrome-ipad-fix .ios-viewport-fix {
-      height: 100vh !important;
-      max-height: 100vh !important;
-      overflow: hidden !important;
-    }
-    
-    /* Use JavaScript-calculated viewport height as fallback */
-    .chrome-ipad-fix .ios-viewport-fix {
-      height: calc(var(--vh, 1vh) * 100) !important;
-      max-height: calc(var(--vh, 1vh) * 100) !important;
-    }
-  }
 }
 
 /* 3D Card Effects */
