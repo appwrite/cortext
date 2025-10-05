@@ -137,7 +137,7 @@ function Index() {
 
                 {/* Dashboard screenshot that merges with the next separator */}
                 <div className="relative mx-auto mt-10 md:mt-12 w-full max-w-6xl -mb-px">
-                    <div className="rounded-t-xl border border-b-0 bg-card overflow-hidden">
+                    <div className="rounded-t-xl border border-b-0 border-foreground/5 bg-card overflow-hidden">
                         <div className="aspect-[16/9] w-full relative dashboard-screenshot">
                             <OptimizedImage
                                 src={dashboardImageSrc}
@@ -290,6 +290,24 @@ function Index() {
                 </div>
             </section>
 
+            {/* Testimonial */}
+            <section className="mx-auto w-full max-w-7xl px-6 py-16 md:py-24 border-t">
+                <div className="mx-auto max-w-4xl text-center">
+                    <div className="mb-8">
+                        <svg className="mx-auto h-12 w-12 text-foreground" fill="currentColor" viewBox="0 0 24 24">
+                            <path d="M14.017 21v-7.391c0-5.704 3.731-9.57 8.983-10.609l.995 2.151c-2.432.917-3.995 3.638-3.995 5.849h4v9.391h-9.983zm-14.017 0v-7.391c0-5.704 3.748-9.57 9-10.609l.996 2.151c-2.433.917-3.996 3.638-3.996 5.849h4v9.391h-10z"/>
+                        </svg>
+                    </div>
+                    <blockquote className="text-lg md:text-xl text-foreground/90 font-medium leading-relaxed mb-6">
+                        "Cortext transformed our content consistency and SEO. The AI co-author doesn't just speed up writing - it improves quality and search visibility. It's like having a senior content strategist who never sleeps."
+                    </blockquote>
+                    <div className="flex flex-col items-center">
+                        <div className="text-foreground font-semibold">Laura Du Ry</div>
+                        <div className="text-foreground/60 text-sm">Growth Lead at Appwrite</div>
+                    </div>
+                </div>
+            </section>
+
             {/* API Section */}
             <section id="api" className="mx-auto w-full max-w-7xl px-6 py-16 md:py-24 border-t">
                 <div className="mx-auto max-w-5xl">
@@ -386,24 +404,6 @@ function Index() {
                                 </div>
                             </div>
                         </div>
-                    </div>
-                </div>
-            </section>
-
-            {/* Testimonial */}
-            <section className="mx-auto w-full max-w-7xl px-6 py-16 md:py-24 border-t">
-                <div className="mx-auto max-w-4xl text-center">
-                    <div className="mb-8">
-                        <svg className="mx-auto h-12 w-12 text-foreground" fill="currentColor" viewBox="0 0 24 24">
-                            <path d="M14.017 21v-7.391c0-5.704 3.731-9.57 8.983-10.609l.995 2.151c-2.432.917-3.995 3.638-3.995 5.849h4v9.391h-9.983zm-14.017 0v-7.391c0-5.704 3.748-9.57 9-10.609l.996 2.151c-2.433.917-3.996 3.638-3.996 5.849h4v9.391h-10z"/>
-                        </svg>
-                    </div>
-                    <blockquote className="text-lg md:text-xl text-foreground/90 font-medium leading-relaxed mb-6">
-                        "Cortext transformed our content consistency and SEO. The AI co-author doesn't just speed up writing - it improves quality and search visibility. It's like having a senior content strategist who never sleeps."
-                    </blockquote>
-                    <div className="flex flex-col items-center">
-                        <div className="text-foreground font-semibold">Laura Du Ry</div>
-                        <div className="text-foreground/60 text-sm">Growth Lead at Appwrite</div>
                     </div>
                 </div>
             </section>
