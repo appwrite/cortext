@@ -343,7 +343,7 @@ const STORAGE_BUCKETS = {
 const APPWRITE_FUNCTIONS = {
   'agent': {
     name: 'Agent',
-    runtime: 'node-22.0',
+    runtime: 'node-22',
     entrypoint: 'index.js',
     commands: 'npm install',
     timeout: 300, // 5 minutes
