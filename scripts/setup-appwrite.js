@@ -657,89 +657,207 @@ async function deployFunction(functionId, functionPath) {
     
     log(`Read function files: index.js (${indexContent.length} chars), package.json (${packageContent.length} chars)`, 'info');
     
-    // Create a simple tar.gz archive using Node.js without external CLI tools
-    const { createGzip } = await import('zlib');
-    const { pipeline } = await import('stream/promises');
-    const { Readable, PassThrough } = await import('stream');
+    // Try multiple approaches for creating the deployment archive
+    let deploymentBuffer = null;
+    let deploymentMethod = '';
     
-    // Create tar-like structure manually
-    const createTarEntry = (name, content) => {
-      const header = Buffer.alloc(512);
-      const nameBuffer = Buffer.from(name, 'utf8');
+    // Approach 1: Try using execSync with available tools
+    try {
+      log('Trying approach 1: External zip/tar commands...', 'info');
+      const { execSync } = await import('child_process');
+      const { tmpdir } = await import('os');
+      const { writeFileSync, unlinkSync, mkdirSync } = await import('fs');
       
-      // Write filename (100 bytes)
-      nameBuffer.copy(header, 0, 0, Math.min(100, nameBuffer.length));
+      const tempDir = tmpdir();
+      const tempFunctionDir = pathJoin(tempDir, `${functionId}-temp-${Date.now()}`);
+      const zipPath = pathJoin(tempDir, `${functionId}-deployment-${Date.now()}.zip`);
       
-      // Write file mode (8 bytes) - 0644
-      header.write('0000644', 100, 7, 'utf8');
+      // Create temporary directory
+      mkdirSync(tempFunctionDir, { recursive: true });
       
-      // Write owner ID (8 bytes)
-      header.write('0000000', 108, 7, 'utf8');
+      // Copy files to temp directory
+      writeFileSync(pathJoin(tempFunctionDir, 'index.js'), indexContent);
+      writeFileSync(pathJoin(tempFunctionDir, 'package.json'), packageContent);
       
-      // Write group ID (8 bytes)
-      header.write('0000000', 116, 7, 'utf8');
-      
-      // Write file size (12 bytes)
-      const size = content.length;
-      header.write(size.toString(8).padStart(11, '0'), 124, 11, 'utf8');
-      
-      // Write modification time (12 bytes)
-      const mtime = Math.floor(Date.now() / 1000);
-      header.write(mtime.toString(8).padStart(11, '0'), 136, 11, 'utf8');
-      
-      // Write type flag (1 byte) - regular file
-      header.write('0', 156, 1, 'utf8');
-      
-      // Write checksum placeholder (8 bytes)
-      header.write('        ', 148, 8, 'utf8');
-      
-      // Calculate and write checksum
-      let checksum = 0;
-      for (let i = 0; i < 512; i++) {
-        checksum += header[i];
+      // Try zip first
+      try {
+        execSync(`cd "${tempFunctionDir}" && zip -r "${zipPath}" .`, { stdio: 'pipe' });
+        if (existsSync(zipPath)) {
+          deploymentBuffer = readFileSync(zipPath);
+          deploymentMethod = 'zip';
+          log(`Created zip archive (${deploymentBuffer.length} bytes)`, 'info');
+        }
+      } catch (zipError) {
+        log(`Zip failed: ${zipError.message}`, 'info');
+        
+        // Try tar
+        try {
+          const tarPath = zipPath.replace('.zip', '.tar.gz');
+          execSync(`cd "${tempFunctionDir}" && tar -czf "${tarPath}" .`, { stdio: 'pipe' });
+          if (existsSync(tarPath)) {
+            deploymentBuffer = readFileSync(tarPath);
+            deploymentMethod = 'tar';
+            log(`Created tar.gz archive (${deploymentBuffer.length} bytes)`, 'info');
+          }
+        } catch (tarError) {
+          log(`Tar failed: ${tarError.message}`, 'info');
+        }
       }
-      header.write(checksum.toString(8).padStart(6, '0') + ' ', 148, 8, 'utf8');
       
-      return Buffer.concat([header, content, Buffer.alloc((512 - (content.length % 512)) % 512)]);
-    };
-    
-    // Create tar entries
-    const indexEntry = createTarEntry('index.js', Buffer.from(indexContent, 'utf8'));
-    const packageEntry = createTarEntry('package.json', Buffer.from(packageContent, 'utf8'));
-    
-    // Combine entries
-    const tarData = Buffer.concat([indexEntry, packageEntry, Buffer.alloc(1024)]); // Two empty blocks at end
-    
-    log(`Created tar data (${tarData.length} bytes)`, 'info');
-    
-    // Compress with gzip
-    const gzip = createGzip();
-    const tarStream = Readable.from(tarData);
-    const gzipStream = new PassThrough();
-    
-    await pipeline(tarStream, gzip, gzipStream);
-    
-    // Collect compressed data
-    const chunks = [];
-    for await (const chunk of gzipStream) {
-      chunks.push(chunk);
+      // Cleanup
+      try {
+        if (existsSync(zipPath)) unlinkSync(zipPath);
+        if (existsSync(zipPath.replace('.zip', '.tar.gz'))) unlinkSync(zipPath.replace('.zip', '.tar.gz'));
+        execSync(`rm -rf "${tempFunctionDir}"`, { stdio: 'pipe' });
+      } catch (cleanupError) {
+        // Ignore cleanup errors
+      }
+      
+    } catch (error) {
+      log(`Approach 1 failed: ${error.message}`, 'info');
     }
-    const zipBuffer = Buffer.concat(chunks);
     
-    log(`Created compressed archive (${zipBuffer.length} bytes)`, 'info');
+    // Approach 2: Manual TAR.GZ creation
+    if (!deploymentBuffer) {
+      try {
+        log('Trying approach 2: Manual TAR.GZ creation...', 'info');
+        const { createGzip } = await import('zlib');
+        const { pipeline } = await import('stream/promises');
+        const { Readable, PassThrough } = await import('stream');
+        
+        // Create tar-like structure manually
+        const createTarEntry = (name, content) => {
+          const header = Buffer.alloc(512);
+          const nameBuffer = Buffer.from(name, 'utf8');
+          
+          // Write filename (100 bytes)
+          nameBuffer.copy(header, 0, 0, Math.min(100, nameBuffer.length));
+          
+          // Write file mode (8 bytes) - 0644
+          header.write('0000644', 100, 7, 'utf8');
+          
+          // Write owner ID (8 bytes)
+          header.write('0000000', 108, 7, 'utf8');
+          
+          // Write group ID (8 bytes)
+          header.write('0000000', 116, 7, 'utf8');
+          
+          // Write file size (12 bytes)
+          const size = content.length;
+          header.write(size.toString(8).padStart(11, '0'), 124, 11, 'utf8');
+          
+          // Write modification time (12 bytes)
+          const mtime = Math.floor(Date.now() / 1000);
+          header.write(mtime.toString(8).padStart(11, '0'), 136, 11, 'utf8');
+          
+          // Write type flag (1 byte) - regular file
+          header.write('0', 156, 1, 'utf8');
+          
+          // Write checksum placeholder (8 bytes)
+          header.write('        ', 148, 8, 'utf8');
+          
+          // Calculate and write checksum
+          let checksum = 0;
+          for (let i = 0; i < 512; i++) {
+            checksum += header[i];
+          }
+          header.write(checksum.toString(8).padStart(6, '0') + ' ', 148, 8, 'utf8');
+          
+          return Buffer.concat([header, content, Buffer.alloc((512 - (content.length % 512)) % 512)]);
+        };
+        
+        // Create tar entries
+        const indexEntry = createTarEntry('index.js', Buffer.from(indexContent, 'utf8'));
+        const packageEntry = createTarEntry('package.json', Buffer.from(packageContent, 'utf8'));
+        
+        // Combine entries
+        const tarData = Buffer.concat([indexEntry, packageEntry, Buffer.alloc(1024)]); // Two empty blocks at end
+        
+        log(`Created tar data (${tarData.length} bytes)`, 'info');
+        
+        // Compress with gzip
+        const gzip = createGzip();
+        const tarStream = Readable.from(tarData);
+        const gzipStream = new PassThrough();
+        
+        await pipeline(tarStream, gzip, gzipStream);
+        
+        // Collect compressed data
+        const chunks = [];
+        for await (const chunk of gzipStream) {
+          chunks.push(chunk);
+        }
+        deploymentBuffer = Buffer.concat(chunks);
+        deploymentMethod = 'manual-tar-gz';
+        log(`Created manual tar.gz archive (${deploymentBuffer.length} bytes)`, 'info');
+        
+      } catch (error) {
+        log(`Approach 2 failed: ${error.message}`, 'info');
+      }
+    }
+    
+    // Approach 3: Simple ZIP-like format
+    if (!deploymentBuffer) {
+      try {
+        log('Trying approach 3: Simple ZIP-like format...', 'info');
+        
+        // Create a simple archive format
+        const archiveData = {
+          'index.js': indexContent,
+          'package.json': packageContent
+        };
+        
+        // Convert to JSON and compress
+        const { createGzip } = await import('zlib');
+        const { pipeline } = await import('stream/promises');
+        const { Readable, PassThrough } = await import('stream');
+        
+        const jsonData = JSON.stringify(archiveData);
+        const gzip = createGzip();
+        const jsonStream = Readable.from(Buffer.from(jsonData, 'utf8'));
+        const gzipStream = new PassThrough();
+        
+        await pipeline(jsonStream, gzip, gzipStream);
+        
+        const chunks = [];
+        for await (const chunk of gzipStream) {
+          chunks.push(chunk);
+        }
+        deploymentBuffer = Buffer.concat(chunks);
+        deploymentMethod = 'json-gzip';
+        log(`Created JSON-GZIP archive (${deploymentBuffer.length} bytes)`, 'info');
+        
+      } catch (error) {
+        log(`Approach 3 failed: ${error.message}`, 'info');
+      }
+    }
+    
+    if (!deploymentBuffer) {
+      throw new Error('All deployment approaches failed');
+    }
+    
+    log(`Using deployment method: ${deploymentMethod}`, 'info');
+    log(`Final archive size: ${deploymentBuffer.length} bytes`, 'info');
+    
+    // Debug: Log first few bytes of the archive
+    const preview = deploymentBuffer.slice(0, 50);
+    log(`Archive preview (first 50 bytes): ${preview.toString('hex')}`, 'info');
     
     // Create deployment
+    log(`Creating deployment for function '${functionId}'...`, 'info');
     const deployment = await functions.createDeployment(
       functionId,
       'main', // deploymentId
-      zipBuffer
+      deploymentBuffer
     );
     
     log(`Function '${functionId}' deployed successfully with ID: ${deployment.$id}`, 'success');
+    log(`Deployment method used: ${deploymentMethod}`, 'info');
     return deployment;
     
   } catch (error) {
     log(`Failed to deploy function '${functionId}': ${error.message}`, 'error');
+    log(`Error details: ${error.stack}`, 'error');
     throw error;
   }
 }
