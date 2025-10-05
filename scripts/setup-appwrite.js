@@ -692,32 +692,33 @@ async function deployFunction(functionId, functionPath) {
       log(`Copied files to temp directory: ${tempFunctionDir}`, 'info');
       log(`Temp directory contents: ${JSON.stringify(require('fs').readdirSync(tempFunctionDir))}`, 'info');
       
-      // Try zip first
+      // Install required tools for TAR.GZ creation
       try {
-        execSync(`cd "${tempFunctionDir}" && zip -r "${zipPath}" .`, { stdio: 'pipe' });
-        if (existsSync(zipPath)) {
-          deploymentBuffer = readFileSync(zipPath);
-          deploymentMethod = 'zip';
-          log(`Created zip archive (${deploymentBuffer.length} bytes)`, 'info');
-          log(`Zip file exists and is readable: ${existsSync(zipPath)}`, 'info');
-        } else {
-          log('Zip file was not created', 'error');
-        }
-      } catch (zipError) {
-        log(`Zip failed: ${zipError.message}`, 'info');
+        log('Installing required tools for TAR.GZ creation...', 'info');
+        execSync('apk add --no-cache tar gzip', { stdio: 'pipe' });
+        log('Required tools installed successfully', 'info');
+      } catch (installError) {
+        log(`Tool installation failed: ${installError.message}`, 'info');
+        log('Continuing with existing tools...', 'info');
+      }
+
+      // Create tar.gz file (Appwrite Functions requires TAR.GZ)
+      try {
+        const tarPath = zipPath.replace('.zip', '.tar.gz');
+        log(`Creating TAR.GZ archive: ${tarPath}`, 'info');
+        execSync(`cd "${tempFunctionDir}" && tar -czf "${tarPath}" .`, { stdio: 'pipe' });
         
-        // Try tar
-        try {
-          const tarPath = zipPath.replace('.zip', '.tar.gz');
-          execSync(`cd "${tempFunctionDir}" && tar -czf "${tarPath}" .`, { stdio: 'pipe' });
-          if (existsSync(tarPath)) {
-            deploymentBuffer = readFileSync(tarPath);
-            deploymentMethod = 'tar';
-            log(`Created tar.gz archive (${deploymentBuffer.length} bytes)`, 'info');
-          }
-        } catch (tarError) {
-          log(`Tar failed: ${tarError.message}`, 'info');
+        if (existsSync(tarPath)) {
+          deploymentBuffer = readFileSync(tarPath);
+          deploymentMethod = 'tar-gz';
+          log(`✅ Created tar.gz archive (${deploymentBuffer.length} bytes)`, 'info');
+          log(`Tar.gz file exists and is readable: ${existsSync(tarPath)}`, 'info');
+        } else {
+          throw new Error('Tar.gz file was not created');
         }
+      } catch (tarError) {
+        log(`❌ Tar.gz creation failed: ${tarError.message}`, 'error');
+        throw new Error(`Failed to create TAR.GZ archive: ${tarError.message}`);
       }
       
       // Cleanup
@@ -915,14 +916,12 @@ async function deployFunction(functionId, functionPath) {
     log(`  - First 20 bytes (hex): ${deploymentBuffer.slice(0, 20).toString('hex')}`, 'info');
     log(`  - First 20 bytes (ascii): ${deploymentBuffer.slice(0, 20).toString('ascii').replace(/[^\x20-\x7E]/g, '.')}`, 'info');
     
-    // Check if the buffer looks like a valid archive
-    if (deploymentMethod === 'zip') {
-      const zipSignature = deploymentBuffer.slice(0, 4).toString('hex');
-      if (zipSignature === '504b0304') {
-        log(`✅ ZIP signature verified: ${zipSignature}`, 'info');
-      } else {
-        log(`❌ Invalid ZIP signature: ${zipSignature}`, 'error');
-      }
+    // Check if the buffer looks like a valid TAR.GZ archive
+    const gzipSignature = deploymentBuffer.slice(0, 2).toString('hex');
+    if (gzipSignature === '1f8b') {
+      log(`✅ GZIP signature verified: ${gzipSignature}`, 'info');
+    } else {
+      log(`❌ Invalid GZIP signature: ${gzipSignature}`, 'error');
     }
     
     let deployment = null;
@@ -937,10 +936,17 @@ async function deployFunction(functionId, functionPath) {
         log(`Trying deployment ID: ${deploymentId}`, 'info');
         log(`Sending ${deploymentBuffer.length} bytes to Appwrite...`, 'info');
         
+        // Convert Buffer to File/Blob like in storage.ts
+        const deploymentFile = new File([deploymentBuffer], `${functionId}-deployment.tar.gz`, {
+          type: 'application/gzip'
+        });
+        
+        log(`Created File object: ${deploymentFile.name} (${deploymentFile.size} bytes, ${deploymentFile.type})`, 'info');
+        
         deployment = await functions.createDeployment(
           functionId,
           deploymentId,
-          deploymentBuffer
+          deploymentFile
         );
         
         deploymentSuccess = true;
