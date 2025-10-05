@@ -661,12 +661,21 @@ async function deployFunction(functionId, functionPath) {
     let deploymentBuffer = null;
     let deploymentMethod = '';
     
-    // Approach 1: Try using execSync with available tools
+    // Approach 1: Install tools and try external commands
     try {
-      log('Trying approach 1: External zip/tar commands...', 'info');
+      log('Trying approach 1: Install tools and use external commands...', 'info');
       const { execSync } = await import('child_process');
       const { tmpdir } = await import('os');
       const { writeFileSync, unlinkSync, mkdirSync } = await import('fs');
+      
+      // Try to install zip if not available
+      try {
+        log('Installing zip package...', 'info');
+        execSync('apk add --no-cache zip', { stdio: 'pipe' });
+        log('Zip package installed successfully', 'info');
+      } catch (apkError) {
+        log(`APK install failed (this is OK, will try other methods): ${apkError.message}`, 'info');
+      }
       
       const tempDir = tmpdir();
       const tempFunctionDir = pathJoin(tempDir, `${functionId}-temp-${Date.now()}`);
@@ -832,6 +841,51 @@ async function deployFunction(functionId, functionPath) {
       }
     }
     
+    // Approach 4: Try different deployment method - maybe the issue is with createDeployment
+    if (!deploymentBuffer) {
+      try {
+        log('Trying approach 4: Alternative deployment method...', 'info');
+        
+        // Create a simple zip-like structure using Node.js streams
+        const { createGzip } = await import('zlib');
+        const { pipeline } = await import('stream/promises');
+        const { Readable, PassThrough } = await import('stream');
+        
+        // Create a simple file structure
+        const files = [
+          { name: 'index.js', content: indexContent },
+          { name: 'package.json', content: packageContent }
+        ];
+        
+        // Create a simple archive format
+        let archiveContent = '';
+        for (const file of files) {
+          archiveContent += `FILE:${file.name}\n`;
+          archiveContent += `SIZE:${file.content.length}\n`;
+          archiveContent += `CONTENT:\n${file.content}\n`;
+          archiveContent += `---END---\n`;
+        }
+        
+        // Compress the archive
+        const gzip = createGzip();
+        const archiveStream = Readable.from(Buffer.from(archiveContent, 'utf8'));
+        const gzipStream = new PassThrough();
+        
+        await pipeline(archiveStream, gzip, gzipStream);
+        
+        const chunks = [];
+        for await (const chunk of gzipStream) {
+          chunks.push(chunk);
+        }
+        deploymentBuffer = Buffer.concat(chunks);
+        deploymentMethod = 'custom-archive';
+        log(`Created custom archive (${deploymentBuffer.length} bytes)`, 'info');
+        
+      } catch (error) {
+        log(`Approach 4 failed: ${error.message}`, 'info');
+      }
+    }
+    
     if (!deploymentBuffer) {
       throw new Error('All deployment approaches failed');
     }
@@ -843,13 +897,38 @@ async function deployFunction(functionId, functionPath) {
     const preview = deploymentBuffer.slice(0, 50);
     log(`Archive preview (first 50 bytes): ${preview.toString('hex')}`, 'info');
     
-    // Create deployment
+    // Create deployment with different approaches
     log(`Creating deployment for function '${functionId}'...`, 'info');
-    const deployment = await functions.createDeployment(
-      functionId,
-      'main', // deploymentId
-      deploymentBuffer
-    );
+    
+    let deployment = null;
+    let deploymentSuccess = false;
+    
+    // Try different deployment IDs
+    const deploymentIds = ['main', 'latest', 'v1', 'deployment-1', functionId + '-deployment'];
+    
+    for (const deploymentId of deploymentIds) {
+      try {
+        log(`Trying deployment ID: ${deploymentId}`, 'info');
+        deployment = await functions.createDeployment(
+          functionId,
+          deploymentId,
+          deploymentBuffer
+        );
+        deploymentSuccess = true;
+        log(`Deployment successful with ID: ${deploymentId}`, 'info');
+        break;
+      } catch (deployError) {
+        log(`Deployment failed with ID '${deploymentId}': ${deployError.message}`, 'info');
+        if (deployError.message.includes('already exists')) {
+          log(`Deployment ID '${deploymentId}' already exists, trying next...`, 'info');
+          continue;
+        }
+      }
+    }
+    
+    if (!deploymentSuccess) {
+      throw new Error(`All deployment attempts failed. Last error: ${deployment?.message || 'Unknown error'}`);
+    }
     
     log(`Function '${functionId}' deployed successfully with ID: ${deployment.$id}`, 'success');
     log(`Deployment method used: ${deploymentMethod}`, 'info');
