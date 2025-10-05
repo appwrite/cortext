@@ -688,6 +688,10 @@ async function deployFunction(functionId, functionPath) {
       writeFileSync(pathJoin(tempFunctionDir, 'index.js'), indexContent);
       writeFileSync(pathJoin(tempFunctionDir, 'package.json'), packageContent);
       
+      // Verify files were copied correctly
+      log(`Copied files to temp directory: ${tempFunctionDir}`, 'info');
+      log(`Temp directory contents: ${JSON.stringify(require('fs').readdirSync(tempFunctionDir))}`, 'info');
+      
       // Try zip first
       try {
         execSync(`cd "${tempFunctionDir}" && zip -r "${zipPath}" .`, { stdio: 'pipe' });
@@ -695,6 +699,9 @@ async function deployFunction(functionId, functionPath) {
           deploymentBuffer = readFileSync(zipPath);
           deploymentMethod = 'zip';
           log(`Created zip archive (${deploymentBuffer.length} bytes)`, 'info');
+          log(`Zip file exists and is readable: ${existsSync(zipPath)}`, 'info');
+        } else {
+          log('Zip file was not created', 'error');
         }
       } catch (zipError) {
         log(`Zip failed: ${zipError.message}`, 'info');
@@ -726,8 +733,11 @@ async function deployFunction(functionId, functionPath) {
       log(`Approach 1 failed: ${error.message}`, 'info');
     }
     
-    // Approach 2: Manual TAR.GZ creation
+    // Only try other approaches if the first one failed
     if (!deploymentBuffer) {
+      log('Approach 1 did not produce a deployment buffer, trying other approaches...', 'info');
+      
+      // Approach 2: Manual TAR.GZ creation
       try {
         log('Trying approach 2: Manual TAR.GZ creation...', 'info');
         const { createGzip } = await import('zlib');
@@ -800,90 +810,90 @@ async function deployFunction(functionId, functionPath) {
         deploymentMethod = 'manual-tar-gz';
         log(`Created manual tar.gz archive (${deploymentBuffer.length} bytes)`, 'info');
         
-      } catch (error) {
-        log(`Approach 2 failed: ${error.message}`, 'info');
-      }
-    }
-    
-    // Approach 3: Simple ZIP-like format
-    if (!deploymentBuffer) {
-      try {
-        log('Trying approach 3: Simple ZIP-like format...', 'info');
-        
-        // Create a simple archive format
-        const archiveData = {
-          'index.js': indexContent,
-          'package.json': packageContent
-        };
-        
-        // Convert to JSON and compress
-        const { createGzip } = await import('zlib');
-        const { pipeline } = await import('stream/promises');
-        const { Readable, PassThrough } = await import('stream');
-        
-        const jsonData = JSON.stringify(archiveData);
-        const gzip = createGzip();
-        const jsonStream = Readable.from(Buffer.from(jsonData, 'utf8'));
-        const gzipStream = new PassThrough();
-        
-        await pipeline(jsonStream, gzip, gzipStream);
-        
-        const chunks = [];
-        for await (const chunk of gzipStream) {
-          chunks.push(chunk);
-        }
-        deploymentBuffer = Buffer.concat(chunks);
-        deploymentMethod = 'json-gzip';
-        log(`Created JSON-GZIP archive (${deploymentBuffer.length} bytes)`, 'info');
-        
-      } catch (error) {
-        log(`Approach 3 failed: ${error.message}`, 'info');
-      }
-    }
-    
-    // Approach 4: Try different deployment method - maybe the issue is with createDeployment
-    if (!deploymentBuffer) {
-      try {
-        log('Trying approach 4: Alternative deployment method...', 'info');
-        
-        // Create a simple zip-like structure using Node.js streams
-        const { createGzip } = await import('zlib');
-        const { pipeline } = await import('stream/promises');
-        const { Readable, PassThrough } = await import('stream');
-        
-        // Create a simple file structure
-        const files = [
-          { name: 'index.js', content: indexContent },
-          { name: 'package.json', content: packageContent }
-        ];
-        
-        // Create a simple archive format
-        let archiveContent = '';
-        for (const file of files) {
-          archiveContent += `FILE:${file.name}\n`;
-          archiveContent += `SIZE:${file.content.length}\n`;
-          archiveContent += `CONTENT:\n${file.content}\n`;
-          archiveContent += `---END---\n`;
+        } catch (error) {
+          log(`Approach 2 failed: ${error.message}`, 'info');
         }
         
-        // Compress the archive
-        const gzip = createGzip();
-        const archiveStream = Readable.from(Buffer.from(archiveContent, 'utf8'));
-        const gzipStream = new PassThrough();
-        
-        await pipeline(archiveStream, gzip, gzipStream);
-        
-        const chunks = [];
-        for await (const chunk of gzipStream) {
-          chunks.push(chunk);
+        // Approach 3: Simple ZIP-like format
+        if (!deploymentBuffer) {
+          try {
+            log('Trying approach 3: Simple ZIP-like format...', 'info');
+            
+            // Create a simple archive format
+            const archiveData = {
+              'index.js': indexContent,
+              'package.json': packageContent
+            };
+            
+            // Convert to JSON and compress
+            const { createGzip } = await import('zlib');
+            const { pipeline } = await import('stream/promises');
+            const { Readable, PassThrough } = await import('stream');
+            
+            const jsonData = JSON.stringify(archiveData);
+            const gzip = createGzip();
+            const jsonStream = Readable.from(Buffer.from(jsonData, 'utf8'));
+            const gzipStream = new PassThrough();
+            
+            await pipeline(jsonStream, gzip, gzipStream);
+            
+            const chunks = [];
+            for await (const chunk of gzipStream) {
+              chunks.push(chunk);
+            }
+            deploymentBuffer = Buffer.concat(chunks);
+            deploymentMethod = 'json-gzip';
+            log(`Created JSON-GZIP archive (${deploymentBuffer.length} bytes)`, 'info');
+            
+          } catch (error) {
+            log(`Approach 3 failed: ${error.message}`, 'info');
+          }
         }
-        deploymentBuffer = Buffer.concat(chunks);
-        deploymentMethod = 'custom-archive';
-        log(`Created custom archive (${deploymentBuffer.length} bytes)`, 'info');
         
-      } catch (error) {
-        log(`Approach 4 failed: ${error.message}`, 'info');
-      }
+        // Approach 4: Try different deployment method - maybe the issue is with createDeployment
+        if (!deploymentBuffer) {
+          try {
+            log('Trying approach 4: Alternative deployment method...', 'info');
+            
+            // Create a simple zip-like structure using Node.js streams
+            const { createGzip } = await import('zlib');
+            const { pipeline } = await import('stream/promises');
+            const { Readable, PassThrough } = await import('stream');
+            
+            // Create a simple file structure
+            const files = [
+              { name: 'index.js', content: indexContent },
+              { name: 'package.json', content: packageContent }
+            ];
+            
+            // Create a simple archive format
+            let archiveContent = '';
+            for (const file of files) {
+              archiveContent += `FILE:${file.name}\n`;
+              archiveContent += `SIZE:${file.content.length}\n`;
+              archiveContent += `CONTENT:\n${file.content}\n`;
+              archiveContent += `---END---\n`;
+            }
+            
+            // Compress the archive
+            const gzip = createGzip();
+            const archiveStream = Readable.from(Buffer.from(archiveContent, 'utf8'));
+            const gzipStream = new PassThrough();
+            
+            await pipeline(archiveStream, gzip, gzipStream);
+            
+            const chunks = [];
+            for await (const chunk of gzipStream) {
+              chunks.push(chunk);
+            }
+            deploymentBuffer = Buffer.concat(chunks);
+            deploymentMethod = 'custom-archive';
+            log(`Created custom archive (${deploymentBuffer.length} bytes)`, 'info');
+            
+          } catch (error) {
+            log(`Approach 4 failed: ${error.message}`, 'info');
+          }
+        }
     }
     
     if (!deploymentBuffer) {
@@ -899,9 +909,25 @@ async function deployFunction(functionId, functionPath) {
     
     // Create deployment with different approaches
     log(`Creating deployment for function '${functionId}'...`, 'info');
+    log(`Deployment buffer details:`, 'info');
+    log(`  - Size: ${deploymentBuffer.length} bytes`, 'info');
+    log(`  - Type: ${deploymentMethod}`, 'info');
+    log(`  - First 20 bytes (hex): ${deploymentBuffer.slice(0, 20).toString('hex')}`, 'info');
+    log(`  - First 20 bytes (ascii): ${deploymentBuffer.slice(0, 20).toString('ascii').replace(/[^\x20-\x7E]/g, '.')}`, 'info');
+    
+    // Check if the buffer looks like a valid archive
+    if (deploymentMethod === 'zip') {
+      const zipSignature = deploymentBuffer.slice(0, 4).toString('hex');
+      if (zipSignature === '504b0304') {
+        log(`✅ ZIP signature verified: ${zipSignature}`, 'info');
+      } else {
+        log(`❌ Invalid ZIP signature: ${zipSignature}`, 'error');
+      }
+    }
     
     let deployment = null;
     let deploymentSuccess = false;
+    let lastError = null;
     
     // Try different deployment IDs
     const deploymentIds = ['main', 'latest', 'v1', 'deployment-1', functionId + '-deployment'];
@@ -909,25 +935,42 @@ async function deployFunction(functionId, functionPath) {
     for (const deploymentId of deploymentIds) {
       try {
         log(`Trying deployment ID: ${deploymentId}`, 'info');
+        log(`Sending ${deploymentBuffer.length} bytes to Appwrite...`, 'info');
+        
         deployment = await functions.createDeployment(
           functionId,
           deploymentId,
           deploymentBuffer
         );
+        
         deploymentSuccess = true;
-        log(`Deployment successful with ID: ${deploymentId}`, 'info');
+        log(`✅ Deployment successful with ID: ${deploymentId}`, 'success');
         break;
       } catch (deployError) {
-        log(`Deployment failed with ID '${deploymentId}': ${deployError.message}`, 'info');
+        lastError = deployError;
+        log(`❌ Deployment failed with ID '${deploymentId}': ${deployError.message}`, 'error');
+        log(`Error type: ${deployError.type}`, 'info');
+        log(`Error code: ${deployError.code}`, 'info');
+        
         if (deployError.message.includes('already exists')) {
           log(`Deployment ID '${deploymentId}' already exists, trying next...`, 'info');
           continue;
+        }
+        
+        // If it's a "File not found in payload" error, try to debug further
+        if (deployError.message.includes('File not found in payload')) {
+          log(`🔍 Debugging "File not found in payload" error:`, 'info');
+          log(`  - Buffer length: ${deploymentBuffer.length}`, 'info');
+          log(`  - Buffer is empty: ${deploymentBuffer.length === 0}`, 'info');
+          log(`  - Buffer is null: ${deploymentBuffer === null}`, 'info');
+          log(`  - Buffer is undefined: ${deploymentBuffer === undefined}`, 'info');
+          log(`  - First 100 bytes: ${deploymentBuffer.slice(0, 100).toString('hex')}`, 'info');
         }
       }
     }
     
     if (!deploymentSuccess) {
-      throw new Error(`All deployment attempts failed. Last error: ${deployment?.message || 'Unknown error'}`);
+      throw new Error(`All deployment attempts failed. Last error: ${lastError?.message || 'Unknown error'}`);
     }
     
     log(`Function '${functionId}' deployed successfully with ID: ${deployment.$id}`, 'success');
