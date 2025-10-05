@@ -4,6 +4,7 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { ChevronDown, MessageCircle, Plus, ChevronRight } from 'lucide-react'
 import type { Conversations } from '@/lib/appwrite/appwrite.types'
+import { formatDateRelative } from '@/lib/date-utils'
 
 interface ConversationSelectorProps {
   conversations: Conversations[]
@@ -25,28 +26,24 @@ export function ConversationSelector({
   const currentConversation = conversations.find(c => c.$id === currentConversationId)
 
   return (
-    <>
-      {/* Conversation title - left aligned */}
-      <div className="text-xs font-medium text-muted-foreground truncate max-w-32">
-        {currentConversation?.title || 'No conversation'}
-      </div>
-
-      {/* Buttons - right aligned */}
-      <div className="flex items-center gap-1 ml-auto">
-        {/* Conversation selector - arrow only */}
-        <Popover open={isOpen} onOpenChange={setIsOpen}>
-          <PopoverTrigger asChild>
-            <Button
-              variant="ghost"
-              size="sm"
-              className="h-8 w-8 p-0"
-              disabled={isLoading}
-              title="Select conversation"
-            >
-              <ChevronDown className="h-4 w-4" />
-            </Button>
-          </PopoverTrigger>
-        <PopoverContent className="w-80 p-0" align="end">
+    <div className="flex items-center gap-1 w-full">
+      {/* Conversation selector - takes full width */}
+      <Popover open={isOpen} onOpenChange={setIsOpen}>
+        <PopoverTrigger asChild>
+          <Button
+            variant="ghost"
+            size="sm"
+            className="h-8 px-2 flex-1 justify-between min-w-0"
+            disabled={isLoading}
+            title="Select conversation"
+          >
+            <span className="text-xs font-medium text-muted-foreground truncate">
+              {currentConversation?.title || 'No conversation'}
+            </span>
+            <ChevronDown className="h-4 w-4 flex-shrink-0 ml-1" />
+          </Button>
+        </PopoverTrigger>
+        <PopoverContent className="w-64 p-0" align="end">
           {/* Arrow pointing to the conversation selector */}
           <div className="absolute right-3 top-0 w-0 h-0 border-l-[6px] border-r-[6px] border-b-[6px] border-l-transparent border-r-transparent border-b-border -translate-y-full" />
           <div className="p-3 border-b">
@@ -77,12 +74,10 @@ export function ConversationSelector({
                         {conversation.title}
                       </div>
                       <div className="text-xs text-muted-foreground mt-0.5">
-                        {new Date(conversation.$createdAt).toLocaleDateString('en-US', {
-                          month: 'short',
-                          day: 'numeric',
-                          hour: '2-digit',
-                          minute: '2-digit'
-                        })}
+                        {conversation.lastMessageAt 
+                          ? formatDateRelative(conversation.lastMessageAt)
+                          : 'No messages'
+                        }
                       </div>
                     </div>
                     <ChevronRight className="h-3.5 w-3.5 text-muted-foreground flex-shrink-0 ml-2" />
@@ -94,18 +89,17 @@ export function ConversationSelector({
         </PopoverContent>
       </Popover>
 
-      {/* New conversation button */}
+      {/* New conversation button - aligned to the end */}
       <Button
         variant="ghost"
         size="sm"
-        className="h-8 w-8 p-0"
+        className="h-8 w-8 p-0 flex-shrink-0"
         onClick={onCreateNewConversation}
         disabled={isLoading}
         title="New conversation"
       >
         <Plus className="h-4 w-4" />
       </Button>
-      </div>
-    </>
+    </div>
   )
 }

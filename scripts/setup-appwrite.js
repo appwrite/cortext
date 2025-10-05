@@ -690,7 +690,8 @@ async function deployFunction(functionId, functionPath) {
       
       // Verify files were copied correctly
       log(`Copied files to temp directory: ${tempFunctionDir}`, 'info');
-      log(`Temp directory contents: ${JSON.stringify(require('fs').readdirSync(tempFunctionDir))}`, 'info');
+      const { readdirSync } = await import('fs');
+      log(`Temp directory contents: ${JSON.stringify(readdirSync(tempFunctionDir))}`, 'info');
       
       // Install required tools for TAR.GZ creation
       try {
