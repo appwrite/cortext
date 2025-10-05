@@ -5,42 +5,14 @@ import { Badge } from '@/components/ui/badge'
 import { getAccountClient, getAvatarsClient } from '@/lib/appwrite'
 import { toast } from '@/hooks/use-toast'
 import { Monitor, Smartphone, Globe, LogOut } from 'lucide-react'
+import { Models } from 'appwrite'
 
 interface SessionsModalProps {
   isOpen: boolean
   onClose: () => void
 }
 
-interface Session {
-  $id: string
-  userId: string
-  provider: string
-  providerUid: string
-  providerAccessToken: string
-  providerAccessTokenExpiry: string
-  providerRefreshToken: string
-  providerAccessTokenSecret: string
-  providerAccessTokenSecretExpiry: string
-  current: boolean
-  ip: string
-  osCode: string
-  osName: string
-  osVersion: string
-  clientType: string
-  clientCode: string
-  clientName: string
-  clientVersion: string
-  clientEngine: string
-  clientEngineVersion: string
-  deviceName: string
-  deviceBrand: string
-  deviceModel: string
-  countryCode: string
-  countryName: string
-  factor: number
-  $createdAt: string
-  $updatedAt: string
-}
+type Session = Models.Session
 
 export function SessionsModal({ isOpen, onClose }: SessionsModalProps) {
   const [sessions, setSessions] = useState<Session[]>([])
@@ -102,7 +74,7 @@ export function SessionsModal({ isOpen, onClose }: SessionsModalProps) {
   const getBrowserIcon = (clientCode: string) => {
     if (!clientCode) return null
     const avatars = getAvatarsClient()
-    return avatars.getBrowser(clientCode, 48, 48)
+    return avatars.getBrowser(clientCode as any, 48, 48)
   }
 
   const formatDate = (dateString: string) => {
@@ -173,8 +145,8 @@ export function SessionsModal({ isOpen, onClose }: SessionsModalProps) {
                         <div className="flex items-center gap-3">
                           {session.clientCode && (
                             <img 
-                              src={getBrowserIcon(session.clientCode)} 
-                              alt={session.clientName}
+                              src={getBrowserIcon(session.clientCode) || undefined} 
+                              alt={session.clientName || 'Browser'}
                               className="w-8 h-8 rounded-sm"
                             />
                           )}
