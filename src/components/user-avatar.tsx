@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from 'react'
-import { LogOut, User, Mail, Calendar, Settings, Shield, Copy, Check, Palette } from 'lucide-react'
+import { LogOut, User, Mail, Calendar, Settings, Shield, Copy, Check, Palette, Send, AlertTriangle, AlertCircle } from 'lucide-react'
 import { StandardAvatar } from '@/components/ui/standard-avatar'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -7,6 +7,7 @@ import { Separator } from '@/components/ui/separator'
 import { ThemeSwitcherCompact } from '@/components/ui/theme-switcher'
 import { cn } from '@/lib/utils'
 import { toast } from '@/hooks/use-toast'
+import { getAccountClient } from '@/lib/appwrite'
 
 interface UserAvatarProps {
   user: {
@@ -23,6 +24,7 @@ interface UserAvatarProps {
 export function UserAvatar({ user, onSignOut }: UserAvatarProps) {
   const [isOpen, setIsOpen] = useState(false)
   const [copiedId, setCopiedId] = useState(false)
+  const [isSendingVerification, setIsSendingVerification] = useState(false)
   const containerRef = useRef<HTMLDivElement>(null)
 
   // Close dropdown when clicking outside
@@ -67,7 +69,7 @@ export function UserAvatar({ user, onSignOut }: UserAvatarProps) {
     if (user?.emailVerification && user?.phoneVerification) {
       return { text: 'Verified', variant: 'default' as const }
     } else if (user?.emailVerification) {
-      return { text: 'Email Verified', variant: 'secondary' as const }
+      return { text: 'Verified', variant: 'secondary' as const }
     } else {
       return { text: 'Unverified', variant: 'outline' as const }
     }
@@ -87,6 +89,15 @@ export function UserAvatar({ user, onSignOut }: UserAvatarProps) {
   const getUserRole = () => {
     // This could be enhanced based on your app's role system
     return 'Member'
+  }
+
+  // Check if account is older than 2 days
+  const isAccountOld = () => {
+    if (!user?.$createdAt) return false
+    const accountCreated = new Date(user.$createdAt)
+    const twoDaysAgo = new Date()
+    twoDaysAgo.setDate(twoDaysAgo.getDate() - 2)
+    return accountCreated < twoDaysAgo
   }
 
   // Copy account ID to clipboard
@@ -112,19 +123,52 @@ export function UserAvatar({ user, onSignOut }: UserAvatarProps) {
     }
   }
 
+  // Send email verification
+  const sendEmailVerification = async () => {
+    if (!user?.email || user?.emailVerification) return
+    
+    setIsSendingVerification(true)
+    try {
+      const account = getAccountClient()
+      await account.createVerification({ url: `${window.location.origin}/verify-email` })
+      
+      toast({
+        title: 'Verification email sent',
+        description: 'Please check your email and click the verification link'
+      })
+    } catch (error: any) {
+      toast({
+        title: 'Failed to send verification',
+        description: error.message || 'Could not send verification email',
+        variant: 'destructive'
+      })
+    } finally {
+      setIsSendingVerification(false)
+    }
+  }
+
   return (
     <div ref={containerRef} className="relative">
       <Button
         variant="ghost"
         size="sm"
         onClick={() => setIsOpen(!isOpen)}
-        className="h-6 w-6 rounded-full p-0 cursor-pointer hover:bg-accent"
+        className="relative cursor-pointer"
         aria-label="User menu"
       >
         <StandardAvatar 
           className="h-6 w-6"
           initials={getInitials()}
         />
+        {/* Warning badge for old unverified accounts */}
+        {isAccountOld() && !user?.emailVerification && (
+          <Badge 
+            variant="outline"
+            className="absolute -top-1 -right-1 h-5 w-5 p-0 text-xs flex items-center justify-center min-w-[20px] bg-muted text-muted-foreground border-muted-foreground/20"
+          >
+            !
+          </Badge>
+        )}
       </Button>
       
       {isOpen && (
@@ -159,21 +203,43 @@ export function UserAvatar({ user, onSignOut }: UserAvatarProps) {
               </div>
 
               {/* Account status */}
-              <div className="flex items-center gap-3 text-sm">
-                <div className="flex-shrink-0 w-8 h-8 rounded-full bg-muted flex items-center justify-center">
-                  <Shield className="h-4 w-4 text-muted-foreground" />
-                </div>
-                <div className="flex-1 min-w-0">
-                  <p className="text-muted-foreground text-xs">Account status</p>
-                  <div className="flex items-center gap-2">
-                    <div className={cn(
-                      "w-2 h-2 rounded-full",
-                      getUserStatus().variant === 'default' ? "bg-green-500 dark:bg-green-400" : 
-                      getUserStatus().variant === 'secondary' ? "bg-yellow-500 dark:bg-yellow-400" : "bg-gray-500 dark:bg-gray-400"
-                    )} />
-                    <p className="font-medium">{getUserStatus().text}</p>
+              <div className="flex items-center justify-between text-sm">
+                <div className="flex items-center gap-3">
+                  <div className="flex-shrink-0 w-8 h-8 rounded-full bg-muted flex items-center justify-center">
+                    <Shield className="h-4 w-4 text-muted-foreground" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-muted-foreground text-xs">Account status</p>
+                    <div className="flex items-center gap-2">
+                      <div className={cn(
+                        "w-2 h-2 rounded-full",
+                        getUserStatus().variant === 'default' ? "bg-green-500 dark:bg-green-400" : 
+                        getUserStatus().variant === 'secondary' ? "bg-green-500 dark:bg-green-400" : "bg-gray-500 dark:bg-gray-400"
+                      )} />
+                      <p className="font-medium">{getUserStatus().text}</p>
+                    </div>
                   </div>
                 </div>
+                {/* Email verification button */}
+                {user?.email && !user?.emailVerification && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={sendEmailVerification}
+                    disabled={isSendingVerification}
+                    className={cn(
+                      "h-8 px-3",
+                      isAccountOld() && "border-yellow-500 text-yellow-600 hover:bg-yellow-50 dark:border-yellow-400 dark:text-yellow-400 dark:hover:bg-yellow-950/20"
+                    )}
+                  >
+                    {isAccountOld() ? (
+                      <AlertTriangle className="h-0.5 w-0.5 mr-1" />
+                    ) : (
+                      <Send className="h-4 w-4 mr-1" />
+                    )}
+                    {isSendingVerification ? 'Sending...' : 'Verify'}
+                  </Button>
+                )}
               </div>
 
               {/* Account ID */}
@@ -233,7 +299,7 @@ export function UserAvatar({ user, onSignOut }: UserAvatarProps) {
                 className="w-full justify-start cursor-pointer hover:bg-accent"
               >
                 <Settings className="h-4 w-4 mr-2" />
-                Account Settings
+                Settings
               </Button>
               <Button
                 variant="ghost"

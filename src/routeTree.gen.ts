@@ -9,6 +9,7 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as VerifyEmailRouteImport } from './routes/verify-email'
 import { Route as ProtectedRouteImport } from './routes/_protected'
 import { Route as AuthRouteImport } from './routes/_auth'
 import { Route as IndexRouteImport } from './routes/index'
@@ -17,6 +18,11 @@ import { Route as AuthSignUpRouteImport } from './routes/_auth/sign-up'
 import { Route as AuthSignOutRouteImport } from './routes/_auth/sign-out'
 import { Route as AuthSignInRouteImport } from './routes/_auth/sign-in'
 
+const VerifyEmailRoute = VerifyEmailRouteImport.update({
+  id: '/verify-email',
+  path: '/verify-email',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ProtectedRoute = ProtectedRouteImport.update({
   id: '/_protected',
   getParentRoute: () => rootRouteImport,
@@ -53,6 +59,7 @@ const AuthSignInRoute = AuthSignInRouteImport.update({
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/verify-email': typeof VerifyEmailRoute
   '/sign-in': typeof AuthSignInRoute
   '/sign-out': typeof AuthSignOutRoute
   '/sign-up': typeof AuthSignUpRoute
@@ -60,6 +67,7 @@ export interface FileRoutesByFullPath {
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/verify-email': typeof VerifyEmailRoute
   '/sign-in': typeof AuthSignInRoute
   '/sign-out': typeof AuthSignOutRoute
   '/sign-up': typeof AuthSignUpRoute
@@ -70,6 +78,7 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/_auth': typeof AuthRouteWithChildren
   '/_protected': typeof ProtectedRouteWithChildren
+  '/verify-email': typeof VerifyEmailRoute
   '/_auth/sign-in': typeof AuthSignInRoute
   '/_auth/sign-out': typeof AuthSignOutRoute
   '/_auth/sign-up': typeof AuthSignUpRoute
@@ -77,14 +86,27 @@ export interface FileRoutesById {
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/sign-in' | '/sign-out' | '/sign-up' | '/dashboard'
+  fullPaths:
+    | '/'
+    | '/verify-email'
+    | '/sign-in'
+    | '/sign-out'
+    | '/sign-up'
+    | '/dashboard'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/sign-in' | '/sign-out' | '/sign-up' | '/dashboard'
+  to:
+    | '/'
+    | '/verify-email'
+    | '/sign-in'
+    | '/sign-out'
+    | '/sign-up'
+    | '/dashboard'
   id:
     | '__root__'
     | '/'
     | '/_auth'
     | '/_protected'
+    | '/verify-email'
     | '/_auth/sign-in'
     | '/_auth/sign-out'
     | '/_auth/sign-up'
@@ -95,10 +117,18 @@ export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AuthRoute: typeof AuthRouteWithChildren
   ProtectedRoute: typeof ProtectedRouteWithChildren
+  VerifyEmailRoute: typeof VerifyEmailRoute
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/verify-email': {
+      id: '/verify-email'
+      path: '/verify-email'
+      fullPath: '/verify-email'
+      preLoaderRoute: typeof VerifyEmailRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/_protected': {
       id: '/_protected'
       path: ''
@@ -181,6 +211,7 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AuthRoute: AuthRouteWithChildren,
   ProtectedRoute: ProtectedRouteWithChildren,
+  VerifyEmailRoute: VerifyEmailRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
