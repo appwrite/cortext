@@ -27,6 +27,7 @@ import { TeamBlogSelector } from '@/components/team-blog'
 import { CodeEditor } from '@/components/ui/code-editor'
 import { UserAvatar } from '@/components/user-avatar'
 import { useTeamBlog } from '@/hooks/use-team-blog'
+import { OnboardingJourney } from '@/components/onboarding'
 import { TeamBlogProvider, useTeamBlogContext } from '@/contexts/team-blog-context'
 import { useDocumentTitle } from '@/hooks/use-document-title'
 import { formatDateForDisplay, formatDateCompact, formatDateRelative } from '@/lib/date-utils'
@@ -358,6 +359,51 @@ function ArticlesList({ userId }: { userId: string }) {
     return (
         <main className="flex-1">
             <div className="px-6 py-6 space-y-6">
+                <OnboardingJourney 
+                  articleCount={articleList?.total || 0}
+                  onCreateArticle={async () => {
+                    try {
+                      const payload: Omit<Articles, keyof Models.Document> = {
+                        trailer: null,
+                        title: 'Untitled',
+                        status: 'unpublished',
+                        subtitle: null,
+                        images: null,
+                        body: null,
+                        authors: null,
+                        live: false,
+                        pinned: false,
+                        redirect: null,
+                        categories: null,
+                        createdBy: userId,
+                        published: false,
+                        slug: null,
+                        publishedAt: null,
+                        blogId: currentBlog?.$id || null,
+                      }
+                      const article = await db.articles.create(payload, currentTeam?.$id)
+                      navigate({ to: '/dashboard', search: { articleId: article.$id } })
+                    } catch (error) {
+                      toast({
+                        title: 'Error',
+                        description: 'Failed to create article. Please try again.',
+                        variant: 'destructive',
+                      })
+                    }
+                  }}
+                  onInviteTeam={() => {
+                    // TODO: Implement team invitation functionality
+                    toast({
+                      title: 'Team Invitation',
+                      description: 'Team invitation feature coming soon!',
+                    })
+                  }}
+                  onShareOnX={() => {
+                    const tweetText = "Just started using @CortextApp for AI-powered content management! 🚀 The flexible blocks and team collaboration features are amazing. #ContentManagement #AI"
+                    const tweetUrl = `https://twitter.com/intent/tweet?text=${encodeURIComponent(tweetText)}`
+                    window.open(tweetUrl, '_blank', 'noopener,noreferrer')
+                  }}
+                />
                 <div className="flex items-center justify-between gap-4">
                     <SearchInput
                         query={query}
