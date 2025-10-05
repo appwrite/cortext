@@ -633,7 +633,7 @@ async function deployFunction(functionId, functionPath) {
     log(`Deploying function '${functionId}' from ${functionPath}...`, 'info');
     
     // Check if function directory exists
-    const { existsSync, readFileSync } = await import('fs');
+    const { existsSync } = await import('fs');
     if (!existsSync(functionPath)) {
       throw new Error(`Function directory not found: ${functionPath}`);
     }
@@ -660,7 +660,7 @@ async function deployFunction(functionId, functionPath) {
     // Create TAR.GZ archive for deployment
     const { execSync } = await import('child_process');
     const { tmpdir } = await import('os');
-    const { writeFileSync, unlinkSync, mkdirSync, readFileSync, existsSync } = await import('fs');
+    const { writeFileSync, unlinkSync, mkdirSync } = await import('fs');
     
     const tempDir = tmpdir();
     const tempFunctionDir = pathJoin(tempDir, `${functionId}-temp-${Date.now()}`);
