@@ -1,7 +1,6 @@
 import { Client, Databases, ID, Permission, Role, Query } from 'appwrite';
 import { Client as ServerClient, Databases as ServerDatabases, ID as ServerID, Permission as ServerPermission, Role as ServerRole, Query as ServerQuery } from 'node-appwrite';
-import { Mastra } from '@mastra/core';
-import { openai } from '@mastra/openai';
+import { Mastra, OpenAICompatibleModel } from '@mastra/core';
 
 /**
  * Agent Function Architecture:
@@ -23,7 +22,8 @@ const serverDatabases = new ServerDatabases(serverClient);
 const mastra = new Mastra({
   name: 'cortext-agent',
   llms: {
-    openai: openai({
+    openai: new OpenAICompatibleModel({
+      id: 'openai/gpt-4o-mini',
       apiKey: process.env.OPENAI_API_KEY,
     }),
   },
