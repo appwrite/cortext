@@ -159,6 +159,7 @@ export function useMessagesRealtime(
   const databaseId = import.meta.env.VITE_APPWRITE_DATABASE_ID
   const messagesCollectionChannel = `databases.${databaseId}.collections.messages.documents`
   const messagesTableChannel = `databases.${databaseId}.tables.messages.rows`
+  const queryClient = useQueryClient()
   
   console.log('useMessagesRealtime called:', { 
     blogId, 
@@ -208,7 +209,8 @@ export function useMessagesRealtime(
       conversationId: payload.conversationId,
       blogId: payload.blogId,
       role: payload.role,
-      contentLength: payload.content?.length 
+      contentLength: payload.content?.length,
+      updatedAt: payload.$updatedAt
     })
     
     // Note: articleId is passed for context but messages are filtered by conversationId
@@ -219,6 +221,90 @@ export function useMessagesRealtime(
     return true
   }, [blogId, conversationId])
 
+  // Custom event handler for optimistic updates with race condition protection
+  const onEvent = useMemo(() => (payload: any, events: string[]) => {
+    const queryKey = ['messages', conversationId || '']
+    
+    // Only handle update events for existing messages
+    const isUpdateEvent = events.some(event => event.includes('.update'))
+    if (!isUpdateEvent) {
+      // For create events, use the standard invalidation approach
+      console.log('Message create event - using standard invalidation')
+      queryClient.invalidateQueries({ queryKey }).then(() => {
+        return queryClient.refetchQueries({ queryKey })
+      })
+      return
+    }
+
+    console.log('Message update event - using optimistic update with race condition protection', {
+      messageId: payload.$id,
+      updatedAt: payload.$updatedAt,
+      events
+    })
+
+    // For update events, use optimistic updates with timestamp validation
+    // We need to handle all possible query keys that might contain this message
+    const allQueryKeys = [
+      ['messages', conversationId || ''],
+      ['messages', conversationId || '', 0], // First page
+      ['messages', conversationId || '', 25], // Second page
+      ['messages', conversationId || '', 50], // Third page
+      // Add more offsets as needed, or use a more dynamic approach
+    ]
+
+    allQueryKeys.forEach(key => {
+      queryClient.setQueryData(key, (oldData: any) => {
+        if (!oldData?.documents) {
+          console.log('No existing data found for query key:', key)
+          return oldData
+        }
+
+        const messageId = payload.$id
+        const newUpdatedAt = new Date(payload.$updatedAt).getTime()
+        
+        // Find the existing message
+        const existingMessageIndex = oldData.documents.findIndex((msg: any) => msg.$id === messageId)
+        
+        if (existingMessageIndex === -1) {
+          console.log('Message not found in existing data for query key:', key)
+          return oldData
+        }
+
+        const existingMessage = oldData.documents[existingMessageIndex]
+        const existingUpdatedAt = new Date(existingMessage.$updatedAt).getTime()
+        
+        // Only update if the new message is newer (race condition protection)
+        if (newUpdatedAt > existingUpdatedAt) {
+          console.log('Updating message with newer timestamp', {
+            messageId,
+            existingUpdatedAt: new Date(existingUpdatedAt).toISOString(),
+            newUpdatedAt: new Date(newUpdatedAt).toISOString(),
+            queryKey: key
+          })
+          
+          // Create updated documents array with the new message
+          const updatedDocuments = [...oldData.documents]
+          updatedDocuments[existingMessageIndex] = payload
+          
+          return {
+            ...oldData,
+            documents: updatedDocuments
+          }
+        } else {
+          console.log('Ignoring older message update (race condition protection)', {
+            messageId,
+            existingUpdatedAt: new Date(existingUpdatedAt).toISOString(),
+            newUpdatedAt: new Date(newUpdatedAt).toISOString(),
+            queryKey: key
+          })
+          
+          // Keep existing data unchanged
+          return oldData
+        }
+      })
+    })
+  }, [conversationId, queryClient])
+
   const queryKey = useMemo(() => ['messages', conversationId || ''], [conversationId])
   
   console.log('useMessagesRealtime queryKey:', queryKey)
@@ -228,14 +314,16 @@ export function useMessagesRealtime(
     { 
       channel: messagesCollectionChannel, 
       queryKey, 
-      filter 
+      filter,
+      onEvent
     },
     { 
       channel: messagesTableChannel, 
       queryKey, 
-      filter 
+      filter,
+      onEvent
     }
-  ], [messagesCollectionChannel, messagesTableChannel, queryKey, filter])
+  ], [messagesCollectionChannel, messagesTableChannel, queryKey, filter, onEvent])
 
   return useRealtime(subscriptions, enabled)
 }
@@ -422,6 +510,7 @@ export function useMessagesAndNotificationsRealtime(
   enabled: boolean = true
 ) {
   const databaseId = import.meta.env.VITE_APPWRITE_DATABASE_ID
+  const queryClient = useQueryClient()
   const messagesCollectionChannel = `databases.${databaseId}.collections.messages.documents`
   const messagesTableChannel = `databases.${databaseId}.tables.messages.rows`
   const notificationsCollectionChannel = `databases.${databaseId}.collections.notifications.documents`
@@ -448,6 +537,90 @@ export function useMessagesAndNotificationsRealtime(
     
     return true
   }, [blogId, conversationId])
+
+  // Messages event handler with race condition protection
+  const messagesOnEvent = useMemo(() => (payload: any, events: string[]) => {
+    const queryKey = ['messages', conversationId || '']
+    
+    // Only handle update events for existing messages
+    const isUpdateEvent = events.some(event => event.includes('.update'))
+    if (!isUpdateEvent) {
+      // For create events, use the standard invalidation approach
+      console.log('Message create event - using standard invalidation')
+      queryClient.invalidateQueries({ queryKey }).then(() => {
+        return queryClient.refetchQueries({ queryKey })
+      })
+      return
+    }
+
+    console.log('Message update event - using optimistic update with race condition protection', {
+      messageId: payload.$id,
+      updatedAt: payload.$updatedAt,
+      events
+    })
+
+    // For update events, use optimistic updates with timestamp validation
+    // We need to handle all possible query keys that might contain this message
+    const allQueryKeys = [
+      ['messages', conversationId || ''],
+      ['messages', conversationId || '', 0], // First page
+      ['messages', conversationId || '', 25], // Second page
+      ['messages', conversationId || '', 50], // Third page
+      // Add more offsets as needed, or use a more dynamic approach
+    ]
+
+    allQueryKeys.forEach(key => {
+      queryClient.setQueryData(key, (oldData: any) => {
+        if (!oldData?.documents) {
+          console.log('No existing data found for query key:', key)
+          return oldData
+        }
+
+        const messageId = payload.$id
+        const newUpdatedAt = new Date(payload.$updatedAt).getTime()
+        
+        // Find the existing message
+        const existingMessageIndex = oldData.documents.findIndex((msg: any) => msg.$id === messageId)
+        
+        if (existingMessageIndex === -1) {
+          console.log('Message not found in existing data for query key:', key)
+          return oldData
+        }
+
+        const existingMessage = oldData.documents[existingMessageIndex]
+        const existingUpdatedAt = new Date(existingMessage.$updatedAt).getTime()
+        
+        // Only update if the new message is newer (race condition protection)
+        if (newUpdatedAt > existingUpdatedAt) {
+          console.log('Updating message with newer timestamp', {
+            messageId,
+            existingUpdatedAt: new Date(existingUpdatedAt).toISOString(),
+            newUpdatedAt: new Date(newUpdatedAt).toISOString(),
+            queryKey: key
+          })
+          
+          // Create updated documents array with the new message
+          const updatedDocuments = [...oldData.documents]
+          updatedDocuments[existingMessageIndex] = payload
+          
+          return {
+            ...oldData,
+            documents: updatedDocuments
+          }
+        } else {
+          console.log('Ignoring older message update (race condition protection)', {
+            messageId,
+            existingUpdatedAt: new Date(existingUpdatedAt).toISOString(),
+            newUpdatedAt: new Date(newUpdatedAt).toISOString(),
+            queryKey: key
+          })
+          
+          // Keep existing data unchanged
+          return oldData
+        }
+      })
+    })
+  }, [conversationId, queryClient])
 
   // Notifications filter
   const notificationsFilter = useMemo(() => (payload: any) => {
@@ -478,12 +651,14 @@ export function useMessagesAndNotificationsRealtime(
       subs.push({
         channel: messagesCollectionChannel,
         queryKey: ['messages', conversationId],
-        filter: messagesFilter
+        filter: messagesFilter,
+        onEvent: messagesOnEvent
       })
       subs.push({
         channel: messagesTableChannel,
         queryKey: ['messages', conversationId],
-        filter: messagesFilter
+        filter: messagesFilter,
+        onEvent: messagesOnEvent
       })
     }
     
@@ -510,6 +685,7 @@ export function useMessagesAndNotificationsRealtime(
     conversationId, 
     userId, 
     messagesFilter, 
+    messagesOnEvent,
     notificationsFilter, 
     notificationsOnEvent
   ])
