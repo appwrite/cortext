@@ -177,6 +177,23 @@ export default async function ({ req, res, log, error }) {
         log(message); // Still log to console
       };
 
+      // Helper function to create metadata within 2000 char limit
+      const createMetadata = (baseData, maxLogs = 5, maxLogLength = 80) => {
+        const metadata = {
+          ...baseData,
+          debugLogs: debugLogs.slice(-maxLogs).map(log => log.substring(0, maxLogLength))
+        };
+        
+        let metadataString = JSON.stringify(metadata);
+        if (metadataString.length > 2000) {
+          // Reduce logs further if still too long
+          metadata.debugLogs = debugLogs.slice(-3).map(log => log.substring(0, 50));
+          metadataString = JSON.stringify(metadata);
+        }
+        
+        return metadataString;
+      };
+
       try {
         // Prepare conversation messages for the LLM in the format expected by Mastra
         const conversationMessages = messages.map(msg => ({
@@ -319,16 +336,15 @@ export default async function ({ req, res, log, error }) {
                     initialMessage.$id,
                     {
                       content: fullContent,
-                      metadata: JSON.stringify({
+                      metadata: createMetadata({
                         model: 'gpt-4o-mini',
                         temperature: 0.7,
                         generatedAt: new Date().toISOString(),
                         streaming: true,
                         status: 'generating',
                         chunkCount: chunkCount,
-                        tokensUsed: fullContent.length,
-                        debugLogs: debugLogs.slice(-10) // Keep last 10 debug logs
-                      })
+                        tokensUsed: fullContent.length
+                      }, 5, 100)
                     }
                   );
                   addDebugLog(`Updated streaming message with ${chunkCount} chunks, content length: ${fullContent.length}`);
@@ -362,14 +378,14 @@ export default async function ({ req, res, log, error }) {
           fullContent = "I apologize, but I'm having trouble generating a response right now. Please try again.";
         }
 
-        // Final update with complete content and all debug logs
+        // Final update with complete content and truncated debug logs
         await serverDatabases.updateDocument(
           databaseId,
           'messages',
           initialMessage.$id,
           {
             content: fullContent,
-            metadata: JSON.stringify({
+            metadata: createMetadata({
               model: 'gpt-4o-mini',
               temperature: 0.7,
               generatedAt: new Date().toISOString(),
@@ -377,9 +393,8 @@ export default async function ({ req, res, log, error }) {
               status: 'completed',
               chunkCount: chunkCount,
               tokensUsed: fullContent.length,
-              cached: true,
-              debugLogs: debugLogs // Include all debug logs in final message
-            })
+              cached: true
+            }, 10, 80)
           }
         );
 
@@ -394,10 +409,8 @@ export default async function ({ req, res, log, error }) {
       } catch (error) {
         log('LLM streaming error: ' + error.message);
         
-        // Add debug logs to error message
-        const errorDebugLogs = debugLogs || [];
-        errorDebugLogs.push(`[${new Date().toISOString()}] ERROR: ${error.message}`);
-        errorDebugLogs.push(`[${new Date().toISOString()}] Stack: ${error.stack}`);
+        // Add error to debug logs
+        addDebugLog(`ERROR: ${error.message}`);
         
         // Create fallback message if streaming fails
         const fallbackContent = "I apologize, but I'm experiencing technical difficulties. Please try again in a moment.";
@@ -413,15 +426,14 @@ export default async function ({ req, res, log, error }) {
             userId: messageUserId || null,
             agentId: agentId || 'cortext-agent',
             blogId,
-            metadata: JSON.stringify({
+            metadata: createMetadata({
               model: 'gpt-4o-mini',
               temperature: 0.7,
               generatedAt: new Date().toISOString(),
               streaming: false,
               status: 'error',
-              error: error.message,
-              debugLogs: errorDebugLogs
-            }),
+              error: error.message.substring(0, 200)
+            }, 5, 80),
             isEdited: false
           },
           [
