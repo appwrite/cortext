@@ -601,7 +601,7 @@ function CreateArticleView({ userId, onDone, onCancel }: { userId: string; onDon
                     <div>
                         <Label htmlFor="new-title">Title</Label>
                         <div className="relative">
-                            <Input id="new-title" value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Article title" className="pr-32" />
+                            <Input id="new-title" value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Article title" className="pr-20" />
                             <div className="absolute right-3 top-1/2 -translate-y-1/2 flex items-center space-x-2">
                                 <Checkbox id="new-live" checked={live} onCheckedChange={(checked) => setLive(checked === true)} />
                                 <Label htmlFor="new-live" className="text-xs text-muted-foreground inline-label">Live</Label>
@@ -1279,7 +1279,7 @@ function ArticleEditor({ articleId, userId, onBack }: { articleId: string; userI
                                     value={title} 
                                     onChange={(e) => setTitle(e.target.value)} 
                                     placeholder="Article title" 
-                                    className="pr-32" 
+                                    className="pr-20" 
                                 />
                             ) : (
                                 <CommentableInput
@@ -1294,7 +1294,7 @@ function ArticleEditor({ articleId, userId, onBack }: { articleId: string; userI
                                         value={title} 
                                         onChange={(e) => setTitle(e.target.value)} 
                                         placeholder="Article title" 
-                                        className="pr-32" 
+                                        className="pr-20" 
                                     />
                                 </CommentableInput>
                             )}
