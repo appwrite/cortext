@@ -11,7 +11,6 @@ import { ConversationPlaceholder } from './conversation-placeholder'
 import { useAuth } from '@/hooks/use-auth'
 import type { Messages } from '@/lib/appwrite/appwrite.types'
 import { functionService } from '@/lib/appwrite/functions'
-import { formatDateRelative } from '@/lib/date-utils'
 
 type Message = {
     id: string
@@ -39,7 +38,26 @@ export function AgentChat({
     const [input, setInput] = useState('')
     const [currentConversationId, setCurrentConversationId] = useState<string | null>(null)
     const [isDrawerOpen, setIsDrawerOpen] = useState(false)
+    const [isWaitingForAI, setIsWaitingForAI] = useState(false)
     const isMobile = useIsMobile()
+
+    // Scroll to bottom function
+    const scrollToBottom = useCallback(() => {
+        if (scrollAreaRef.current) {
+            const scrollElement = scrollAreaRef.current.querySelector('[data-radix-scroll-area-viewport]')
+            if (scrollElement) {
+                console.log('Scrolling to bottom, scrollHeight:', scrollElement.scrollHeight)
+                scrollElement.scrollTo({
+                    top: scrollElement.scrollHeight,
+                    behavior: 'smooth'
+                })
+            } else {
+                console.warn('ScrollArea viewport not found')
+            }
+        } else {
+            console.warn('ScrollArea ref not found')
+        }
+    }, [])
 
     const {
         conversations,
@@ -133,6 +151,7 @@ export function AgentChat({
     const [previousMessageCount, setPreviousMessageCount] = useState(0)
     const [isLoadingMore, setIsLoadingMore] = useState(false)
     const [shouldPreserveScroll, setShouldPreserveScroll] = useState(false)
+    const [lastScrollTime, setLastScrollTime] = useState(0)
     
     // Save scroll position when starting to load more messages
     const handleLoadMore = useCallback(() => {
@@ -143,10 +162,32 @@ export function AgentChat({
     useEffect(() => {
         // Only scroll if we're not loading more messages and the message count increased
         if (!isLoadingMore && messages.length > previousMessageCount && !shouldPreserveScroll) {
-            bottomRef.current?.scrollIntoView({ behavior: 'smooth', block: 'end' })
+            const now = Date.now()
+            // Prevent rapid scrolling by ensuring at least 50ms between scrolls
+            if (now - lastScrollTime > 50) {
+                // Use a small delay to ensure the DOM has updated
+                setTimeout(() => {
+                    scrollToBottom()
+                    setLastScrollTime(Date.now())
+                }, 10)
+            }
         }
         setPreviousMessageCount(messages.length)
-    }, [messages.length, isLoadingMore, shouldPreserveScroll])
+    }, [messages.length, isLoadingMore, shouldPreserveScroll, scrollToBottom, lastScrollTime])
+
+    // Additional scroll trigger for any message changes (more reliable)
+    useEffect(() => {
+        if (!isLoadingMore && !shouldPreserveScroll && messages.length > 0) {
+            const now = Date.now()
+            // Only scroll if we haven't scrolled recently (prevent rapid scrolling)
+            if (now - lastScrollTime > 100) {
+                setTimeout(() => {
+                    scrollToBottom()
+                    setLastScrollTime(Date.now())
+                }, 10)
+            }
+        }
+    }, [messages, isLoadingMore, shouldPreserveScroll, scrollToBottom, lastScrollTime])
     
     // Track when we're loading more messages
     useEffect(() => {
@@ -162,6 +203,44 @@ export function AgentChat({
         }
     }, [isLoadingMoreMessages])
 
+    // Clear AI waiting state when a new assistant message arrives
+    useEffect(() => {
+        if (isWaitingForAI && messages.length > 0) {
+            const lastMessage = messages[messages.length - 1]
+            if (lastMessage.role === 'assistant') {
+                setIsWaitingForAI(false)
+                // Scroll to the new assistant message
+                setTimeout(() => {
+                    scrollToBottom()
+                    setLastScrollTime(Date.now())
+                }, 10) // Minimal delay for immediate scrolling
+            }
+        }
+    }, [messages, isWaitingForAI, scrollToBottom])
+
+    // Scroll to bottom when AI loading state changes
+    useEffect(() => {
+        if (isWaitingForAI) {
+            // Scroll to show the loading indicator
+            setTimeout(() => {
+                scrollToBottom()
+                setLastScrollTime(Date.now())
+            }, 10)
+        }
+    }, [isWaitingForAI, scrollToBottom])
+
+    // Fallback timeout to clear loading state (in case realtime doesn't work)
+    useEffect(() => {
+        if (isWaitingForAI) {
+            const timeout = setTimeout(() => {
+                console.warn('AI response timeout - clearing loading state')
+                setIsWaitingForAI(false)
+            }, 10000) // 10 second timeout
+
+            return () => clearTimeout(timeout)
+        }
+    }, [isWaitingForAI])
+
     const send = async () => {
         const text = input.trim()
         if (!text || !currentConversationId) return
@@ -175,6 +254,13 @@ export function AgentChat({
             })
 
             setInput('')
+            setIsWaitingForAI(true)
+
+            // Scroll immediately after user message is created
+            setTimeout(() => {
+                scrollToBottom()
+                setLastScrollTime(Date.now())
+            }, 10)
 
             // Trigger agent function to generate response
             await functionService.triggerAgentResponse({
@@ -189,6 +275,7 @@ export function AgentChat({
             console.log('Agent function triggered successfully')
         } catch (error) {
             console.error('Failed to send message:', error)
+            setIsWaitingForAI(false)
         }
     }
 
@@ -204,6 +291,12 @@ export function AgentChat({
                 content: `Updated title to: "${next}"`,
                 userId: user?.$id || '',
             })
+            
+            // Scroll to show the new message
+            setTimeout(() => {
+                scrollToBottom()
+                setLastScrollTime(Date.now())
+            }, 10)
         } catch (error) {
             console.error('Failed to create message:', error)
         }
@@ -222,6 +315,12 @@ export function AgentChat({
                 content: 'Drafted a new meta description. Feel free to tweak it.',
                 userId: user?.$id || '',
             })
+            
+            // Scroll to show the new message
+            setTimeout(() => {
+                scrollToBottom()
+                setLastScrollTime(Date.now())
+            }, 10)
         } catch (error) {
             console.error('Failed to create message:', error)
         }
@@ -265,11 +364,30 @@ export function AgentChat({
                                         {m.content}
                                     </div>
                                 </div>
-                                <div className={`text-xs text-muted-foreground ${m.role === 'assistant' ? 'ml-6' : 'text-right'}`}>
-                                    {formatDateRelative(m.createdAt)}
-                                </div>
                             </div>
                         ))}
+                        
+                        {/* AI Loading Indicator */}
+                        {isWaitingForAI && (
+                            <div className="space-y-1">
+                                <div className="flex gap-2 items-start">
+                                    <div className="mt-0.5 text-muted-foreground">
+                                        <Brain className="h-4 w-4" />
+                                    </div>
+                                    <div className="rounded-md bg-accent px-2.5 py-1.5 text-xs max-w-[220px]">
+                                        <div className="flex items-center gap-1">
+                                            <span>Thinking</span>
+                                            <div className="flex gap-0.5">
+                                                <div className="w-1 h-1 bg-muted-foreground rounded-full animate-pulse" style={{ animationDelay: '0ms' }}></div>
+                                                <div className="w-1 h-1 bg-muted-foreground rounded-full animate-pulse" style={{ animationDelay: '150ms' }}></div>
+                                                <div className="w-1 h-1 bg-muted-foreground rounded-full animate-pulse" style={{ animationDelay: '300ms' }}></div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        )}
+                        
                         <div ref={bottomRef} />
                     </div>
                 ) : (
@@ -285,6 +403,12 @@ export function AgentChat({
                                     userId: user?.$id || '',
                                 })
 
+                                // Scroll to show user message
+                                setTimeout(() => {
+                                    scrollToBottom()
+                                    setLastScrollTime(Date.now())
+                                }, 10)
+
                                 // Create assistant reply
                                 const reply = mockReply(message, title)
                                 await createMessage({
@@ -292,6 +416,12 @@ export function AgentChat({
                                     content: reply,
                                     userId: user?.$id || '',
                                 })
+
+                                // Scroll to show assistant reply
+                                setTimeout(() => {
+                                    scrollToBottom()
+                                    setLastScrollTime(Date.now())
+                                }, 10)
                             } catch (error) {
                                 console.error('Failed to send message:', error)
                             }
@@ -300,7 +430,9 @@ export function AgentChat({
                 )}
             </ScrollArea>
 
-            <div className="px-6 py-6 space-y-2">
+            <div className="relative px-6 py-6 space-y-2 bg-background">
+                {/* Gradient fade overlay - more gradual */}
+                <div className="absolute inset-x-0 -top-12 h-12 bg-gradient-to-t from-background via-background/80 to-transparent pointer-events-none" />
                 <div className="flex gap-2">
                     <Button variant="secondary" size="sm" className="gap-1 h-7 px-2 text-[11px]" onClick={applySEOTitle}>
                         <Sparkles className="h-3.5 w-3.5" /> SEO title
