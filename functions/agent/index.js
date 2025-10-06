@@ -1,4 +1,4 @@
-import { Client, Databases, ID, Permission, Role } from 'appwrite';
+import { Client, Databases, ID, Permission, Role, Query } from 'appwrite';
 
 // Initialize Appwrite client
 const client = new Client();
@@ -134,8 +134,8 @@ export default async function ({ req, res, log, error }) {
       databaseId,
       'messages',
       [
-        `conversationId=${conversationId}`,
-        'orderAsc($createdAt)'
+        Query.equal('conversationId', conversationId),
+        Query.orderAsc('$createdAt')
       ]
     );
 
