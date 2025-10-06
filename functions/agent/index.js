@@ -338,14 +338,86 @@ export default async function ({ req, res, log, error }) {
             }
             
             addDebugLog(`Processing chunk ${chunkCount + 1}, chunk type: ${chunk.type || 'unknown'}`);
+            addDebugLog(`Chunk structure: ${JSON.stringify(chunk, null, 2)}`);
             
-            if (chunk.choices && chunk.choices[0] && chunk.choices[0].delta && chunk.choices[0].delta.content) {
-              const content = chunk.choices[0].delta.content;
+            // Handle different chunk types from Mastra stream
+            if (chunk.type === 'text-delta' && chunk.delta) {
+              const content = chunk.delta;
               fullContent += content;
               chunkCount++;
               lastChunkTime = Date.now();
               resetInactivityTimeout(); // Reset inactivity timeout when we receive content
               addDebugLog(`Received content chunk: "${content}" (total length: ${fullContent.length})`);
+
+              // Update the message document with accumulated content every few chunks
+              if (chunkCount % 3 === 0 || content.includes('\n')) {
+                try {
+                  await serverDatabases.updateDocument(
+                    databaseId,
+                    'messages',
+                    initialMessage.$id,
+                    {
+                      content: fullContent,
+                      metadata: createMetadata({
+                        model: 'gpt-4o-mini',
+                        temperature: 0.7,
+                        generatedAt: new Date().toISOString(),
+                        streaming: true,
+                        status: 'generating',
+                        chunkCount: chunkCount,
+                        tokensUsed: fullContent.length
+                      }, 5, 100)
+                    }
+                  );
+                  addDebugLog(`Updated streaming message with ${chunkCount} chunks, content length: ${fullContent.length}`);
+                } catch (updateError) {
+                  addDebugLog('Error updating streaming message: ' + updateError.message);
+                  // Continue streaming even if update fails
+                }
+              }
+            } else if (chunk.type === 'text-delta' && chunk.content) {
+              // Alternative format where content is directly in chunk
+              const content = chunk.content;
+              fullContent += content;
+              chunkCount++;
+              lastChunkTime = Date.now();
+              resetInactivityTimeout();
+              addDebugLog(`Received content chunk (alt format): "${content}" (total length: ${fullContent.length})`);
+
+              // Update the message document with accumulated content every few chunks
+              if (chunkCount % 3 === 0 || content.includes('\n')) {
+                try {
+                  await serverDatabases.updateDocument(
+                    databaseId,
+                    'messages',
+                    initialMessage.$id,
+                    {
+                      content: fullContent,
+                      metadata: createMetadata({
+                        model: 'gpt-4o-mini',
+                        temperature: 0.7,
+                        generatedAt: new Date().toISOString(),
+                        streaming: true,
+                        status: 'generating',
+                        chunkCount: chunkCount,
+                        tokensUsed: fullContent.length
+                      }, 5, 100)
+                    }
+                  );
+                  addDebugLog(`Updated streaming message with ${chunkCount} chunks, content length: ${fullContent.length}`);
+                } catch (updateError) {
+                  addDebugLog('Error updating streaming message: ' + updateError.message);
+                  // Continue streaming even if update fails
+                }
+              }
+            } else if (chunk.choices && chunk.choices[0] && chunk.choices[0].delta && chunk.choices[0].delta.content) {
+              // Fallback to original OpenAI format
+              const content = chunk.choices[0].delta.content;
+              fullContent += content;
+              chunkCount++;
+              lastChunkTime = Date.now();
+              resetInactivityTimeout();
+              addDebugLog(`Received content chunk (OpenAI format): "${content}" (total length: ${fullContent.length})`);
 
               // Update the message document with accumulated content every few chunks
               if (chunkCount % 3 === 0 || content.includes('\n')) {
@@ -379,6 +451,11 @@ export default async function ({ req, res, log, error }) {
             } else if (chunk.type === 'finish') {
               addDebugLog('Stream finished normally');
               break;
+            } else if (chunk.type === 'text-end') {
+              addDebugLog('Text stream ended');
+              break;
+            } else {
+              addDebugLog(`Unhandled chunk type: ${chunk.type}, chunk: ${JSON.stringify(chunk)}`);
             }
           }
         } catch (streamError) {
