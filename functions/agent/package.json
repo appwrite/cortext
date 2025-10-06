@@ -1,5 +1,5 @@
 {
-  "name": "agent-function",
+  "name": "agent",
   "version": "1.0.0",
   "description": "Appwrite function for creating agent messages",
   "main": "index.js",
