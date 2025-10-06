@@ -1,0 +1,19 @@
+{
+  "name": "notification-function",
+  "version": "1.0.0",
+  "description": "Appwrite function to create notification documents",
+  "main": "index.js",
+  "scripts": {
+    "test": "node test-function.js"
+  },
+  "dependencies": {
+    "node-appwrite": "^20.0.0"
+  },
+  "keywords": [
+    "appwrite",
+    "function",
+    "notification"
+  ],
+  "author": "Cortext Team",
+  "license": "MIT"
+}
