@@ -276,6 +276,47 @@
   perspective: 1000px;
 }
 
+/* Chrome table layout fixes */
+.sections-table-container table {
+  table-layout: fixed;
+  width: 100%;
+}
+
+.sections-table-container td {
+  word-wrap: break-word;
+  overflow-wrap: break-word;
+  hyphens: auto;
+}
+
+/* Ensure action column (trash button) doesn't get compressed */
+.sections-table-container td:last-child {
+  width: 50px !important;
+  min-width: 50px !important;
+  max-width: 50px !important;
+  padding: 0.5rem !important;
+}
+
+/* Chrome-specific textarea fixes */
+.sections-table-container textarea {
+  box-sizing: border-box;
+  width: 100% !important;
+  max-width: 100% !important;
+  min-width: 0 !important;
+}
+
+/* Ensure proper table cell width calculation in Chrome */
+@supports (-webkit-appearance: none) {
+  .sections-table-container table {
+    table-layout: fixed;
+  }
+  
+  .sections-table-container td {
+    width: auto;
+    min-width: 0;
+    max-width: none;
+  }
+}
+
 .group:hover .group-hover\:rotate-x-3 {
   transform: rotateX(3deg);
 }

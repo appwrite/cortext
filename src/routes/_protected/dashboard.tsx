@@ -1375,13 +1375,13 @@ function ArticleEditor({ articleId, userId, onBack }: { articleId: string; userI
                     ) : (
                         <div className="relative sections-table-container">
                             <div className="rounded-md border overflow-hidden">
-                                <Table className="[&_td]:align-top">
+                                <Table className="[&_td]:align-top table-fixed w-full">
                                     <TableHeader>
                                         <TableRow>
                                             <TableHead className="w-[30px]">Order</TableHead>
                                             <TableHead className="w-[40px]"></TableHead>
-                                            <TableHead>Content</TableHead>
-                                            <TableHead className="w-[40px] text-right"></TableHead>
+                                            <TableHead className="w-auto min-w-0">Content</TableHead>
+                                            <TableHead className="w-[50px] text-right"></TableHead>
                                         </TableRow>
                                     </TableHeader>
                                     <TableBody>
@@ -1420,16 +1420,18 @@ function ArticleEditor({ articleId, userId, onBack }: { articleId: string; userI
                                                             {getSectionTypeIcon(s.type)}
                                                         </div>
                                                     </TableCell>
-                                                    <TableCell>
-                                                        <SectionEditor
-                                                            section={s}
-                                                            onLocalChange={onLocalChangeHandlers[s.id]}
-                                                            isDragging={!!draggingId}
-                                                            userId={userId}
-                                                        />
+                                                    <TableCell className="w-auto min-w-0 max-w-full">
+                                                        <div className="w-full min-w-0">
+                                                            <SectionEditor
+                                                                section={s}
+                                                                onLocalChange={onLocalChangeHandlers[s.id]}
+                                                                isDragging={!!draggingId}
+                                                                userId={userId}
+                                                            />
+                                                        </div>
                                                     </TableCell>
-                                                    <TableCell className="text-right">
-                                                        <Button variant="ghost" size="icon" onClick={() => deleteSection(s.id)}>
+                                                    <TableCell className="text-right w-[50px] min-w-[50px]">
+                                                        <Button variant="ghost" size="icon" onClick={() => deleteSection(s.id)} className="h-8 w-8">
                                                             <Trash2 className="h-4 w-4" />
                                                         </Button>
                                                     </TableCell>
@@ -1643,14 +1645,29 @@ function QuoteEditor({ section, onLocalChange }: { section: any; onLocalChange: 
     }, [quote, speaker])
 
     return (
-        <div className="space-y-2">
+        <div className="space-y-2 w-full min-w-0">
             <div className="space-y-1">
                 <Label htmlFor={`quote-${section.id}`}>Quote</Label>
-                <Textarea id={`quote-${section.id}`} value={quote} onChange={(e) => setQuote(e.target.value)} placeholder="Add a memorable line…" rows={2} />
+                <Textarea 
+                    id={`quote-${section.id}`} 
+                    value={quote} 
+                    onChange={(e) => setQuote(e.target.value)} 
+                    placeholder="Add a memorable line…" 
+                    rows={2}
+                    className="w-full min-w-0"
+                    style={{ width: '100%', maxWidth: '100%' }}
+                />
             </div>
             <div className="space-y-1">
                 <Label htmlFor={`speaker-${section.id}`}>Speaker</Label>
-                <Input id={`speaker-${section.id}`} value={speaker} onChange={(e) => setSpeaker(e.target.value)} placeholder="Who said it?" />
+                <Input 
+                    id={`speaker-${section.id}`} 
+                    value={speaker} 
+                    onChange={(e) => setSpeaker(e.target.value)} 
+                    placeholder="Who said it?"
+                    className="w-full min-w-0"
+                    style={{ width: '100%', maxWidth: '100%' }}
+                />
             </div>
         </div>
     )
@@ -1671,7 +1688,7 @@ function TextEditor({ section, onLocalChange }: { section: any; onLocalChange: (
     }, [value])
 
     return (
-        <div className="space-y-1">
+        <div className="space-y-1 w-full min-w-0">
             <Label htmlFor={`text-${section.id}`}>Text</Label>
             <Textarea
                 id={`text-${section.id}`}
@@ -1680,8 +1697,8 @@ function TextEditor({ section, onLocalChange }: { section: any; onLocalChange: (
                 onChange={(e) => setValue(e.target.value)}
                 placeholder="Write text…"
                 rows={1}
-                className="min-h-[40px] text-sm"
-                style={{ overflow: 'hidden', resize: 'none' }}
+                className="min-h-[40px] text-sm w-full min-w-0"
+                style={{ overflow: 'hidden', resize: 'none', width: '100%', maxWidth: '100%' }}
             />
         </div>
     )
