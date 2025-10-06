@@ -18,6 +18,10 @@ const databases = new Databases(client);
 const serverClient = new ServerClient();
 const serverDatabases = new ServerDatabases(serverClient);
 
+// Debug environment variables at module level
+console.log('Module level - OPENAI_API_KEY present:', !!process.env.OPENAI_API_KEY);
+console.log('Module level - All env vars:', Object.keys(process.env).sort());
+
 // Initialize OpenAI model
 const openaiModel = new OpenAICompatibleModel({
   id: 'openai/gpt-4o-mini',
@@ -217,10 +221,30 @@ export default async function ({ req, res, log, error }) {
           log(message); // Still log to console
         };
 
+        // Check API key availability with fallbacks
+        let apiKey = process.env.OPENAI_API_KEY || 
+                    process.env.OPENAI_KEY || 
+                    process.env.OPENAI_API_TOKEN ||
+                    process.env.OPENAI_TOKEN;
+        
+        addDebugLog('OpenAI API Key present: ' + (apiKey ? 'Yes (length: ' + apiKey.length + ')' : 'No'));
+        addDebugLog('Environment variables available: ' + Object.keys(process.env).filter(key => key.includes('OPENAI')).join(', '));
+        addDebugLog('All environment variables: ' + Object.keys(process.env).sort().join(', '));
+        
+        if (!apiKey) {
+          throw new Error('OPENAI_API_KEY environment variable is not set. Available env vars: ' + Object.keys(process.env).join(', '));
+        }
+
         // Use OpenAI model to generate streaming response
         addDebugLog('Calling OpenAI model with ' + messagesWithSystem.length + ' messages');
         addDebugLog('Message format: ' + JSON.stringify(messagesWithSystem[0], null, 2));
-        const streamResult = await openaiModel.doStream({
+        // Create a new model instance with the verified API key
+        const dynamicOpenaiModel = new OpenAICompatibleModel({
+          id: 'openai/gpt-4o-mini',
+          apiKey: apiKey,
+        });
+
+        const streamResult = await dynamicOpenaiModel.doStream({
           prompt: messagesWithSystem,
           temperature: 0.7,
           max_tokens: 1000,
