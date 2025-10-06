@@ -168,6 +168,15 @@ export default async function ({ req, res, log, error }) {
 
     // Function to generate streaming LLM response and update database in real-time
     async function generateStreamingLLMResponse(messages, agentId, blogId, messageUserId) {
+      // Initialize debug logging at function level
+      let debugLogs = [];
+      const addDebugLog = (message) => {
+        const timestamp = new Date().toISOString();
+        const logEntry = `[${timestamp}] ${message}`;
+        debugLogs.push(logEntry);
+        log(message); // Still log to console
+      };
+
       try {
         // Prepare conversation messages for the LLM in the format expected by Mastra
         const conversationMessages = messages.map(msg => ({
@@ -211,15 +220,6 @@ export default async function ({ req, res, log, error }) {
         );
 
         log('Created initial streaming message with ID: ' + initialMessage.$id);
-
-        // Initialize debug logging
-        let debugLogs = [];
-        const addDebugLog = (message) => {
-          const timestamp = new Date().toISOString();
-          const logEntry = `[${timestamp}] ${message}`;
-          debugLogs.push(logEntry);
-          log(message); // Still log to console
-        };
 
         // Check API key availability with fallbacks
         let apiKey = process.env.OPENAI_API_KEY || 
