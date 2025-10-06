@@ -19,57 +19,37 @@ export function useRealtime(subscriptions: RealtimeSubscription[], enabled: bool
   const subscriptionRefs = useRef(new Map<string, () => void>())
 
   useEffect(() => {
-    console.log('useRealtime effect triggered:', { 
-      enabled, 
-      subscriptionsCount: subscriptions.length,
-      subscriptions: subscriptions.map(s => ({ channel: s.channel, queryKey: s.queryKey }))
-    })
     if (!enabled) {
-      console.log('Realtime disabled, skipping subscription setup')
       return
     }
 
     // Subscribe to all channels
     subscriptions.forEach(({ channel, queryKey, filter, onEvent }) => {
       const subscriptionKey = `${channel}-${queryKey.join('-')}`
-      console.log('Processing subscription:', { channel, queryKey, subscriptionKey })
       
       // Clean up existing subscription if it exists
       if (subscriptionRefs.current.has(subscriptionKey)) {
-        console.log('Cleaning up existing subscription:', subscriptionKey)
         const unsubscribe = subscriptionRefs.current.get(subscriptionKey)
         unsubscribe?.()
         subscriptionRefs.current.delete(subscriptionKey)
       }
 
       // Create new subscription
-      console.log('Setting up realtime subscription:', { channel, queryKey, enabled })
       try {
         const unsubscribe = client.subscribe(channel, (response) => {
-          console.log('Realtime event received:', { 
-            channel, 
-            events: response.events, 
-            payload: response.payload,
-            subscriptionKey 
-          })
           const { payload, events } = response
 
           // Apply filter if provided
           if (filter && !filter(payload)) {
-            console.log('Event filtered out by filter function')
             return
           }
 
-          console.log('Invalidating queries:', queryKey)
           // Invalidate and refetch queries
           queryClient.invalidateQueries({ queryKey }).then(() => {
-            console.log('Query invalidation completed for:', queryKey)
             // Force refetch to ensure data is updated
             return queryClient.refetchQueries({ queryKey })
-          }).then(() => {
-            console.log('Query refetch completed for:', queryKey)
           }).catch((error) => {
-            console.error('Query invalidation/refetch failed:', error)
+            // Query invalidation/refetch failed
           })
 
           // Call custom event handler if provided
@@ -80,15 +60,13 @@ export function useRealtime(subscriptions: RealtimeSubscription[], enabled: bool
 
         // Store subscription for cleanup
         subscriptionRefs.current.set(subscriptionKey, unsubscribe)
-        console.log('Subscription created successfully:', subscriptionKey)
       } catch (error) {
-        console.error('Failed to create subscription:', error)
+        // Failed to create subscription
       }
     })
 
     // Cleanup function
     return () => {
-      console.log('Cleaning up all subscriptions')
       subscriptionRefs.current.forEach((unsubscribe) => {
         unsubscribe()
       })
@@ -161,57 +139,24 @@ export function useMessagesRealtime(
   const messagesTableChannel = `databases.${databaseId}.tables.messages.rows`
   const queryClient = useQueryClient()
   
-  console.log('useMessagesRealtime called:', { 
-    blogId, 
-    articleId, 
-    conversationId, 
-    enabled, 
-    databaseId, 
-    messagesCollectionChannel,
-    messagesTableChannel
-  })
 
   const filter = useMemo(() => (payload: any) => {
     if (!payload || typeof payload !== 'object') return false
     
     // Filter by blogId if provided
     if (blogId && payload.blogId !== blogId) {
-      console.log('Message filtered out: blogId mismatch', { 
-        expected: blogId, 
-        actual: payload.blogId,
-        conversationId: payload.conversationId 
-      })
       return false
     }
     
     // Filter by conversationId if provided (this is the primary filter)
     if (conversationId && payload.conversationId !== conversationId) {
-      console.log('Message filtered out: conversationId mismatch', { 
-        expected: conversationId, 
-        actual: payload.conversationId,
-        blogId: payload.blogId 
-      })
       return false
     }
     
     // Additional validation: ensure we have the required fields
     if (!payload.conversationId || !payload.content || !payload.role) {
-      console.log('Message filtered out: missing required fields', { 
-        conversationId: payload.conversationId,
-        hasContent: !!payload.content,
-        hasRole: !!payload.role 
-      })
       return false
     }
-    
-    // Log successful match for debugging
-    console.log('Message accepted for realtime update', { 
-      conversationId: payload.conversationId,
-      blogId: payload.blogId,
-      role: payload.role,
-      contentLength: payload.content?.length,
-      updatedAt: payload.$updatedAt
-    })
     
     // Note: articleId is passed for context but messages are filtered by conversationId
     // The conversationId already ensures we only get messages for the correct article
@@ -222,16 +167,12 @@ export function useMessagesRealtime(
   }, [blogId, conversationId])
 
   const queryKey = useMemo(() => ['messages', conversationId || ''], [conversationId])
-  console.log('useMessagesRealtime queryKey:', queryKey)
 
   // Custom event handler - optimistic updates without API calls
   const onEvent = useMemo(() => (payload: any, events: string[]) => {
-    console.log('Message event - optimistic update without API calls')
-    
     // Update the existing data optimistically without making API calls
     queryClient.setQueryData(queryKey, (oldData: any) => {
       if (!oldData?.documents) {
-        console.log('No existing data to update')
         return oldData
       }
 
@@ -241,7 +182,6 @@ export function useMessagesRealtime(
 
       if (isCreateEvent) {
         // Add new message to the beginning of the list
-        console.log('Adding new message optimistically:', messageId)
         return {
           ...oldData,
           documents: [payload, ...oldData.documents],
@@ -251,7 +191,6 @@ export function useMessagesRealtime(
         // Update existing message
         const messageIndex = oldData.documents.findIndex((msg: any) => msg.$id === messageId)
         if (messageIndex !== -1) {
-          console.log('Updating existing message optimistically:', messageId)
           const updatedDocuments = [...oldData.documents]
           updatedDocuments[messageIndex] = payload
           return {
@@ -340,14 +279,7 @@ export function useConsolidatedRealtime(subscriptions: RealtimeSubscription[], e
   const subscriptionRefs = useRef(new Map<string, () => void>())
 
   useEffect(() => {
-    console.log('useConsolidatedRealtime effect triggered:', { 
-      enabled, 
-      subscriptionsCount: subscriptions.length,
-      subscriptions: subscriptions.map(s => ({ channel: s.channel, queryKey: s.queryKey }))
-    })
-    
     if (!enabled) {
-      console.log('Consolidated realtime disabled, skipping subscription setup')
       return
     }
 
@@ -360,51 +292,35 @@ export function useConsolidatedRealtime(subscriptions: RealtimeSubscription[], e
       channelGroups.get(sub.channel)!.push(sub)
     })
 
-    console.log('Channel groups:', Array.from(channelGroups.keys()))
-
     // Subscribe to each unique channel
     channelGroups.forEach((channelSubscriptions, channel) => {
       const subscriptionKey = `consolidated-${channel}`
-      console.log('Processing consolidated subscription:', { channel, subscriptionKey, count: channelSubscriptions.length })
       
       // Clean up existing subscription if it exists
       if (subscriptionRefs.current.has(subscriptionKey)) {
-        console.log('Cleaning up existing consolidated subscription:', subscriptionKey)
         const unsubscribe = subscriptionRefs.current.get(subscriptionKey)
         unsubscribe?.()
         subscriptionRefs.current.delete(subscriptionKey)
       }
 
       // Create new consolidated subscription
-      console.log('Setting up consolidated realtime subscription:', { channel, enabled })
       try {
         const unsubscribe = client.subscribe(channel, (response) => {
-          console.log('Consolidated realtime event received:', { 
-            channel, 
-            events: response.events, 
-            payload: response.payload,
-            subscriptionKey 
-          })
           const { payload, events } = response
 
           // Process each subscription for this channel
           channelSubscriptions.forEach(({ queryKey, filter, onEvent }) => {
             // Apply filter if provided
             if (filter && !filter(payload)) {
-              console.log('Event filtered out by filter function for queryKey:', queryKey)
               return
             }
 
-            console.log('Invalidating queries for consolidated subscription:', queryKey)
             // Invalidate and refetch queries
             queryClient.invalidateQueries({ queryKey }).then(() => {
-              console.log('Query invalidation completed for consolidated subscription:', queryKey)
               // Force refetch to ensure data is updated
               return queryClient.refetchQueries({ queryKey })
-            }).then(() => {
-              console.log('Query refetch completed for consolidated subscription:', queryKey)
             }).catch((error) => {
-              console.error('Query invalidation/refetch failed for consolidated subscription:', error)
+              // Query invalidation/refetch failed
             })
 
             // Call custom event handler if provided
@@ -416,15 +332,13 @@ export function useConsolidatedRealtime(subscriptions: RealtimeSubscription[], e
 
         // Store subscription for cleanup
         subscriptionRefs.current.set(subscriptionKey, unsubscribe)
-        console.log('Consolidated subscription created successfully:', subscriptionKey)
       } catch (error) {
-        console.error('Failed to create consolidated subscription:', error)
+        // Failed to create consolidated subscription
       }
     })
 
     // Cleanup function
     return () => {
-      console.log('Cleaning up all consolidated subscriptions')
       subscriptionRefs.current.forEach((unsubscribe) => {
         unsubscribe()
       })
@@ -493,12 +407,9 @@ export function useMessagesAndNotificationsRealtime(
   const messagesOnEvent = useMemo(() => (payload: any, events: string[]) => {
     const queryKey = ['messages', conversationId || '']
     
-    console.log('Message event - optimistic update without API calls')
-    
     // Update the existing data optimistically without making API calls
     queryClient.setQueryData(queryKey, (oldData: any) => {
       if (!oldData?.documents) {
-        console.log('No existing data to update')
         return oldData
       }
 
@@ -508,7 +419,6 @@ export function useMessagesAndNotificationsRealtime(
 
       if (isCreateEvent) {
         // Add new message to the beginning of the list
-        console.log('Adding new message optimistically:', messageId)
         return {
           ...oldData,
           documents: [payload, ...oldData.documents],
@@ -518,7 +428,6 @@ export function useMessagesAndNotificationsRealtime(
         // Update existing message
         const messageIndex = oldData.documents.findIndex((msg: any) => msg.$id === messageId)
         if (messageIndex !== -1) {
-          console.log('Updating existing message optimistically:', messageId)
           const updatedDocuments = [...oldData.documents]
           updatedDocuments[messageIndex] = payload
           return {

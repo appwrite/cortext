@@ -70,12 +70,10 @@ export function useMessages(conversationId: string | null, blogId?: string, arti
 
   // Get all messages for a conversation
   const queryKey = ['messages', conversationId, offset]
-  console.log('useMessages queryKey:', queryKey)
   
   const messagesQuery = useQuery({
     queryKey,
     queryFn: () => {
-      console.log('Fetching messages for conversation:', conversationId, 'offset:', offset)
       return db.messages.list([
         Query.equal('conversationId', conversationId!),
         Query.orderDesc('$createdAt'),
@@ -87,17 +85,6 @@ export function useMessages(conversationId: string | null, blogId?: string, arti
     refetchInterval: false, // Disable polling since we're using realtime
   })
 
-  // Debug query state changes
-  console.log('Messages query state:', {
-    conversationId,
-    isLoading: messagesQuery.isLoading,
-    isFetching: messagesQuery.isFetching,
-    dataLength: messagesQuery.data?.documents?.length || 0,
-    hasData: !!messagesQuery.data,
-    error: messagesQuery.error,
-    status: messagesQuery.status,
-    fetchStatus: messagesQuery.fetchStatus
-  })
 
   // Handle pagination logic
   const handleMessagesData = useCallback(() => {
@@ -144,13 +131,6 @@ export function useMessages(conversationId: string | null, blogId?: string, arti
     }
   }, [hasMoreMessages, messagesQuery.isFetching])
 
-  // Set up realtime subscription for messages
-  console.log('Setting up messages realtime:', { 
-    blogId, 
-    articleId, 
-    conversationId, 
-    enabled: !!conversationId 
-  })
   // Removed duplicate realtime subscription - useMessagesAndNotificationsRealtime handles this
 
   // Create a new message
@@ -161,7 +141,6 @@ export function useMessages(conversationId: string | null, blogId?: string, arti
       metadata?: any;
       userId: string;
     }) => {
-      console.log('Creating message:', { conversationId, data })
       if (!conversationId) throw new Error('No conversation selected')
       
       const message = await db.messages.create({
@@ -176,7 +155,6 @@ export function useMessages(conversationId: string | null, blogId?: string, arti
         generationTimeMs: null, // Will be updated by the agent
       }, data.userId)
 
-      console.log('Message created successfully:', message)
 
       // Update conversation's last message time and count
       await db.conversations.update(conversationId, {
@@ -184,20 +162,15 @@ export function useMessages(conversationId: string | null, blogId?: string, arti
         messageCount: (messagesQuery.data?.total || 0) + 1,
       })
 
-      console.log('Conversation updated successfully')
       return message
     },
     onSuccess: (message) => {
-      console.log('createMessage onSuccess called:', { message, conversationId })
       queryClient.invalidateQueries({ queryKey: ['messages', conversationId] }).then(() => {
-        console.log('Messages query invalidated successfully')
       })
       queryClient.invalidateQueries({ queryKey: ['conversations'] }).then(() => {
-        console.log('Conversations query invalidated successfully')
       })
     },
     onError: (error) => {
-      console.error('createMessage error:', error)
     },
   })
 
@@ -265,12 +238,10 @@ export function useMessagesWithNotifications(
 
   // Get all messages for a conversation - use a stable query key without offset
   const queryKey = ['messages', conversationId]
-  console.log('useMessagesWithNotifications queryKey:', queryKey)
   
   const messagesQuery = useQuery({
     queryKey,
     queryFn: () => {
-      console.log('Fetching messages for conversation:', conversationId, 'offset:', offset)
       return db.messages.list([
         Query.equal('conversationId', conversationId!),
         Query.orderDesc('$createdAt'),
@@ -328,13 +299,6 @@ export function useMessagesWithNotifications(
   }, [hasMoreMessages, messagesQuery.isFetching])
 
   // Set up consolidated realtime subscription for both messages and notifications
-  console.log('Setting up consolidated realtime:', { 
-    blogId, 
-    articleId, 
-    conversationId, 
-    userId,
-    enabled: !!conversationId && !!userId
-  })
   
   useMessagesAndNotificationsRealtime(
     userId || '', 
@@ -352,7 +316,6 @@ export function useMessagesWithNotifications(
       metadata?: any;
       userId: string;
     }) => {
-      console.log('Creating message:', { conversationId, data })
       if (!conversationId) throw new Error('No conversation selected')
       
       const message = await db.messages.create({
@@ -367,7 +330,6 @@ export function useMessagesWithNotifications(
         generationTimeMs: null, // Will be updated by the agent
       }, data.userId)
 
-      console.log('Message created successfully:', message)
 
       // Update conversation's last message time and count
       await db.conversations.update(conversationId, {
@@ -375,20 +337,15 @@ export function useMessagesWithNotifications(
         messageCount: (messagesQuery.data?.total || 0) + 1,
       })
 
-      console.log('Conversation updated successfully')
       return message
     },
     onSuccess: (message) => {
-      console.log('createMessage onSuccess called:', { message, conversationId })
       queryClient.invalidateQueries({ queryKey: ['messages', conversationId] }).then(() => {
-        console.log('Messages query invalidated successfully')
       })
       queryClient.invalidateQueries({ queryKey: ['conversations'] }).then(() => {
-        console.log('Conversations query invalidated successfully')
       })
     },
     onError: (error) => {
-      console.error('createMessage error:', error)
     },
   })
 

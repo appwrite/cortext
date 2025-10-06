@@ -18,9 +18,7 @@ const databases = new Databases(client);
 const serverClient = new ServerClient();
 const serverDatabases = new ServerDatabases(serverClient);
 
-// Debug environment variables at module level
-console.log('Module level - OPENAI_API_KEY present:', !!process.env.OPENAI_API_KEY);
-console.log('Module level - All env vars:', Object.keys(process.env).sort());
+// Environment variables are loaded at module level
 
 // Initialize OpenAI model
 const openaiModel = new OpenAICompatibleModel({

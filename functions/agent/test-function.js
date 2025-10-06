@@ -31,26 +31,21 @@ const mockRequest = {
 
 const mockResponse = {
   json: (data, status = 200) => {
-    console.log(`Response Status: ${status}`);
-    console.log('Response Data:', JSON.stringify(data, null, 2));
     return { data, status };
   }
 };
 
 const mockLog = (message) => {
-  console.log(`[LOG] ${message}`);
+  // Mock log function
 };
 
 const mockError = (message) => {
-  console.error(`[ERROR] ${message}`);
+  // Mock error function
 };
 
 // Test the function
 async function testFunction() {
   try {
-    console.log('Testing Agent Function...');
-    console.log('========================');
-    
     // Import the function (this would normally be done by Appwrite)
     const agentFunction = (await import('./index.js')).default;
     
@@ -62,12 +57,11 @@ async function testFunction() {
       error: mockError
     });
     
-    console.log('\nTest completed successfully!');
-    console.log('Function returned:', result);
+    return result;
     
   } catch (error) {
-    console.error('Test failed:', error.message);
-    console.error('Stack trace:', error.stack);
+    // Test failed
+    throw error;
   }
 }
 

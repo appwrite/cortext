@@ -59,16 +59,11 @@ export function AgentChat({
         if (scrollAreaRef.current) {
             const scrollElement = scrollAreaRef.current.querySelector('[data-radix-scroll-area-viewport]')
             if (scrollElement) {
-                console.log('Scrolling to bottom, scrollHeight:', scrollElement.scrollHeight)
                 scrollElement.scrollTo({
                     top: scrollElement.scrollHeight,
                     behavior: 'smooth'
                 })
-            } else {
-                console.warn('ScrollArea viewport not found')
             }
-        } else {
-            console.warn('ScrollArea ref not found')
         }
     }, [])
 
@@ -118,7 +113,7 @@ export function AgentChat({
                 })
                 setCurrentConversationId(newConversation.$id)
             } catch (error) {
-                console.error('Failed to create initial conversation:', error)
+                // Failed to create initial conversation
             }
         }
     }, [conversations.length, currentConversationId, isLoadingConversations, createConversation, blogId])
@@ -300,7 +295,6 @@ export function AgentChat({
     useEffect(() => {
         if (isWaitingForAI) {
             const timeout = setTimeout(() => {
-                console.warn('AI response timeout - clearing loading state')
                 setIsWaitingForAI(false)
                 setMockMessage(null)
             }, 10000) // 10 second timeout
@@ -358,7 +352,6 @@ export function AgentChat({
                 content: text,
                 userId: user?.$id || '',
             }).catch(error => {
-                console.error('Failed to create user message:', error)
                 // Reset states if message creation fails
                 setIsWaitingForAI(false)
                 setMockMessage(null)
@@ -380,9 +373,8 @@ export function AgentChat({
                     userMessage: text
                 }
             })
-            console.log('Agent function triggered successfully')
         } catch (error) {
-            console.error('Failed to send message:', error)
+            // Failed to send message
             setIsWaitingForAI(false)
             setMockMessage(null)
         }
@@ -407,7 +399,7 @@ export function AgentChat({
                 setLastScrollTime(Date.now())
             }, 10)
         } catch (error) {
-            console.error('Failed to create message:', error)
+            // Failed to create message
         }
     }
 
@@ -431,7 +423,7 @@ export function AgentChat({
                 setLastScrollTime(Date.now())
             }, 10)
         } catch (error) {
-            console.error('Failed to create message:', error)
+            // Failed to create message
         }
     }
 
@@ -548,7 +540,7 @@ export function AgentChat({
                                     setLastScrollTime(Date.now())
                                 }, 10)
                             } catch (error) {
-                                console.error('Failed to send message:', error)
+                                // Failed to send message
                             }
                         }} />
                     </div>
