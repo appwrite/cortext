@@ -3,6 +3,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { Drawer, DrawerContent, DrawerHeader, DrawerTitle } from '@/components/ui/drawer'
+import { MarkdownRenderer } from '@/components/ui/markdown-renderer'
 import { Brain, Sparkles, Send, MessageCircle } from 'lucide-react'
 import { useIsMobile } from '@/hooks/use-mobile'
 import { useConversationManager, useMessages, useMessagesWithNotifications } from '@/hooks/use-conversations'
@@ -392,7 +393,11 @@ export function AgentChat({
                                                 : 'rounded-md bg-primary text-primary-foreground px-2.5 py-1.5 text-xs max-w-[220px]'
                                         }
                                     >
-                                        {m.content}
+                                        {m.role === 'assistant' ? (
+                                            <MarkdownRenderer content={m.content} />
+                                        ) : (
+                                            m.content
+                                        )}
                                         {/* Show streaming indicator for assistant messages */}
                                         {m.role === 'assistant' && m.metadata?.streaming && m.metadata?.status === 'generating' && (
                                             <div className="flex items-center gap-1 mt-1">
@@ -488,10 +493,22 @@ export function AgentChat({
                 {/* Gradient fade overlay - more gradual */}
                 <div className="absolute inset-x-0 -top-8 h-12 bg-gradient-to-t from-background via-background/80 to-transparent pointer-events-none" />
                 <div className="flex gap-2">
-                    <Button variant="secondary" size="sm" className="gap-1 h-7 px-2 text-[11px]" onClick={applySEOTitle}>
+                    <Button 
+                        variant="secondary" 
+                        size="sm" 
+                        className="gap-1 h-7 px-2 text-[11px]" 
+                        onClick={applySEOTitle}
+                        disabled={isWaitingForAI}
+                    >
                         <Sparkles className="h-3.5 w-3.5" /> SEO title
                     </Button>
-                    <Button variant="secondary" size="sm" className="gap-1 h-7 px-2 text-[11px]" onClick={generateMetaDescription}>
+                    <Button 
+                        variant="secondary" 
+                        size="sm" 
+                        className="gap-1 h-7 px-2 text-[11px]" 
+                        onClick={generateMetaDescription}
+                        disabled={isWaitingForAI}
+                    >
                         <Sparkles className="h-3.5 w-3.5" /> Meta description
                     </Button>
                 </div>
@@ -499,16 +516,22 @@ export function AgentChat({
                     <Input
                         value={input}
                         onChange={(e) => setInput(e.target.value)}
-                        placeholder="Ask the agent…"
+                        placeholder={isWaitingForAI ? "AI is thinking..." : "Ask the agent…"}
                         className="h-9 text-sm"
+                        disabled={isWaitingForAI}
                         onKeyDown={(e) => {
-                            if (e.key === 'Enter' && !e.shiftKey) {
+                            if (e.key === 'Enter' && !e.shiftKey && !isWaitingForAI) {
                                 e.preventDefault()
                                 send()
                             }
                         }}
                     />
-                    <Button size="sm" className="h-9 px-3" onClick={send}>
+                    <Button 
+                        size="sm" 
+                        className="h-9 px-3" 
+                        onClick={send}
+                        disabled={isWaitingForAI || !input.trim()}
+                    >
                         <Send className="h-4 w-4" />
                     </Button>
                 </div>
