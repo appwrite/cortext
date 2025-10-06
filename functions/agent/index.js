@@ -165,15 +165,15 @@ export default async function ({ req, res, log, error }) {
     // Function to generate streaming LLM response and update database in real-time
     async function generateStreamingLLMResponse(messages, agentId, blogId, messageUserId) {
       try {
-        // Prepare conversation messages for the LLM
+        // Prepare conversation messages for the LLM in the format expected by Mastra
         const conversationMessages = messages.map(msg => ({
           role: msg.role,
-          content: msg.content
+          content: [{ type: 'text', text: msg.content }]
         }));
 
         // Add system prompt at the beginning for context
         const messagesWithSystem = [
-          { role: 'system', content: SYSTEM_PROMPT },
+          { role: 'system', content: [{ type: 'text', text: SYSTEM_PROMPT }] },
           ...conversationMessages
         ];
 
@@ -218,7 +218,8 @@ export default async function ({ req, res, log, error }) {
         };
 
         // Use OpenAI model to generate streaming response
-        addDebugLog('Calling OpenAI model with prompt length: ' + messagesWithSystem.length);
+        addDebugLog('Calling OpenAI model with ' + messagesWithSystem.length + ' messages');
+        addDebugLog('Message format: ' + JSON.stringify(messagesWithSystem[0], null, 2));
         const streamResult = await openaiModel.doStream({
           prompt: messagesWithSystem,
           temperature: 0.7,
