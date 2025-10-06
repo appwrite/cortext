@@ -213,77 +213,69 @@ function Index() {
                         <p className="text-foreground/70">AI-powered content management with flexible blocks and team collaboration.</p>
                     </div>
 
-                    <div className="space-y-12">
-                        {/* First row - 3 features */}
-                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 lg:gap-8">
-                            {/* AI Co-author */}
-                            <div className="flex items-start gap-4">
-                                <div className="w-8 h-8 rounded-lg bg-foreground flex items-center justify-center flex-shrink-0 mt-1">
-                                    <Sparkles className="w-4 h-4 text-background" />
-                                </div>
-                                <div>
-                                    <h3 className="font-semibold text-foreground/90 mb-1">AI Co-author</h3>
-                                    <p className="text-sm text-foreground/70">Generate drafts, refine content, and optimize for your audience.</p>
-                                </div>
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 lg:gap-8">
+                        {/* AI Co-author */}
+                        <div className="flex items-start gap-4">
+                            <div className="w-8 h-8 rounded-lg bg-foreground flex items-center justify-center flex-shrink-0 mt-1">
+                                <Sparkles className="w-4 h-4 text-background" />
                             </div>
-
-                            {/* Composable Blocks */}
-                            <div className="flex items-start gap-4">
-                                <div className="w-8 h-8 rounded-lg bg-foreground flex items-center justify-center flex-shrink-0 mt-1">
-                                    <CodeIcon className="w-4 h-4 text-background" />
-                                </div>
-                                <div className="flex-1">
-                                    <h3 className="font-semibold text-foreground/90 mb-1">Flexible Blocks</h3>
-                                    <p className="text-sm text-foreground/70 mb-2">Drag, sort, and edit content blocks with confidence.</p>
-                                    <div className="flex flex-wrap gap-1">
-                                        {blocks.map(({ label, Icon }) => (
-                                            <span key={label} className="inline-flex items-center gap-1 px-2 py-1 rounded-lg text-xs bg-foreground/5 text-foreground/60">
-                                                <Icon className="w-3 h-3" />
-                                                {label}
-                                            </span>
-                                        ))}
-                                    </div>
-                                </div>
+                            <div>
+                                <h3 className="font-semibold text-foreground/90 mb-1">AI Co-author</h3>
+                                <p className="text-sm text-foreground/70">Generate drafts, refine content, and optimize for your audience.</p>
                             </div>
+                        </div>
 
-                            {/* SEO Optimization */}
-                            <div className="flex items-start gap-4">
-                                <div className="w-8 h-8 rounded-lg bg-foreground flex items-center justify-center flex-shrink-0 mt-1">
-                                    <svg className="w-4 h-4 text-background" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
-                                    </svg>
-                                </div>
-                                <div>
-                                    <h3 className="font-semibold text-foreground/90 mb-1">SEO Built-in</h3>
-                                    <p className="text-sm text-foreground/70">Real-time suggestions and optimization as you write.</p>
+                        {/* Composable Blocks */}
+                        <div className="flex items-start gap-4">
+                            <div className="w-8 h-8 rounded-lg bg-foreground flex items-center justify-center flex-shrink-0 mt-1">
+                                <CodeIcon className="w-4 h-4 text-background" />
+                            </div>
+                            <div>
+                                <h3 className="font-semibold text-foreground/90 mb-1">Flexible Blocks</h3>
+                                <p className="text-sm text-foreground/70 mb-2">Drag, sort, and edit content blocks with confidence.</p>
+                                <div className="flex flex-wrap gap-1">
+                                    {blocks.map(({ label, Icon }) => (
+                                        <span key={label} className="inline-flex items-center gap-1 px-2 py-1 rounded-lg text-xs bg-foreground/5 text-foreground/60">
+                                            <Icon className="w-3 h-3" />
+                                            {label}
+                                        </span>
+                                    ))}
                                 </div>
                             </div>
                         </div>
 
-                        {/* Second row - 2 centered features */}
-                        <div className="flex justify-center">
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 lg:gap-8 max-w-2xl">
-                                {/* Workflow Management */}
-                                <div className="flex items-start gap-4">
-                                    <div className="w-8 h-8 rounded-lg bg-foreground flex items-center justify-center flex-shrink-0 mt-1">
-                                        <FileEdit className="w-4 h-4 text-background" />
-                                    </div>
-                                    <div>
-                                        <h3 className="font-semibold text-foreground/90 mb-1">Drafts & Reviews</h3>
-                                        <p className="text-sm text-foreground/70">Stage changes, collect feedback, and roll back when needed.</p>
-                                    </div>
-                                </div>
+                        {/* SEO Optimization */}
+                        <div className="flex items-start gap-4">
+                            <div className="w-8 h-8 rounded-lg bg-foreground flex items-center justify-center flex-shrink-0 mt-1">
+                                <svg className="w-4 h-4 text-background" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+                                </svg>
+                            </div>
+                            <div>
+                                <h3 className="font-semibold text-foreground/90 mb-1">SEO Built-in</h3>
+                                <p className="text-sm text-foreground/70">Real-time suggestions and optimization as you write.</p>
+                            </div>
+                        </div>
 
-                                {/* Team Collaboration */}
-                                <div className="flex items-start gap-4">
-                                    <div className="w-8 h-8 rounded-lg bg-foreground flex items-center justify-center flex-shrink-0 mt-1">
-                                        <MessageSquare className="w-4 h-4 text-background" />
-                                    </div>
-                                    <div>
-                                        <h3 className="font-semibold text-foreground/90 mb-1">Team Ready</h3>
-                                        <p className="text-sm text-foreground/70">Multi-user editing with permissions and real-time collaboration.</p>
-                                    </div>
-                                </div>
+                        {/* Workflow Management */}
+                        <div className="flex items-start gap-4">
+                            <div className="w-8 h-8 rounded-lg bg-foreground flex items-center justify-center flex-shrink-0 mt-1">
+                                <FileEdit className="w-4 h-4 text-background" />
+                            </div>
+                            <div>
+                                <h3 className="font-semibold text-foreground/90 mb-1">Drafts & Reviews</h3>
+                                <p className="text-sm text-foreground/70">Stage changes, collect feedback, and roll back when needed.</p>
+                            </div>
+                        </div>
+
+                        {/* Team Collaboration */}
+                        <div className="flex items-start gap-4">
+                            <div className="w-8 h-8 rounded-lg bg-foreground flex items-center justify-center flex-shrink-0 mt-1">
+                                <MessageSquare className="w-4 h-4 text-background" />
+                            </div>
+                            <div>
+                                <h3 className="font-semibold text-foreground/90 mb-1">Team Ready</h3>
+                                <p className="text-sm text-foreground/70">Multi-user editing with permissions and real-time collaboration.</p>
                             </div>
                         </div>
                     </div>

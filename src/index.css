@@ -269,23 +269,6 @@
       padding-bottom: env(safe-area-inset-bottom, 0);
     }
   }
-  
-  /* General mobile viewport fixes */
-  @media screen and (max-width: 768px) {
-    .min-h-screen {
-      min-height: 100vh;
-      min-height: 100dvh; /* Dynamic viewport height for modern browsers */
-    }
-    
-    /* Ensure footer sticks to bottom on mobile */
-    .flex.flex-col {
-      min-height: 100vh;
-      min-height: 100dvh;
-    }
-  }
-  
-  
-  
 }
 
 /* 3D Card Effects */
