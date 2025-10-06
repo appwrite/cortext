@@ -81,3 +81,23 @@ export function formatDateRelative(date: string | Date): string {
     return rtf.format(-Math.floor(diffInSeconds / 86400), 'day')
   }
 }
+
+/**
+ * Format a duration in milliseconds to a human-readable string
+ * Examples: "1.2s", "45ms", "2m 30s"
+ */
+export function formatDuration(ms: number): string {
+  if (ms < 1000) {
+    return `${Math.round(ms)}ms`
+  } else if (ms < 60000) {
+    const seconds = ms / 1000
+    return `${seconds.toFixed(1)}s`
+  } else {
+    const minutes = Math.floor(ms / 60000)
+    const seconds = Math.floor((ms % 60000) / 1000)
+    if (seconds === 0) {
+      return `${minutes}m`
+    }
+    return `${minutes}m ${seconds}s`
+  }
+}

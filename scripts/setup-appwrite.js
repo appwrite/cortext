@@ -273,6 +273,8 @@ const COLLECTIONS = {
       { key: 'blogId', type: 'string', size: 255, required: true, array: false, default: null },
       { key: 'metadata', type: 'string', size: 2000, required: false, array: false, default: null }, // JSON string for additional metadata
       { key: 'tokens', type: 'integer', required: false, array: false, default: null },
+      { key: 'tokenCount', type: 'integer', required: false, array: false, default: null }, // Number of tokens in the message
+      { key: 'generationTimeMs', type: 'integer', required: false, array: false, default: null }, // Time taken to generate the message in milliseconds
       { key: 'isEdited', type: 'boolean', required: false, array: false, default: false },
       { key: 'parentMessageId', type: 'string', size: 255, required: false, array: false, default: null }, // For message threading
     ],

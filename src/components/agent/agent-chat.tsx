@@ -12,12 +12,15 @@ import { ConversationPlaceholder } from './conversation-placeholder'
 import { useAuth } from '@/hooks/use-auth'
 import type { Messages } from '@/lib/appwrite/appwrite.types'
 import { functionService } from '@/lib/appwrite/functions'
+import { formatDuration } from '@/lib/date-utils'
 
 type Message = {
     id: string
     role: 'user' | 'assistant'
     content: string
     createdAt: string
+    tokenCount?: number | null
+    generationTimeMs?: number | null
     metadata?: {
         streaming?: boolean
         status?: 'generating' | 'completed' | 'error'
@@ -90,6 +93,8 @@ export function AgentChat({
             role: msg.role,
             content: msg.content,
             createdAt: msg.$createdAt,
+            tokenCount: msg.tokenCount,
+            generationTimeMs: msg.generationTimeMs,
             metadata: msg.metadata ? JSON.parse(msg.metadata) : undefined,
         }))
         .reverse() // Reverse to show newest at bottom
@@ -273,6 +278,26 @@ export function AgentChat({
         }
     }, [isWaitingForAI])
 
+    // Global keyboard lock when AI is thinking
+    useEffect(() => {
+        const handleGlobalKeyDown = (e: KeyboardEvent) => {
+            if (isWaitingForAI) {
+                // Block Enter key globally when AI is thinking
+                if (e.key === 'Enter' && !e.shiftKey) {
+                    e.preventDefault()
+                    e.stopPropagation()
+                }
+            }
+        }
+
+        if (isWaitingForAI) {
+            document.addEventListener('keydown', handleGlobalKeyDown, true)
+            return () => {
+                document.removeEventListener('keydown', handleGlobalKeyDown, true)
+            }
+        }
+    }, [isWaitingForAI])
+
     const send = async () => {
         const text = input.trim()
         if (!text || !currentConversationId) return
@@ -410,9 +435,10 @@ export function AgentChat({
                                             </div>
                                         )}
                                         {/* Show completion indicator */}
-                                        {m.role === 'assistant' && m.metadata?.status === 'completed' && m.metadata?.chunkCount && (
+                                        {m.role === 'assistant' && m.metadata?.status === 'completed' && (
                                             <div className="text-xs text-muted-foreground mt-1">
-                                                ✓ Generated in {m.metadata.chunkCount} chunks
+                                                ✓ Generated{m.generationTimeMs ? ` in ${formatDuration(m.generationTimeMs)}` : ''}
+                                                {m.tokenCount ? ` • ${m.tokenCount} tokens` : ''}
                                             </div>
                                         )}
                                         {/* Show error indicator */}
@@ -515,14 +541,37 @@ export function AgentChat({
                 <div className="flex items-center gap-2">
                     <Input
                         value={input}
-                        onChange={(e) => setInput(e.target.value)}
+                        onChange={(e) => {
+                            if (!isWaitingForAI) {
+                                setInput(e.target.value)
+                            }
+                        }}
                         placeholder={isWaitingForAI ? "AI is thinking..." : "Ask the agent…"}
-                        className="h-9 text-sm"
+                        className={`h-9 text-sm ${isWaitingForAI ? 'opacity-50 cursor-not-allowed' : ''}`}
                         disabled={isWaitingForAI}
                         onKeyDown={(e) => {
-                            if (e.key === 'Enter' && !e.shiftKey && !isWaitingForAI) {
+                            // Block all input when AI is thinking
+                            if (isWaitingForAI) {
+                                e.preventDefault()
+                                return
+                            }
+                            
+                            // Only allow Enter to submit when not waiting
+                            if (e.key === 'Enter' && !e.shiftKey) {
                                 e.preventDefault()
                                 send()
+                            }
+                        }}
+                        onKeyPress={(e) => {
+                            // Block all key presses when AI is thinking
+                            if (isWaitingForAI) {
+                                e.preventDefault()
+                            }
+                        }}
+                        onPaste={(e) => {
+                            // Block paste when AI is thinking
+                            if (isWaitingForAI) {
+                                e.preventDefault()
                             }
                         }}
                     />

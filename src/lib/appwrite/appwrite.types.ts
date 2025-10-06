@@ -110,5 +110,7 @@ export type Messages = Models.Document & {
     agentId: string;
     blogId: string | null;
     metadata: string | null; // JSON string for additional data like AI model used, etc.
+    tokenCount: number | null; // Number of tokens in the message
+    generationTimeMs: number | null; // Time taken to generate the message in milliseconds
 }
 
