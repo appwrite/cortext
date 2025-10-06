@@ -26,6 +26,7 @@ type Message = {
         status?: 'generating' | 'completed' | 'error'
         chunkCount?: number
         tokensUsed?: number
+        isMock?: boolean
     }
 }
 
@@ -49,6 +50,7 @@ export function AgentChat({
     const [currentConversationId, setCurrentConversationId] = useState<string | null>(null)
     const [isDrawerOpen, setIsDrawerOpen] = useState(false)
     const [isWaitingForAI, setIsWaitingForAI] = useState(false)
+    const [mockMessage, setMockMessage] = useState<Message | null>(null)
     const isMobile = useIsMobile()
     const inputRef = useRef<HTMLInputElement>(null)
 
@@ -88,7 +90,7 @@ export function AgentChat({
     } = useMessagesWithNotifications(currentConversationId, blogId, articleId, user?.$id)
 
     // Convert database messages to local format and sort with newest at bottom
-    const messages: Message[] = dbMessages
+    const dbMessagesFormatted: Message[] = dbMessages
         .map((msg: Messages) => ({
             id: msg.$id,
             role: msg.role,
@@ -100,13 +102,11 @@ export function AgentChat({
         }))
         .reverse() // Reverse to show newest at bottom
 
-    // Debug messages updates
-    console.log('AgentChat messages updated:', {
-        conversationId: currentConversationId,
-        dbMessagesLength: dbMessages.length,
-        messagesLength: messages.length,
-        messages: messages.map(m => ({ id: m.id, role: m.role, content: m.content.substring(0, 50) + '...' }))
-    })
+    // Combine database messages with mock message if it exists
+    const messages: Message[] = mockMessage 
+        ? [...dbMessagesFormatted, mockMessage]
+        : dbMessagesFormatted
+
 
     // Memoize the conversation creation function to prevent infinite loops
     const createInitialConversation = useCallback(async () => {
@@ -134,6 +134,7 @@ export function AgentChat({
 
     // Show messages if they exist, otherwise show placeholder
     const hasMessages = messages.length > 0
+    
 
     // Precisely align with the app header; footer does not occupy the left rail
     const [topOffset, setTopOffset] = useState<number>(64) // header fallback
@@ -191,7 +192,7 @@ export function AgentChat({
 
     // Additional scroll trigger for any message changes (more reliable)
     useEffect(() => {
-        if (!isLoadingMore && !shouldPreserveScroll && messages.length > 0) {
+        if (!isLoadingMore && !shouldPreserveScroll && dbMessages.length > 0) {
             const now = Date.now()
             // Only scroll if we haven't scrolled recently (prevent rapid scrolling)
             if (now - lastScrollTime > 100) {
@@ -201,13 +202,14 @@ export function AgentChat({
                 }, 10)
             }
         }
-    }, [messages, isLoadingMore, shouldPreserveScroll, scrollToBottom, lastScrollTime])
+    }, [dbMessages, isLoadingMore, shouldPreserveScroll, scrollToBottom, lastScrollTime])
 
     // Special scroll effect for streaming messages - scroll more frequently during streaming
     useEffect(() => {
-        if (!isLoadingMore && !shouldPreserveScroll && messages.length > 0) {
-            const lastMessage = messages[messages.length - 1]
-            if (lastMessage.role === 'assistant' && lastMessage.metadata?.streaming && lastMessage.metadata?.status === 'generating') {
+        if (!isLoadingMore && !shouldPreserveScroll && dbMessages.length > 0) {
+            const lastMessage = dbMessages[dbMessages.length - 1]
+            const metadata = lastMessage.metadata ? JSON.parse(lastMessage.metadata) : undefined
+            if (lastMessage.role === 'assistant' && metadata?.streaming && metadata?.status === 'generating') {
                 // Scroll more frequently during streaming
                 const now = Date.now()
                 if (now - lastScrollTime > 50) { // More frequent scrolling for streaming
@@ -218,7 +220,7 @@ export function AgentChat({
                 }
             }
         }
-    }, [messages, isLoadingMore, shouldPreserveScroll, scrollToBottom, lastScrollTime])
+    }, [dbMessages, isLoadingMore, shouldPreserveScroll, scrollToBottom, lastScrollTime])
     
     // Track when we're loading more messages
     useEffect(() => {
@@ -236,17 +238,20 @@ export function AgentChat({
 
     // Clear AI waiting state when a new assistant message arrives and starts streaming
     useEffect(() => {
-        if (isWaitingForAI && messages.length > 0) {
-            const lastMessage = messages[messages.length - 1]
-            if (lastMessage.role === 'assistant') {
+        if (isWaitingForAI && dbMessages.length > 0) {
+            const lastDbMessage = dbMessages[dbMessages.length - 1]
+            if (lastDbMessage.role === 'assistant') {
                 // Only clear loading state when the message has actual content (not just placeholder)
-                const hasRealContent = lastMessage.content && 
-                    lastMessage.content.trim().length > 0 && 
-                    lastMessage.content !== 'Thinking...'
+                const hasRealContent = lastDbMessage.content && 
+                    lastDbMessage.content.trim().length > 0 && 
+                    lastDbMessage.content !== 'Thinking...'
                 
+                // Clear immediately when real AI message arrives (no timeout needed)
                 if (hasRealContent) {
                     // Clear loading state when AI starts streaming real content
                     setIsWaitingForAI(false)
+                    // Clear mock message when real message arrives
+                    setMockMessage(null)
                     // Scroll to the new assistant message
                     setTimeout(() => {
                         scrollToBottom()
@@ -255,17 +260,18 @@ export function AgentChat({
                 }
             }
         }
-    }, [messages, isWaitingForAI, scrollToBottom])
+    }, [dbMessages, isWaitingForAI, scrollToBottom])
 
     // Focus input when AI message completes streaming
     useEffect(() => {
-        if (messages.length > 0) {
-            const lastMessage = messages[messages.length - 1]
+        if (dbMessages.length > 0) {
+            const lastMessage = dbMessages[dbMessages.length - 1]
             if (lastMessage.role === 'assistant') {
+                const metadata = lastMessage.metadata ? JSON.parse(lastMessage.metadata) : undefined
                 // Check if streaming is complete
-                const isStreamingComplete = !lastMessage.metadata?.streaming || 
-                    lastMessage.metadata?.status === 'completed' || 
-                    lastMessage.metadata?.status === 'error'
+                const isStreamingComplete = !metadata?.streaming || 
+                    metadata?.status === 'completed' || 
+                    metadata?.status === 'error'
                 
                 if (isStreamingComplete) {
                     // Focus the input after a short delay to ensure smooth transition
@@ -277,7 +283,7 @@ export function AgentChat({
                 }
             }
         }
-    }, [messages])
+    }, [dbMessages])
 
     // Scroll to bottom when AI loading state changes
     useEffect(() => {
@@ -296,6 +302,7 @@ export function AgentChat({
             const timeout = setTimeout(() => {
                 console.warn('AI response timeout - clearing loading state')
                 setIsWaitingForAI(false)
+                setMockMessage(null)
             }, 10000) // 10 second timeout
 
             return () => clearTimeout(timeout)
@@ -330,6 +337,20 @@ export function AgentChat({
         setInput('')
         setIsWaitingForAI(true)
 
+        // Create mock message immediately for better UX
+        const mockMsg: Message = {
+            id: 'mock-message',
+            role: 'assistant',
+            content: 'Thinking... 123456',
+            createdAt: new Date().toISOString(),
+            metadata: {
+                streaming: true,
+                status: 'generating',
+                isMock: true
+            }
+        }
+        setMockMessage(mockMsg)
+
         try {
             // Create user message in background
             createMessage({
@@ -340,6 +361,7 @@ export function AgentChat({
                 console.error('Failed to create user message:', error)
                 // Reset states if message creation fails
                 setIsWaitingForAI(false)
+                setMockMessage(null)
             })
 
             // Scroll immediately for better UX
@@ -362,6 +384,7 @@ export function AgentChat({
         } catch (error) {
             console.error('Failed to send message:', error)
             setIsWaitingForAI(false)
+            setMockMessage(null)
         }
     }
 
@@ -433,7 +456,7 @@ export function AgentChat({
                         )}
                         
                         {messages.map((m) => (
-                            <div key={m.id} className="space-y-1">
+                            <div key={`${m.id}-${m.metadata?.isMock ? 'mock' : 'real'}`} className="space-y-1">
                                 <div className={m.role === 'assistant' ? 'flex gap-2 items-start' : 'flex justify-end'}>
                                     {m.role === 'assistant' && (
                                         <div className="mt-0.5 text-muted-foreground">
@@ -443,19 +466,27 @@ export function AgentChat({
                                     <div
                                         className={
                                             m.role === 'assistant'
-                                                ? 'rounded-md bg-accent px-2.5 py-1.5 text-xs max-w-[220px]'
+                                                ? m.metadata?.isMock
+                                                    ? 'rounded-md bg-red-100 dark:bg-red-900/20 px-2.5 py-1.5 text-xs max-w-[220px]'
+                                                    : 'rounded-md bg-accent px-2.5 py-1.5 text-xs max-w-[220px]'
                                                 : 'rounded-md bg-primary text-primary-foreground px-2.5 py-1.5 text-xs max-w-[220px]'
                                         }
                                     >
                                         {m.role === 'assistant' ? (
-                                            <MarkdownRenderer content={m.content} />
+                                            m.metadata?.isMock ? (
+                                                <span className="text-red-600 dark:text-red-400 font-mono">{m.content}</span>
+                                            ) : (
+                                                <MarkdownRenderer content={m.content} />
+                                            )
                                         ) : (
                                             m.content
                                         )}
                                         {/* Show streaming indicator for assistant messages */}
                                         {m.role === 'assistant' && m.metadata?.streaming && m.metadata?.status === 'generating' && (
                                             <div className="flex items-center gap-1 mt-1">
-                                                <span className="text-xs text-muted-foreground">Generating</span>
+                                                <span className="text-xs text-muted-foreground">
+                                                    {m.metadata?.isMock ? 'Thinking' : 'Generating'}
+                                                </span>
                                                 <div className="flex gap-0.5">
                                                     <div className="w-1 h-1 bg-muted-foreground rounded-full animate-pulse" style={{ animationDelay: '0ms' }}></div>
                                                     <div className="w-1 h-1 bg-muted-foreground rounded-full animate-pulse" style={{ animationDelay: '150ms' }}></div>
@@ -481,26 +512,6 @@ export function AgentChat({
                             </div>
                         ))}
                         
-                        {/* AI Loading Indicator */}
-                        {isWaitingForAI && (
-                            <div className="space-y-1">
-                                <div className="flex gap-2 items-start">
-                                    <div className="mt-0.5 text-muted-foreground">
-                                        <Brain className="h-4 w-4" />
-                                    </div>
-                                    <div className="rounded-md bg-accent px-2.5 py-1.5 text-xs max-w-[220px]">
-                                        <div className="flex items-center gap-1">
-                                            <span className="text-muted-foreground">Thinking</span>
-                                            <div className="flex gap-0.5">
-                                                <div className="w-1 h-1 bg-primary rounded-full animate-pulse" style={{ animationDelay: '0ms' }}></div>
-                                                <div className="w-1 h-1 bg-primary rounded-full animate-pulse" style={{ animationDelay: '150ms' }}></div>
-                                                <div className="w-1 h-1 bg-primary rounded-full animate-pulse" style={{ animationDelay: '300ms' }}></div>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        )}
                         
                         <div ref={bottomRef} />
                     </div>
