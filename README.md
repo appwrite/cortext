@@ -1,6 +1,6 @@
 # Cortext
 
-A modern content management system built with React, TypeScript, and Appwrite.
+AI powered content management system built with React, TypeScript, and Appwrite.
 
 ## Getting Started
 
