@@ -169,10 +169,7 @@ export default async function ({ req, res, log, error }) {
         // Users can only read agent messages, not modify or delete them
         ...(messageUserId ? [
           Permission.read(Role.user(messageUserId))
-        ] : []),
-        // Allow any authenticated user to read the message
-        Permission.read(Role.any())
-        // Note: No write permissions for users on agent messages
+        ] : [])
       ]
     );
 
