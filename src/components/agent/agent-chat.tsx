@@ -17,6 +17,12 @@ type Message = {
     role: 'user' | 'assistant'
     content: string
     createdAt: string
+    metadata?: {
+        streaming?: boolean
+        status?: 'generating' | 'completed' | 'error'
+        chunkCount?: number
+        tokensUsed?: number
+    }
 }
 
 export function AgentChat({
@@ -83,6 +89,7 @@ export function AgentChat({
             role: msg.role,
             content: msg.content,
             createdAt: msg.$createdAt,
+            metadata: msg.metadata ? JSON.parse(msg.metadata) : undefined,
         }))
         .reverse() // Reverse to show newest at bottom
 
@@ -188,6 +195,23 @@ export function AgentChat({
             }
         }
     }, [messages, isLoadingMore, shouldPreserveScroll, scrollToBottom, lastScrollTime])
+
+    // Special scroll effect for streaming messages - scroll more frequently during streaming
+    useEffect(() => {
+        if (!isLoadingMore && !shouldPreserveScroll && messages.length > 0) {
+            const lastMessage = messages[messages.length - 1]
+            if (lastMessage.role === 'assistant' && lastMessage.metadata?.streaming && lastMessage.metadata?.status === 'generating') {
+                // Scroll more frequently during streaming
+                const now = Date.now()
+                if (now - lastScrollTime > 50) { // More frequent scrolling for streaming
+                    setTimeout(() => {
+                        scrollToBottom()
+                        setLastScrollTime(Date.now())
+                    }, 10)
+                }
+            }
+        }
+    }, [messages, isLoadingMore, shouldPreserveScroll, scrollToBottom, lastScrollTime])
     
     // Track when we're loading more messages
     useEffect(() => {
@@ -203,17 +227,24 @@ export function AgentChat({
         }
     }, [isLoadingMoreMessages])
 
-    // Clear AI waiting state when a new assistant message arrives
+    // Clear AI waiting state when a new assistant message arrives and streaming is complete
     useEffect(() => {
         if (isWaitingForAI && messages.length > 0) {
             const lastMessage = messages[messages.length - 1]
             if (lastMessage.role === 'assistant') {
-                setIsWaitingForAI(false)
-                // Scroll to the new assistant message
-                setTimeout(() => {
-                    scrollToBottom()
-                    setLastScrollTime(Date.now())
-                }, 10) // Minimal delay for immediate scrolling
+                // Check if streaming is complete
+                const isStreamingComplete = !lastMessage.metadata?.streaming || 
+                    lastMessage.metadata?.status === 'completed' || 
+                    lastMessage.metadata?.status === 'error'
+                
+                if (isStreamingComplete) {
+                    setIsWaitingForAI(false)
+                    // Scroll to the new assistant message
+                    setTimeout(() => {
+                        scrollToBottom()
+                        setLastScrollTime(Date.now())
+                    }, 10) // Minimal delay for immediate scrolling
+                }
             }
         }
     }, [messages, isWaitingForAI, scrollToBottom])
@@ -362,6 +393,29 @@ export function AgentChat({
                                         }
                                     >
                                         {m.content}
+                                        {/* Show streaming indicator for assistant messages */}
+                                        {m.role === 'assistant' && m.metadata?.streaming && m.metadata?.status === 'generating' && (
+                                            <div className="flex items-center gap-1 mt-1">
+                                                <span className="text-xs text-muted-foreground">Generating</span>
+                                                <div className="flex gap-0.5">
+                                                    <div className="w-1 h-1 bg-muted-foreground rounded-full animate-pulse" style={{ animationDelay: '0ms' }}></div>
+                                                    <div className="w-1 h-1 bg-muted-foreground rounded-full animate-pulse" style={{ animationDelay: '150ms' }}></div>
+                                                    <div className="w-1 h-1 bg-muted-foreground rounded-full animate-pulse" style={{ animationDelay: '300ms' }}></div>
+                                                </div>
+                                            </div>
+                                        )}
+                                        {/* Show completion indicator */}
+                                        {m.role === 'assistant' && m.metadata?.status === 'completed' && m.metadata?.chunkCount && (
+                                            <div className="text-xs text-muted-foreground mt-1">
+                                                ✓ Generated in {m.metadata.chunkCount} chunks
+                                            </div>
+                                        )}
+                                        {/* Show error indicator */}
+                                        {m.role === 'assistant' && m.metadata?.status === 'error' && (
+                                            <div className="text-xs text-destructive mt-1">
+                                                ⚠ Generation failed
+                                            </div>
+                                        )}
                                     </div>
                                 </div>
                             </div>

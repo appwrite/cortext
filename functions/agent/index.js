@@ -1,5 +1,7 @@
 import { Client, Databases, ID, Permission, Role, Query } from 'appwrite';
 import { Client as ServerClient, Databases as ServerDatabases, ID as ServerID, Permission as ServerPermission, Role as ServerRole, Query as ServerQuery } from 'node-appwrite';
+import { Mastra } from '@mastra/core';
+import { openai } from '@mastra/openai';
 
 /**
  * Agent Function Architecture:
@@ -17,6 +19,35 @@ const databases = new Databases(client);
 const serverClient = new ServerClient();
 const serverDatabases = new ServerDatabases(serverClient);
 
+// Initialize Mastra with OpenAI
+const mastra = new Mastra({
+  name: 'cortext-agent',
+  llms: {
+    openai: openai({
+      apiKey: process.env.OPENAI_API_KEY,
+    }),
+  },
+});
+
+// Optimized system prompt for token caching and cost reduction
+const SYSTEM_PROMPT = `You are Cortext, an AI writing assistant specialized in helping users create, edit, and improve blog content. You excel at:
+
+- Content creation and editing
+- SEO optimization
+- Writing style improvements
+- Research and fact-checking
+- Audience engagement strategies
+- Content structure and organization
+
+Key guidelines:
+- Be concise but helpful
+- Focus on actionable advice
+- Maintain a professional yet friendly tone
+- Ask clarifying questions when needed
+- Provide specific, implementable suggestions
+
+Context: You're assisting with blog content creation and editing.`;
+
 // Set up the client with environment variables
 const endpoint = process.env.APPWRITE_ENDPOINT;
 const projectId = process.env.APPWRITE_PROJECT_ID;
@@ -27,6 +58,11 @@ if (!endpoint) {
 
 if (!projectId) {
   throw new Error('APPWRITE_PROJECT_ID environment variable is required');
+}
+
+// Validate OpenAI API key
+if (!process.env.OPENAI_API_KEY) {
+  throw new Error('OPENAI_API_KEY environment variable is required');
 }
 
 // Configure client for JWT authentication
@@ -126,30 +162,172 @@ export default async function ({ req, res, log, error }) {
       }, 500);
     }
 
-    // Function to generate dummy LLM response based on conversation context
-    function generateDummyLLMResponse(messages, agentId) {
-      const userMessages = messages.filter(msg => msg.role === 'user');
-      const lastUserMessage = userMessages[userMessages.length - 1];
-      
-      if (!lastUserMessage) {
-        return "Hello! I'm your AI assistant. How can I help you today?";
-      }
-      
-      // Simple dummy responses based on common patterns
-      const userContent = lastUserMessage.content.toLowerCase();
-      
-      if (userContent.includes('hello') || userContent.includes('hi')) {
-        return "Hello! I'm here to help you. What would you like to know?";
-      } else if (userContent.includes('help')) {
-        return "I'd be happy to help you! Could you please provide more details about what you need assistance with?";
-      } else if (userContent.includes('question')) {
-        return "I'm ready to answer your question. Please go ahead and ask!";
-      } else if (userContent.includes('thank')) {
-        return "You're welcome! Is there anything else I can help you with?";
-      } else if (userContent.includes('bye') || userContent.includes('goodbye')) {
-        return "Goodbye! Feel free to come back anytime if you need assistance.";
-      } else {
-        return `I understand you're asking about "${lastUserMessage.content.substring(0, 50)}...". This is a dummy response from the AI agent. In a real implementation, this would be processed by an actual LLM with the full conversation context.`;
+    // Function to generate streaming LLM response and update database in real-time
+    async function generateStreamingLLMResponse(messages, agentId, blogId, messageUserId) {
+      try {
+        // Prepare conversation messages for the LLM
+        const conversationMessages = messages.map(msg => ({
+          role: msg.role,
+          content: msg.content
+        }));
+
+        // Add system prompt at the beginning for context
+        const messagesWithSystem = [
+          { role: 'system', content: SYSTEM_PROMPT },
+          ...conversationMessages
+        ];
+
+        // Create initial message document for streaming
+        const initialMessage = await serverDatabases.createDocument(
+          databaseId,
+          'messages',
+          ServerID.unique(),
+          {
+            conversationId,
+            content: '', // Start with empty content
+            role: 'assistant',
+            userId: messageUserId || null,
+            agentId: agentId || 'cortext-agent',
+            blogId,
+            metadata: JSON.stringify({
+              model: 'gpt-4o-mini',
+              temperature: 0.7,
+              generatedAt: new Date().toISOString(),
+              streaming: true,
+              status: 'generating'
+            }),
+            isEdited: false
+          },
+          [
+            // Users can only read agent messages, not modify or delete them
+            ...(messageUserId ? [
+              ServerPermission.read(ServerRole.user(messageUserId))
+            ] : [])
+          ]
+        );
+
+        log('Created initial streaming message with ID: ' + initialMessage.$id);
+
+        // Use Mastra to generate streaming response with OpenAI
+        const stream = await mastra.llm('openai').generateStream({
+          messages: messagesWithSystem,
+          model: 'gpt-4o-mini',
+          temperature: 0.7,
+          max_tokens: 1000,
+          cache: true,
+          context: {
+            blogId: blogId,
+            agentId: agentId,
+            conversationLength: messages.length
+          }
+        });
+
+        let fullContent = '';
+        let chunkCount = 0;
+
+        // Process streaming chunks
+        for await (const chunk of stream) {
+          if (chunk.choices && chunk.choices[0] && chunk.choices[0].delta && chunk.choices[0].delta.content) {
+            const content = chunk.choices[0].delta.content;
+            fullContent += content;
+            chunkCount++;
+
+            // Update the message document with accumulated content every few chunks
+            if (chunkCount % 3 === 0 || content.includes('\n')) {
+              try {
+                await serverDatabases.updateDocument(
+                  databaseId,
+                  'messages',
+                  initialMessage.$id,
+                  {
+                    content: fullContent,
+                    metadata: JSON.stringify({
+                      model: 'gpt-4o-mini',
+                      temperature: 0.7,
+                      generatedAt: new Date().toISOString(),
+                      streaming: true,
+                      status: 'generating',
+                      chunkCount: chunkCount,
+                      tokensUsed: fullContent.length
+                    })
+                  }
+                );
+                log(`Updated streaming message with ${chunkCount} chunks, content length: ${fullContent.length}`);
+              } catch (updateError) {
+                log('Error updating streaming message: ' + updateError.message);
+                // Continue streaming even if update fails
+              }
+            }
+          }
+        }
+
+        // Final update with complete content
+        await serverDatabases.updateDocument(
+          databaseId,
+          'messages',
+          initialMessage.$id,
+          {
+            content: fullContent,
+            metadata: JSON.stringify({
+              model: 'gpt-4o-mini',
+              temperature: 0.7,
+              generatedAt: new Date().toISOString(),
+              streaming: false,
+              status: 'completed',
+              chunkCount: chunkCount,
+              tokensUsed: fullContent.length,
+              cached: true
+            })
+          }
+        );
+
+        log(`Streaming completed. Final content length: ${fullContent.length}, chunks: ${chunkCount}`);
+
+        return {
+          messageId: initialMessage.$id,
+          content: fullContent,
+          chunkCount: chunkCount
+        };
+
+      } catch (error) {
+        log('LLM streaming error: ' + error.message);
+        
+        // Create fallback message if streaming fails
+        const fallbackContent = "I apologize, but I'm experiencing technical difficulties. Please try again in a moment.";
+        
+        const fallbackMessage = await serverDatabases.createDocument(
+          databaseId,
+          'messages',
+          ServerID.unique(),
+          {
+            conversationId,
+            content: fallbackContent,
+            role: 'assistant',
+            userId: messageUserId || null,
+            agentId: agentId || 'cortext-agent',
+            blogId,
+            metadata: JSON.stringify({
+              model: 'gpt-4o-mini',
+              temperature: 0.7,
+              generatedAt: new Date().toISOString(),
+              streaming: false,
+              status: 'error',
+              error: error.message
+            }),
+            isEdited: false
+          },
+          [
+            ...(messageUserId ? [
+              ServerPermission.read(ServerRole.user(messageUserId))
+            ] : [])
+          ]
+        );
+
+        return {
+          messageId: fallbackMessage.$id,
+          content: fallbackContent,
+          chunkCount: 0
+        };
       }
     }
 
@@ -167,39 +345,22 @@ export default async function ({ req, res, log, error }) {
 
     log(`Found ${conversationMessages.total} messages in conversation`);
 
-    // Generate dummy LLM response based on conversation context
-    const dummyResponse = generateDummyLLMResponse(conversationMessages.documents, agentId);
-    log('Generated dummy LLM response: ' + dummyResponse.substring(0, 100) + '...');
+    // Generate streaming LLM response and update database in real-time
+    const streamingResult = await generateStreamingLLMResponse(
+      conversationMessages.documents, 
+      agentId, 
+      blogId, 
+      messageUserId
+    );
+    
+    log(`Streaming completed. Message ID: ${streamingResult.messageId}, Content length: ${streamingResult.content.length}, Chunks: ${streamingResult.chunkCount}`);
 
-    // Create the message in the database using server SDK
-    // Agent messages should be read-only for users (no write permissions)
-    const message = await serverDatabases.createDocument(
+    // Get the final message document
+    const message = await serverDatabases.getDocument(
       databaseId,
       'messages',
-      ServerID.unique(),
-      {
-        conversationId,
-        content: dummyResponse,
-        role: 'assistant',
-        userId: messageUserId || null,
-        agentId: agentId || 'dummy-agent',
-        blogId,
-        metadata: metadata ? JSON.stringify(metadata) : JSON.stringify({
-          model: 'dummy-llm',
-          temperature: 0.7,
-          generatedAt: new Date().toISOString()
-        }),
-        isEdited: false
-      },
-      [
-        // Users can only read agent messages, not modify or delete them
-        ...(messageUserId ? [
-          ServerPermission.read(ServerRole.user(messageUserId))
-        ] : [])
-      ]
+      streamingResult.messageId
     );
-
-    log('Message created successfully with ID: ' + message.$id);
 
     // Update conversation's last message time and count using server SDK
     try {
@@ -231,7 +392,7 @@ export default async function ({ req, res, log, error }) {
 
     log('Prepared conversation history with ' + conversationHistory.length + ' messages');
 
-    // Return success response with conversation history for LLM
+    // Return success response with conversation history and streaming info
     return res.json({
       success: true,
       message: {
@@ -245,6 +406,13 @@ export default async function ({ req, res, log, error }) {
         metadata: message.metadata,
         createdAt: message.$createdAt,
         updatedAt: message.$updatedAt
+      },
+      streamingInfo: {
+        messageId: streamingResult.messageId,
+        chunkCount: streamingResult.chunkCount,
+        contentLength: streamingResult.content.length,
+        streaming: false, // Completed
+        status: 'completed'
       },
       conversationHistory: conversationHistory,
       conversationStats: {

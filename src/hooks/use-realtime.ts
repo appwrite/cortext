@@ -109,6 +109,7 @@ export function useRealtime(subscriptions: RealtimeSubscription[], enabled: bool
 
 /**
  * Hook for subscribing to a specific collection with filtering
+ * Supports both collections/documents and tables/rows
  * @param collection Collection name
  * @param queryKey React Query key to invalidate
  * @param filter Optional filter function
@@ -121,13 +122,29 @@ export function useCollectionRealtime(
   enabled: boolean = true
 ) {
   const databaseId = import.meta.env.VITE_APPWRITE_DATABASE_ID
-  const channel = `databases.${databaseId}.collections.${collection}.documents`
+  const collectionChannel = `databases.${databaseId}.collections.${collection}.documents`
+  const tableChannel = `databases.${databaseId}.tables.${collection}.rows`
 
-  return useRealtime([{ channel, queryKey, filter }], enabled)
+  // Create subscriptions for both collections and tables
+  const subscriptions = useMemo(() => [
+    { 
+      channel: collectionChannel, 
+      queryKey, 
+      filter 
+    },
+    { 
+      channel: tableChannel, 
+      queryKey, 
+      filter 
+    }
+  ], [collectionChannel, tableChannel, queryKey, filter])
+
+  return useRealtime(subscriptions, enabled)
 }
 
 /**
  * Hook for subscribing to messages with blog and article filtering
+ * Supports both collections/documents and tables/rows
  * @param blogId Blog ID to filter by
  * @param articleId Article ID to filter by (used for additional context)
  * @param conversationId Conversation ID to filter by
@@ -140,7 +157,8 @@ export function useMessagesRealtime(
   enabled: boolean = true
 ) {
   const databaseId = import.meta.env.VITE_APPWRITE_DATABASE_ID
-  const channel = `databases.${databaseId}.collections.messages.documents`
+  const messagesCollectionChannel = `databases.${databaseId}.collections.messages.documents`
+  const messagesTableChannel = `databases.${databaseId}.tables.messages.rows`
   
   console.log('useMessagesRealtime called:', { 
     blogId, 
@@ -148,7 +166,8 @@ export function useMessagesRealtime(
     conversationId, 
     enabled, 
     databaseId, 
-    channel 
+    messagesCollectionChannel,
+    messagesTableChannel
   })
 
   const filter = useMemo(() => (payload: any) => {
@@ -204,19 +223,33 @@ export function useMessagesRealtime(
   
   console.log('useMessagesRealtime queryKey:', queryKey)
 
-  const subscriptions = useMemo(() => [{ channel, queryKey, filter }], [channel, queryKey, filter])
+  // Create subscriptions for both collections and tables
+  const subscriptions = useMemo(() => [
+    { 
+      channel: messagesCollectionChannel, 
+      queryKey, 
+      filter 
+    },
+    { 
+      channel: messagesTableChannel, 
+      queryKey, 
+      filter 
+    }
+  ], [messagesCollectionChannel, messagesTableChannel, queryKey, filter])
 
   return useRealtime(subscriptions, enabled)
 }
 
 /**
  * Hook for subscribing to notifications with toast support
+ * Supports both collections/documents and tables/rows
  * @param userId User ID to filter by
  * @param enabled Whether subscription is active
  */
 export function useNotificationsRealtime(userId: string, enabled: boolean = true) {
   const databaseId = import.meta.env.VITE_APPWRITE_DATABASE_ID
-  const channel = `databases.${databaseId}.collections.notifications.documents`
+  const notificationsCollectionChannel = `databases.${databaseId}.collections.notifications.documents`
+  const notificationsTableChannel = `databases.${databaseId}.tables.notifications.rows`
 
   const filter = useMemo(() => (payload: any) => {
     return payload && typeof payload === 'object' && 'userId' in payload && payload.userId === userId
@@ -238,7 +271,21 @@ export function useNotificationsRealtime(userId: string, enabled: boolean = true
 
   const queryKey = useMemo(() => ['notifications', userId], [userId])
 
-  const subscriptions = useMemo(() => [{ channel, queryKey, filter, onEvent }], [channel, queryKey, filter, onEvent])
+  // Create subscriptions for both collections and tables
+  const subscriptions = useMemo(() => [
+    { 
+      channel: notificationsCollectionChannel, 
+      queryKey, 
+      filter, 
+      onEvent 
+    },
+    { 
+      channel: notificationsTableChannel, 
+      queryKey, 
+      filter, 
+      onEvent 
+    }
+  ], [notificationsCollectionChannel, notificationsTableChannel, queryKey, filter, onEvent])
 
   return useRealtime(subscriptions, enabled)
 }
@@ -360,6 +407,7 @@ export function useConsolidatedRealtime(subscriptions: RealtimeSubscription[], e
 /**
  * Consolidated hook for both messages and notifications realtime
  * This reduces the number of realtime connections by combining both subscriptions
+ * Supports both collections/documents and tables/rows for messages
  * @param userId User ID for notifications
  * @param blogId Blog ID for messages
  * @param articleId Article ID for messages
@@ -374,8 +422,10 @@ export function useMessagesAndNotificationsRealtime(
   enabled: boolean = true
 ) {
   const databaseId = import.meta.env.VITE_APPWRITE_DATABASE_ID
-  const messagesChannel = `databases.${databaseId}.collections.messages.documents`
-  const notificationsChannel = `databases.${databaseId}.collections.notifications.documents`
+  const messagesCollectionChannel = `databases.${databaseId}.collections.messages.documents`
+  const messagesTableChannel = `databases.${databaseId}.tables.messages.rows`
+  const notificationsCollectionChannel = `databases.${databaseId}.collections.notifications.documents`
+  const notificationsTableChannel = `databases.${databaseId}.tables.notifications.rows`
 
   // Messages filter
   const messagesFilter = useMemo(() => (payload: any) => {
@@ -423,25 +473,46 @@ export function useMessagesAndNotificationsRealtime(
   const subscriptions = useMemo(() => {
     const subs: RealtimeSubscription[] = []
     
-    // Add messages subscription if conversationId is provided
+    // Add messages subscriptions (both collection and table) if conversationId is provided
     if (conversationId) {
       subs.push({
-        channel: messagesChannel,
+        channel: messagesCollectionChannel,
+        queryKey: ['messages', conversationId],
+        filter: messagesFilter
+      })
+      subs.push({
+        channel: messagesTableChannel,
         queryKey: ['messages', conversationId],
         filter: messagesFilter
       })
     }
     
-    // Add notifications subscription
+    // Add notifications subscriptions (both collection and table)
     subs.push({
-      channel: notificationsChannel,
+      channel: notificationsCollectionChannel,
+      queryKey: ['notifications', userId],
+      filter: notificationsFilter,
+      onEvent: notificationsOnEvent
+    })
+    subs.push({
+      channel: notificationsTableChannel,
       queryKey: ['notifications', userId],
       filter: notificationsFilter,
       onEvent: notificationsOnEvent
     })
     
     return subs
-  }, [messagesChannel, notificationsChannel, conversationId, userId, messagesFilter, notificationsFilter, notificationsOnEvent])
+  }, [
+    messagesCollectionChannel, 
+    messagesTableChannel, 
+    notificationsCollectionChannel, 
+    notificationsTableChannel, 
+    conversationId, 
+    userId, 
+    messagesFilter, 
+    notificationsFilter, 
+    notificationsOnEvent
+  ])
 
   return useConsolidatedRealtime(subscriptions, enabled)
 }
