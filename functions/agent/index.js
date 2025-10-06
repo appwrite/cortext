@@ -196,15 +196,35 @@ export default async function ({ req, res, log, error }) {
 
       try {
         // Prepare conversation messages for the LLM in the format expected by Mastra
-        const conversationMessages = messages.map(msg => ({
-          role: msg.role,
-          content: [{ type: 'text', text: msg.content }]
-        }));
+        // Filter out messages with null, undefined, or empty content
+        const originalMessageCount = messages.length;
+        const conversationMessages = messages
+          .filter(msg => {
+            // Check if content exists and is not null/undefined
+            if (!msg.content) return false;
+            // Check if content is a string and not empty
+            if (typeof msg.content === 'string' && msg.content.trim().length > 0) return true;
+            // Check if content is an object with text property
+            if (typeof msg.content === 'object' && msg.content.text && msg.content.text.trim().length > 0) return true;
+            return false;
+          })
+          .map(msg => ({
+            role: msg.role,
+            content: [{ type: 'text', text: typeof msg.content === 'string' ? msg.content : msg.content.text }]
+          }));
+        
+        addDebugLog(`Filtered messages: ${originalMessageCount} -> ${conversationMessages.length} (removed ${originalMessageCount - conversationMessages.length} empty/null messages)`);
+
+        // Limit conversation history to prevent token limit issues (keep last 50 messages)
+        const limitedConversationMessages = conversationMessages.slice(-50);
+        if (conversationMessages.length > 50) {
+          addDebugLog(`Limited conversation to last 50 messages (was ${conversationMessages.length})`);
+        }
 
         // Add system prompt at the beginning for context
         const messagesWithSystem = [
           { role: 'system', content: [{ type: 'text', text: SYSTEM_PROMPT }] },
-          ...conversationMessages
+          ...limitedConversationMessages
         ];
 
         // Create initial message document for streaming
@@ -253,7 +273,7 @@ export default async function ({ req, res, log, error }) {
         }
 
         // Use OpenAI model to generate streaming response
-        addDebugLog('Calling OpenAI model with ' + messagesWithSystem.length + ' messages');
+        addDebugLog('Calling OpenAI model with ' + messagesWithSystem.length + ' messages (1 system + ' + limitedConversationMessages.length + ' conversation)');
         addDebugLog('Message format: ' + JSON.stringify(messagesWithSystem[0], null, 2));
         
         // Create a new model instance with the verified API key
