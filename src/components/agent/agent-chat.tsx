@@ -6,13 +6,14 @@ import { Drawer, DrawerContent, DrawerHeader, DrawerTitle } from '@/components/u
 import { MarkdownRenderer } from '@/components/ui/markdown-renderer'
 import { Brain, Sparkles, Send, MessageCircle } from 'lucide-react'
 import { useIsMobile } from '@/hooks/use-mobile'
-import { useConversationManager, useMessages, useMessagesWithNotifications } from '@/hooks/use-conversations'
+import { useConversationManager, useMessagesWithNotifications } from '@/hooks/use-conversations'
 import { ConversationSelector } from './conversation-selector'
 import { ConversationPlaceholder } from './conversation-placeholder'
 import { useAuth } from '@/hooks/use-auth'
 import type { Messages } from '@/lib/appwrite/appwrite.types'
 import { functionService } from '@/lib/appwrite/functions'
 import { formatDuration } from '@/lib/date-utils'
+import { client } from '@/lib/appwrite/db'
 
 type Message = {
     id: string
@@ -32,7 +33,6 @@ type Message = {
 
 export function AgentChat({
     title,
-    subtitle,
     onSetTitle,
     onSetSubtitle,
     articleId,
@@ -50,7 +50,14 @@ export function AgentChat({
     const [currentConversationId, setCurrentConversationId] = useState<string | null>(null)
     const [isDrawerOpen, setIsDrawerOpen] = useState(false)
     const [isWaitingForAI, setIsWaitingForAI] = useState(false)
-    const [mockMessage, setMockMessage] = useState<Message | null>(null)
+    const [loaderMessages, setLoaderMessages] = useState<Set<string>>(new Set())
+    const [previousMessageCount, setPreviousMessageCount] = useState(0)
+    const [previousAssistantCount, setPreviousAssistantCount] = useState(0)
+    const [previousAssistantMessages, setPreviousAssistantMessages] = useState<Messages[]>([])
+    const [isStreaming, setIsStreaming] = useState(false)
+    const [isWaitingForStream, setIsWaitingForStream] = useState(false)
+    const [streamingMessageId, setStreamingMessageId] = useState<string | null>(null)
+    const [debugEvents, setDebugEvents] = useState<string[]>([])
     const isMobile = useIsMobile()
     const inputRef = useRef<HTMLInputElement>(null)
 
@@ -71,18 +78,60 @@ export function AgentChat({
         conversations,
         isLoadingConversations,
         createConversation,
-        getOrCreateFirstConversation,
     } = useConversationManager(articleId, user?.$id || '')
 
     const {
         messages: dbMessages,
-        isLoadingMessages,
         isLoadingMoreMessages,
         hasMoreMessages,
         loadMoreMessages,
         createMessage,
         isCreatingMessage,
     } = useMessagesWithNotifications(currentConversationId, blogId, articleId, user?.$id)
+
+    // Custom realtime event handler for streaming debug
+    useEffect(() => {
+        if (!currentConversationId) return
+
+        const databaseId = import.meta.env.VITE_APPWRITE_DATABASE_ID
+        const messagesChannel = `databases.${databaseId}.collections.messages.documents`
+        
+        const unsubscribe = client.subscribe(messagesChannel, (response) => {
+            const { payload, events } = response
+            
+            // Type guard for payload
+            if (!payload || typeof payload !== 'object' || !('conversationId' in payload)) return
+            
+            const messagePayload = payload as any
+            
+            // Only process events for the current conversation
+            if (messagePayload.conversationId !== currentConversationId) return
+            
+            const isCreateEvent = events.some(event => event.includes('.create'))
+            const isUpdateEvent = events.some(event => event.includes('.update'))
+            
+            if (isCreateEvent && messagePayload.role === 'assistant') {
+                // Streaming started - new assistant message created
+                setIsWaitingForStream(false)
+                setIsStreaming(true)
+                setStreamingMessageId(messagePayload.$id)
+                setLoaderMessages(new Set()) // Clear loader messages when streaming starts
+                setDebugEvents(prev => [...prev.slice(-4), `Streaming started: ${messagePayload.$id} at ${new Date().toISOString()}`])
+            } else if (isUpdateEvent && messagePayload.role === 'assistant' && messagePayload.$id === streamingMessageId) {
+                // Check if streaming is complete
+                const metadata = messagePayload.metadata ? JSON.parse(messagePayload.metadata) : undefined
+                if (metadata?.status === 'completed' || !metadata?.streaming) {
+                    setIsStreaming(false)
+                    setStreamingMessageId(null)
+                    setDebugEvents(prev => [...prev.slice(-4), `Streaming completed: ${messagePayload.$id} at ${new Date().toISOString()}`])
+                }
+            }
+        })
+
+        return () => {
+            unsubscribe()
+        }
+    }, [currentConversationId, streamingMessageId])
 
     // Convert database messages to local format and sort with newest at bottom
     const dbMessagesFormatted: Message[] = dbMessages
@@ -97,10 +146,11 @@ export function AgentChat({
         }))
         .reverse() // Reverse to show newest at bottom
 
-    // Combine database messages with mock message if it exists
-    const messages: Message[] = mockMessage 
-        ? [...dbMessagesFormatted, mockMessage]
-        : dbMessagesFormatted
+    // Use database messages directly
+    const messages: Message[] = dbMessagesFormatted
+
+    // Determine if prompt should be locked (waiting for stream or streaming)
+    const isPromptLocked = isWaitingForStream || isStreaming
 
 
     // Memoize the conversation creation function to prevent infinite loops
@@ -112,7 +162,7 @@ export function AgentChat({
                     blogId,
                 })
                 setCurrentConversationId(newConversation.$id)
-            } catch (error) {
+            } catch {
                 // Failed to create initial conversation
             }
         }
@@ -158,7 +208,6 @@ export function AgentChat({
     // Auto-scroll to newest message (but not when loading more messages)
     const bottomRef = useRef<HTMLDivElement | null>(null)
     const scrollAreaRef = useRef<HTMLDivElement | null>(null)
-    const [previousMessageCount, setPreviousMessageCount] = useState(0)
     const [isLoadingMore, setIsLoadingMore] = useState(false)
     const [shouldPreserveScroll, setShouldPreserveScroll] = useState(false)
     const [lastScrollTime, setLastScrollTime] = useState(0)
@@ -183,7 +232,7 @@ export function AgentChat({
             }
         }
         setPreviousMessageCount(messages.length)
-    }, [messages.length, isLoadingMore, shouldPreserveScroll, scrollToBottom, lastScrollTime])
+    }, [messages.length, isLoadingMore, shouldPreserveScroll, scrollToBottom, lastScrollTime, previousMessageCount])
 
     // Additional scroll trigger for any message changes (more reliable)
     useEffect(() => {
@@ -231,9 +280,28 @@ export function AgentChat({
         }
     }, [isLoadingMoreMessages])
 
+
     // Clear AI waiting state when a new assistant message arrives and starts streaming
     useEffect(() => {
         if (isWaitingForAI && dbMessages.length > 0) {
+            // Count current assistant messages
+            const currentAssistantCount = dbMessages.filter(msg => msg.role === 'assistant').length
+            
+            // Show alert only when a new assistant message arrives (not on user messages)
+            if (currentAssistantCount > previousAssistantCount) {
+                const currentAssistantMessages = dbMessages.filter(msg => msg.role === 'assistant')
+                const newAssistantMessage = currentAssistantMessages.find(msg => 
+                    !previousAssistantMessages.some(prevMsg => prevMsg.$id === msg.$id)
+                )
+                
+                if (newAssistantMessage) {
+                    // AI message arrived through realtime
+                }
+                
+                setPreviousAssistantCount(currentAssistantCount)
+                setPreviousAssistantMessages(currentAssistantMessages)
+            }
+            
             const lastDbMessage = dbMessages[dbMessages.length - 1]
             if (lastDbMessage.role === 'assistant') {
                 // Only clear loading state when the message has actual content (not just placeholder)
@@ -245,8 +313,6 @@ export function AgentChat({
                 if (hasRealContent) {
                     // Clear loading state when AI starts streaming real content
                     setIsWaitingForAI(false)
-                    // Clear mock message when real message arrives
-                    setMockMessage(null)
                     // Scroll to the new assistant message
                     setTimeout(() => {
                         scrollToBottom()
@@ -255,30 +321,28 @@ export function AgentChat({
                 }
             }
         }
-    }, [dbMessages, isWaitingForAI, scrollToBottom])
-
-    // Focus input when AI message completes streaming
-    useEffect(() => {
-        if (dbMessages.length > 0) {
-            const lastMessage = dbMessages[dbMessages.length - 1]
-            if (lastMessage.role === 'assistant') {
-                const metadata = lastMessage.metadata ? JSON.parse(lastMessage.metadata) : undefined
-                // Check if streaming is complete
-                const isStreamingComplete = !metadata?.streaming || 
-                    metadata?.status === 'completed' || 
-                    metadata?.status === 'error'
-                
-                if (isStreamingComplete) {
-                    // Focus the input after a short delay to ensure smooth transition
-                    setTimeout(() => {
-                        if (inputRef.current) {
-                            inputRef.current.focus()
-                        }
-                    }, 100)
-                }
-            }
+        
+        // Update previous counts and assistant messages
+        setPreviousMessageCount(dbMessages.length)
+        const currentAssistantCount = dbMessages.filter(msg => msg.role === 'assistant').length
+        if (currentAssistantCount === previousAssistantCount) {
+            // No new assistant messages, just update the current list
+            const currentAssistantMessages = dbMessages.filter(msg => msg.role === 'assistant')
+            setPreviousAssistantMessages(currentAssistantMessages)
         }
-    }, [dbMessages])
+    }, [dbMessages, isWaitingForAI, scrollToBottom, previousAssistantCount])
+
+    // Focus input when prompt lock is released (streaming completes)
+    useEffect(() => {
+        if (!isPromptLocked && inputRef.current) {
+            // Focus the input when prompt becomes unlocked
+            setTimeout(() => {
+                if (inputRef.current) {
+                    inputRef.current.focus()
+                }
+            }, 100)
+        }
+    }, [isPromptLocked])
 
     // Scroll to bottom when AI loading state changes
     useEffect(() => {
@@ -296,18 +360,19 @@ export function AgentChat({
         if (isWaitingForAI) {
             const timeout = setTimeout(() => {
                 setIsWaitingForAI(false)
-                setMockMessage(null)
+                setIsWaitingForStream(false)
+                setLoaderMessages(new Set())
             }, 10000) // 10 second timeout
 
             return () => clearTimeout(timeout)
         }
     }, [isWaitingForAI])
 
-    // Global keyboard lock when AI is thinking
+    // Global keyboard lock when prompt is locked
     useEffect(() => {
         const handleGlobalKeyDown = (e: KeyboardEvent) => {
-            if (isWaitingForAI) {
-                // Block Enter key globally when AI is thinking
+            if (isPromptLocked) {
+                // Block Enter key globally when prompt is locked
                 if (e.key === 'Enter' && !e.shiftKey) {
                     e.preventDefault()
                     e.stopPropagation()
@@ -315,13 +380,13 @@ export function AgentChat({
             }
         }
 
-        if (isWaitingForAI) {
+        if (isPromptLocked) {
             document.addEventListener('keydown', handleGlobalKeyDown, true)
             return () => {
                 document.removeEventListener('keydown', handleGlobalKeyDown, true)
             }
         }
-    }, [isWaitingForAI])
+    }, [isPromptLocked])
 
     const send = async () => {
         const text = input.trim()
@@ -330,32 +395,21 @@ export function AgentChat({
         // Clear input and show loading immediately for better UX
         setInput('')
         setIsWaitingForAI(true)
-
-        // Create mock message immediately for better UX
-        const mockMsg: Message = {
-            id: 'mock-message',
-            role: 'assistant',
-            content: 'Thinking... 123456',
-            createdAt: new Date().toISOString(),
-            metadata: {
-                streaming: true,
-                status: 'generating',
-                isMock: true
-            }
-        }
-        setMockMessage(mockMsg)
+        setIsWaitingForStream(true)
+        setDebugEvents(prev => [...prev.slice(-4), `Prompt submitted, waiting for stream at ${new Date().toISOString()}`])
 
         try {
             // Create user message in background
-            createMessage({
+            const userMessage = await createMessage({
                 role: 'user',
                 content: text,
                 userId: user?.$id || '',
-            }).catch(error => {
-                // Reset states if message creation fails
-                setIsWaitingForAI(false)
-                setMockMessage(null)
             })
+
+            // Add loader message for this user message
+            if (userMessage) {
+                setLoaderMessages(prev => new Set(prev).add(userMessage.$id))
+            }
 
             // Scroll immediately for better UX
             setTimeout(() => {
@@ -373,10 +427,10 @@ export function AgentChat({
                     userMessage: text
                 }
             })
-        } catch (error) {
+        } catch {
             // Failed to send message
             setIsWaitingForAI(false)
-            setMockMessage(null)
+            setIsWaitingForStream(false)
         }
     }
 
@@ -398,7 +452,7 @@ export function AgentChat({
                 scrollToBottom()
                 setLastScrollTime(Date.now())
             }, 10)
-        } catch (error) {
+        } catch {
             // Failed to create message
         }
     }
@@ -422,7 +476,7 @@ export function AgentChat({
                 scrollToBottom()
                 setLastScrollTime(Date.now())
             }, 10)
-        } catch (error) {
+        } catch {
             // Failed to create message
         }
     }
@@ -448,7 +502,7 @@ export function AgentChat({
                         )}
                         
                         {messages.map((m) => (
-                            <div key={`${m.id}-${m.metadata?.isMock ? 'mock' : 'real'}`} className="space-y-1">
+                            <div key={m.id} className="space-y-1">
                                 <div className={m.role === 'assistant' ? 'flex gap-2 items-start' : 'flex justify-end'}>
                                     {m.role === 'assistant' && (
                                         <div className="mt-0.5 text-muted-foreground">
@@ -458,18 +512,12 @@ export function AgentChat({
                                     <div
                                         className={
                                             m.role === 'assistant'
-                                                ? m.metadata?.isMock
-                                                    ? 'rounded-md bg-red-100 dark:bg-red-900/20 px-2.5 py-1.5 text-xs max-w-[220px]'
-                                                    : 'rounded-md bg-accent px-2.5 py-1.5 text-xs max-w-[220px]'
+                                                ? 'rounded-md bg-accent px-2.5 py-1.5 text-xs max-w-[220px]'
                                                 : 'rounded-md bg-primary text-primary-foreground px-2.5 py-1.5 text-xs max-w-[220px]'
                                         }
                                     >
                                         {m.role === 'assistant' ? (
-                                            m.metadata?.isMock ? (
-                                                <span className="text-red-600 dark:text-red-400 font-mono">{m.content}</span>
-                                            ) : (
-                                                <MarkdownRenderer content={m.content} />
-                                            )
+                                            <MarkdownRenderer content={m.content} />
                                         ) : (
                                             m.content
                                         )}
@@ -477,7 +525,7 @@ export function AgentChat({
                                         {m.role === 'assistant' && m.metadata?.streaming && m.metadata?.status === 'generating' && (
                                             <div className="flex items-center gap-1 mt-1">
                                                 <span className="text-xs text-muted-foreground">
-                                                    {m.metadata?.isMock ? 'Thinking' : 'Generating'}
+                                                    Generating
                                                 </span>
                                                 <div className="flex gap-0.5">
                                                     <div className="w-1 h-1 bg-muted-foreground rounded-full animate-pulse" style={{ animationDelay: '0ms' }}></div>
@@ -501,6 +549,26 @@ export function AgentChat({
                                         )}
                                     </div>
                                 </div>
+                                
+                                {/* Show loader message below user messages only while waiting for stream */}
+                                {m.role === 'user' && loaderMessages.has(m.id) && isWaitingForStream && (
+                                    <div className="flex gap-2 items-start">
+                                        <div className="mt-0.5 text-muted-foreground">
+                                            <Brain className="h-4 w-4" />
+                                        </div>
+                                        <div className="rounded-md bg-accent px-2.5 py-1.5 text-xs max-w-[220px]">
+                                            <div className="flex items-center gap-1">
+                                                <span className="text-xs text-muted-foreground">&nbsp;</span>
+                                                <div className="flex gap-0.5">
+                                                    <div className="w-1 h-1 bg-muted-foreground rounded-full animate-pulse" style={{ animationDelay: '0ms' }}></div>
+                                                    <div className="w-1 h-1 bg-muted-foreground rounded-full animate-pulse" style={{ animationDelay: '150ms' }}></div>
+                                                    <div className="w-1 h-1 bg-muted-foreground rounded-full animate-pulse" style={{ animationDelay: '300ms' }}></div>
+                                                </div>
+                                                <span className="text-xs text-muted-foreground">&nbsp;</span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                )}
                             </div>
                         ))}
                         
@@ -514,11 +582,16 @@ export function AgentChat({
                             
                             try {
                                 // Create user message
-                                await createMessage({
+                                const userMessage = await createMessage({
                                     role: 'user',
                                     content: message,
                                     userId: user?.$id || '',
                                 })
+
+                                // Add loader message for this user message
+                                if (userMessage) {
+                                    setLoaderMessages(prev => new Set(prev).add(userMessage.$id))
+                                }
 
                                 // Scroll to show user message
                                 setTimeout(() => {
@@ -526,21 +599,17 @@ export function AgentChat({
                                     setLastScrollTime(Date.now())
                                 }, 10)
 
-                                // Create assistant reply
-                                const reply = mockReply(message, title)
-                                await createMessage({
-                                    role: 'assistant',
-                                    content: reply,
-                                    userId: user?.$id || '',
-                                })
+                                // Clear loader messages
+                                setLoaderMessages(new Set())
 
-                                // Scroll to show assistant reply
+                                // Scroll to show user message
                                 setTimeout(() => {
                                     scrollToBottom()
                                     setLastScrollTime(Date.now())
                                 }, 10)
-                            } catch (error) {
+                            } catch {
                                 // Failed to send message
+                                setLoaderMessages(new Set())
                             }
                         }} />
                     </div>
@@ -556,7 +625,7 @@ export function AgentChat({
                         size="sm" 
                         className="gap-1 h-7 px-2 text-[11px]" 
                         onClick={applySEOTitle}
-                        disabled={isWaitingForAI}
+                        disabled={isPromptLocked}
                     >
                         <Sparkles className="h-3.5 w-3.5" /> SEO title
                     </Button>
@@ -565,7 +634,7 @@ export function AgentChat({
                         size="sm" 
                         className="gap-1 h-7 px-2 text-[11px]" 
                         onClick={generateMetaDescription}
-                        disabled={isWaitingForAI}
+                        disabled={isPromptLocked}
                     >
                         <Sparkles className="h-3.5 w-3.5" /> Meta description
                     </Button>
@@ -575,35 +644,41 @@ export function AgentChat({
                         ref={inputRef}
                         value={input}
                         onChange={(e) => {
-                            if (!isWaitingForAI) {
+                            if (!isPromptLocked) {
                                 setInput(e.target.value)
                             }
                         }}
-                        placeholder={isWaitingForAI ? "AI is thinking..." : "Ask the agent…"}
-                        className={`h-9 text-sm ${isWaitingForAI ? 'opacity-50 cursor-not-allowed' : ''}`}
-                        disabled={isWaitingForAI}
+                        placeholder={
+                            isWaitingForStream 
+                                ? "Thinking" 
+                                : isStreaming 
+                                    ? "AI is responding..." 
+                                    : "Ask the agent…"
+                        }
+                        className={`h-9 text-sm ${isPromptLocked ? 'opacity-50 cursor-not-allowed' : ''}`}
+                        disabled={isPromptLocked}
                         onKeyDown={(e) => {
-                            // Block all input when AI is thinking
-                            if (isWaitingForAI) {
+                            // Block all input when prompt is locked
+                            if (isPromptLocked) {
                                 e.preventDefault()
                                 return
                             }
                             
-                            // Only allow Enter to submit when not waiting
+                            // Only allow Enter to submit when not locked
                             if (e.key === 'Enter' && !e.shiftKey) {
                                 e.preventDefault()
                                 send()
                             }
                         }}
                         onKeyPress={(e) => {
-                            // Block all key presses when AI is thinking
-                            if (isWaitingForAI) {
+                            // Block all key presses when prompt is locked
+                            if (isPromptLocked) {
                                 e.preventDefault()
                             }
                         }}
                         onPaste={(e) => {
-                            // Block paste when AI is thinking
-                            if (isWaitingForAI) {
+                            // Block paste when prompt is locked
+                            if (isPromptLocked) {
                                 e.preventDefault()
                             }
                         }}
@@ -612,7 +687,7 @@ export function AgentChat({
                         size="sm" 
                         className="h-9 px-3" 
                         onClick={send}
-                        disabled={isWaitingForAI || !input.trim()}
+                        disabled={isPromptLocked || !input.trim()}
                     >
                         <Send className="h-4 w-4" />
                     </Button>
@@ -676,16 +751,6 @@ export function AgentChat({
     )
 }
 
-function mockReply(input: string, currentTitle: string) {
-    const q = input.toLowerCase()
-    if (q.includes('title')) {
-        return `Try: "${makeSEOTitle(currentTitle)}"`
-    }
-    if (q.includes('subtitle') || q.includes('summary') || q.includes('meta')) {
-        return 'I can draft a compelling meta description that improves search visibility and click-through rates.'
-    }
-    return "Got it. I can help optimize your content for SEO, generate outlines, or polish your tone."
-}
 
 function makeSEOTitle(t: string) {
     const base = (t || 'From idea to article with your AI co-writer').trim()
