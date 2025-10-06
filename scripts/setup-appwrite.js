@@ -726,14 +726,11 @@ async function deployFunction(functionId, functionPath) {
       type: 'application/gzip'
     });
     
-    const deployment = await functions.createDeployment(
-      functionId,
-      deploymentId,
-      deploymentFile,
-      {
-        activate: true
-      }
-    );
+    const deployment = await functions.createDeployment({
+      functionId: functionId,
+      code: deploymentFile,
+      activate: true
+    });
     
     log(`✅ Deployment successful with ID: ${deploymentId}`, 'success');
     
