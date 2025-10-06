@@ -208,7 +208,17 @@ export default async function ({ req, res, log, error }) {
 
         log('Created initial streaming message with ID: ' + initialMessage.$id);
 
+        // Initialize debug logging
+        let debugLogs = [];
+        const addDebugLog = (message) => {
+          const timestamp = new Date().toISOString();
+          const logEntry = `[${timestamp}] ${message}`;
+          debugLogs.push(logEntry);
+          log(message); // Still log to console
+        };
+
         // Use OpenAI model to generate streaming response
+        addDebugLog('Calling OpenAI model with prompt length: ' + messagesWithSystem.length);
         const streamResult = await openaiModel.doStream({
           prompt: messagesWithSystem,
           temperature: 0.7,
@@ -219,47 +229,115 @@ export default async function ({ req, res, log, error }) {
             conversationLength: messages.length
           }
         });
+        addDebugLog('OpenAI stream result received, starting to process...');
+
+        // Check if stream exists
+        if (!streamResult || !streamResult.stream) {
+          throw new Error('No stream received from OpenAI model');
+        }
 
         let fullContent = '';
         let chunkCount = 0;
+        let streamTimeout;
+        let streamCompleted = false;
+        let lastChunkTime = Date.now();
+        let inactivityTimeout;
 
-        // Process streaming chunks
-        for await (const chunk of streamResult.stream) {
-          if (chunk.choices && chunk.choices[0] && chunk.choices[0].delta && chunk.choices[0].delta.content) {
-            const content = chunk.choices[0].delta.content;
-            fullContent += content;
-            chunkCount++;
+        // Set a timeout for the streaming operation (5 minutes total)
+        // This is generous enough for complex content generation
+        streamTimeout = setTimeout(() => {
+          if (!streamCompleted) {
+            addDebugLog('Streaming timeout reached after 5 minutes, forcing completion');
+            streamCompleted = true;
+          }
+        }, 300000); // 5 minutes = 300,000ms
 
-            // Update the message document with accumulated content every few chunks
-            if (chunkCount % 3 === 0 || content.includes('\n')) {
-              try {
-                await serverDatabases.updateDocument(
-                  databaseId,
-                  'messages',
-                  initialMessage.$id,
-                  {
-                    content: fullContent,
-                    metadata: JSON.stringify({
-                      model: 'gpt-4o-mini',
-                      temperature: 0.7,
-                      generatedAt: new Date().toISOString(),
-                      streaming: true,
-                      status: 'generating',
-                      chunkCount: chunkCount,
-                      tokensUsed: fullContent.length
-                    })
-                  }
-                );
-                log(`Updated streaming message with ${chunkCount} chunks, content length: ${fullContent.length}`);
-              } catch (updateError) {
-                log('Error updating streaming message: ' + updateError.message);
-                // Continue streaming even if update fails
+        // Set an inactivity timeout (2 minutes without new chunks)
+        // This prevents hanging on streams that stop sending data
+        const resetInactivityTimeout = () => {
+          clearTimeout(inactivityTimeout);
+          inactivityTimeout = setTimeout(() => {
+            if (!streamCompleted) {
+              addDebugLog('No chunks received for 2 minutes, forcing completion due to inactivity');
+              streamCompleted = true;
+            }
+          }, 120000); // 2 minutes = 120,000ms
+        };
+        resetInactivityTimeout();
+
+        addDebugLog('Starting to process streaming chunks... (5min total timeout, 2min inactivity timeout)');
+
+        try {
+          // Process streaming chunks
+          for await (const chunk of streamResult.stream) {
+            if (streamCompleted) {
+              addDebugLog('Stream completed due to timeout, breaking loop');
+              break;
+            }
+            
+            addDebugLog(`Processing chunk ${chunkCount + 1}, chunk type: ${chunk.type || 'unknown'}`);
+            
+            if (chunk.choices && chunk.choices[0] && chunk.choices[0].delta && chunk.choices[0].delta.content) {
+              const content = chunk.choices[0].delta.content;
+              fullContent += content;
+              chunkCount++;
+              lastChunkTime = Date.now();
+              resetInactivityTimeout(); // Reset inactivity timeout when we receive content
+              addDebugLog(`Received content chunk: "${content}" (total length: ${fullContent.length})`);
+
+              // Update the message document with accumulated content every few chunks
+              if (chunkCount % 3 === 0 || content.includes('\n')) {
+                try {
+                  await serverDatabases.updateDocument(
+                    databaseId,
+                    'messages',
+                    initialMessage.$id,
+                    {
+                      content: fullContent,
+                      metadata: JSON.stringify({
+                        model: 'gpt-4o-mini',
+                        temperature: 0.7,
+                        generatedAt: new Date().toISOString(),
+                        streaming: true,
+                        status: 'generating',
+                        chunkCount: chunkCount,
+                        tokensUsed: fullContent.length,
+                        debugLogs: debugLogs.slice(-10) // Keep last 10 debug logs
+                      })
+                    }
+                  );
+                  addDebugLog(`Updated streaming message with ${chunkCount} chunks, content length: ${fullContent.length}`);
+                } catch (updateError) {
+                  addDebugLog('Error updating streaming message: ' + updateError.message);
+                  // Continue streaming even if update fails
+                }
               }
+            } else if (chunk.type === 'error') {
+              addDebugLog('Stream error received: ' + (chunk.error || 'Unknown error'));
+              break;
+            } else if (chunk.type === 'finish') {
+              addDebugLog('Stream finished normally');
+              break;
             }
           }
+        } catch (streamError) {
+          addDebugLog('Error processing stream: ' + streamError.message);
+          // Continue with what we have so far
         }
 
-        // Final update with complete content
+        // Clear the timeouts and mark as completed
+        clearTimeout(streamTimeout);
+        clearTimeout(inactivityTimeout);
+        streamCompleted = true;
+        addDebugLog(`Stream processing completed. Total chunks: ${chunkCount}, Content length: ${fullContent.length}`);
+
+        // If no content was received, provide a fallback
+        if (!fullContent || fullContent.trim().length === 0) {
+          addDebugLog('No content received from stream, using fallback message');
+          fullContent = "I apologize, but I'm having trouble generating a response right now. Please try again.";
+        }
+
+        // Final update with complete content and all debug logs
         await serverDatabases.updateDocument(
           databaseId,
           'messages',
@@ -274,7 +352,8 @@ export default async function ({ req, res, log, error }) {
               status: 'completed',
               chunkCount: chunkCount,
               tokensUsed: fullContent.length,
-              cached: true
+              cached: true,
+              debugLogs: debugLogs // Include all debug logs in final message
             })
           }
         );
@@ -289,6 +368,11 @@ export default async function ({ req, res, log, error }) {
 
       } catch (error) {
         log('LLM streaming error: ' + error.message);
+        
+        // Add debug logs to error message
+        const errorDebugLogs = debugLogs || [];
+        errorDebugLogs.push(`[${new Date().toISOString()}] ERROR: ${error.message}`);
+        errorDebugLogs.push(`[${new Date().toISOString()}] Stack: ${error.stack}`);
         
         // Create fallback message if streaming fails
         const fallbackContent = "I apologize, but I'm experiencing technical difficulties. Please try again in a moment.";
@@ -310,7 +394,8 @@ export default async function ({ req, res, log, error }) {
               generatedAt: new Date().toISOString(),
               streaming: false,
               status: 'error',
-              error: error.message
+              error: error.message,
+              debugLogs: errorDebugLogs
             }),
             isEdited: false
           },
