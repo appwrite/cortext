@@ -172,6 +172,8 @@ export function useMessages(conversationId: string | null, blogId?: string, arti
         agentId: 'temp-agent-id', // Temporary fake ID
         blogId: blogId || null,
         metadata: data.metadata ? JSON.stringify(data.metadata) : null,
+        tokenCount: null, // Will be updated by the agent
+        generationTimeMs: null, // Will be updated by the agent
       }, data.userId)
 
       console.log('Message created successfully:', message)
@@ -361,6 +363,8 @@ export function useMessagesWithNotifications(
         agentId: 'temp-agent-id', // Temporary fake ID
         blogId: blogId || null,
         metadata: data.metadata ? JSON.stringify(data.metadata) : null,
+        tokenCount: null, // Will be updated by the agent
+        generationTimeMs: null, // Will be updated by the agent
       }, data.userId)
 
       console.log('Message created successfully:', message)
