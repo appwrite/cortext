@@ -1,4 +1,4 @@
-import { Client, Account, Teams, Avatars } from "appwrite";
+import { Client, Account, Teams, Avatars, Functions } from "appwrite";
 import { queryClient } from "../react-query";
 
 const endpoint = import.meta.env.VITE_APPWRITE_ENDPOINT;
@@ -23,6 +23,11 @@ const getAppwriteClient = () => {
   return appwriteClient;
 }
 
+const getFunctionsClient = () => {
+  const appwriteClient = getAppwriteClient();
+  return new Functions(appwriteClient);
+}
+
 const getAccountClient = () => {
   const appwriteClient = getAppwriteClient();
   return new Account(appwriteClient);
@@ -43,6 +48,7 @@ export {
   getAccountClient,
   getTeamsClient,
   getAvatarsClient,
+  getFunctionsClient,
 };
 
 

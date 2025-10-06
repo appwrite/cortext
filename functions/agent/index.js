@@ -5,9 +5,20 @@ const client = new Client();
 const databases = new Databases(client);
 
 // Set up the client with environment variables
+const endpoint = process.env.APPWRITE_ENDPOINT;
+const projectId = process.env.APPWRITE_PROJECT_ID;
+
+if (!endpoint) {
+  throw new Error('APPWRITE_ENDPOINT environment variable is required');
+}
+
+if (!projectId) {
+  throw new Error('APPWRITE_PROJECT_ID environment variable is required');
+}
+
 client
-  .setEndpoint(process.env.APPWRITE_ENDPOINT)
-  .setProject(process.env.APPWRITE_PROJECT_ID);
+  .setEndpoint(endpoint)
+  .setProject(projectId);
 
 export default async function ({ req, res, log, error }) {
   try {
@@ -82,11 +93,11 @@ export default async function ({ req, res, log, error }) {
 
     // Get database ID from environment
     const databaseId = process.env.APPWRITE_DATABASE_ID;
+    
     if (!databaseId) {
-      error('APPWRITE_DATABASE_ID environment variable is not set');
       return res.json({
         success: false,
-        error: 'Database configuration error'
+        error: 'APPWRITE_DATABASE_ID environment variable is required'
       }, 500);
     }
 

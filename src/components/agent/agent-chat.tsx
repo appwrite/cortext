@@ -10,6 +10,7 @@ import { ConversationSelector } from './conversation-selector'
 import { ConversationPlaceholder } from './conversation-placeholder'
 import { useAuth } from '@/hooks/use-auth'
 import type { Messages } from '@/lib/appwrite/appwrite.types'
+import { functionService } from '@/lib/appwrite/functions'
 
 type Message = {
     id: string
@@ -130,13 +131,17 @@ export function AgentChat({
 
             setInput('')
 
-            // Create assistant reply
-            const reply = mockReply(text, title)
-            await createMessage({
-                role: 'assistant',
-                content: reply,
-                userId: user?.$id || '',
+            // Trigger agent function to generate response
+            await functionService.triggerAgentResponse({
+                conversationId: currentConversationId,
+                blogId: blogId || '',
+                agentId: 'dummy-agent',
+                metadata: {
+                    articleTitle: title,
+                    userMessage: text
+                }
             })
+            console.log('Agent function triggered successfully')
         } catch (error) {
             console.error('Failed to send message:', error)
         }
