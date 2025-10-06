@@ -234,18 +234,20 @@ export default async function ({ req, res, log, error }) {
           ServerID.unique(),
           {
             conversationId,
-            content: '', // Start with empty content
+            content: '🤖 Generating response...', // Start with a visual indicator
             role: 'assistant',
             userId: messageUserId || null,
             agentId: agentId || 'cortext-agent',
             blogId,
-            metadata: JSON.stringify({
+            metadata: createMetadata({
               model: 'gpt-4o-mini',
               temperature: 0.7,
               generatedAt: new Date().toISOString(),
               streaming: true,
-              status: 'generating'
-            }),
+              status: 'generating',
+              chunkCount: 0,
+              tokensUsed: 0
+            }, 5, 100),
             isEdited: false
           },
           [
@@ -349,8 +351,9 @@ export default async function ({ req, res, log, error }) {
               resetInactivityTimeout(); // Reset inactivity timeout when we receive content
               addDebugLog(`Received content chunk: "${content}" (total length: ${fullContent.length})`);
 
-              // Update the message document with accumulated content every few chunks
-              if (chunkCount % 3 === 0 || content.includes('\n')) {
+              // Update the message document with accumulated content for streaming effect
+              // Update every 2 chunks or on newlines for better performance while maintaining streaming feel
+              if (chunkCount % 2 === 0 || content.includes('\n') || content.includes('.')) {
                 try {
                   await serverDatabases.updateDocument(
                     databaseId,
@@ -365,7 +368,8 @@ export default async function ({ req, res, log, error }) {
                         streaming: true,
                         status: 'generating',
                         chunkCount: chunkCount,
-                        tokensUsed: fullContent.length
+                        tokensUsed: fullContent.length,
+                        lastChunkAt: new Date().toISOString()
                       }, 5, 100)
                     }
                   );
@@ -384,8 +388,9 @@ export default async function ({ req, res, log, error }) {
               resetInactivityTimeout();
               addDebugLog(`Received content chunk (alt format): "${content}" (total length: ${fullContent.length})`);
 
-              // Update the message document with accumulated content every few chunks
-              if (chunkCount % 3 === 0 || content.includes('\n')) {
+              // Update the message document with accumulated content for streaming effect
+              // Update every 2 chunks or on newlines for better performance while maintaining streaming feel
+              if (chunkCount % 2 === 0 || content.includes('\n') || content.includes('.')) {
                 try {
                   await serverDatabases.updateDocument(
                     databaseId,
@@ -400,7 +405,8 @@ export default async function ({ req, res, log, error }) {
                         streaming: true,
                         status: 'generating',
                         chunkCount: chunkCount,
-                        tokensUsed: fullContent.length
+                        tokensUsed: fullContent.length,
+                        lastChunkAt: new Date().toISOString()
                       }, 5, 100)
                     }
                   );
@@ -419,8 +425,9 @@ export default async function ({ req, res, log, error }) {
               resetInactivityTimeout();
               addDebugLog(`Received content chunk (OpenAI format): "${content}" (total length: ${fullContent.length})`);
 
-              // Update the message document with accumulated content every few chunks
-              if (chunkCount % 3 === 0 || content.includes('\n')) {
+              // Update the message document with accumulated content for streaming effect
+              // Update every 2 chunks or on newlines for better performance while maintaining streaming feel
+              if (chunkCount % 2 === 0 || content.includes('\n') || content.includes('.')) {
                 try {
                   await serverDatabases.updateDocument(
                     databaseId,
@@ -435,7 +442,8 @@ export default async function ({ req, res, log, error }) {
                         streaming: true,
                         status: 'generating',
                         chunkCount: chunkCount,
-                        tokensUsed: fullContent.length
+                        tokensUsed: fullContent.length,
+                        lastChunkAt: new Date().toISOString()
                       }, 5, 100)
                     }
                   );
@@ -490,6 +498,7 @@ export default async function ({ req, res, log, error }) {
               status: 'completed',
               chunkCount: chunkCount,
               tokensUsed: fullContent.length,
+              completedAt: new Date().toISOString(),
               cached: true
             }, 10, 80)
           }
