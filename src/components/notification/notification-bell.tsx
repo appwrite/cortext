@@ -66,7 +66,7 @@ export function NotificationBell({ userId, className }: NotificationBellProps) {
               <h3 className="font-semibold text-sm">Notifications</h3>
             </div>
             <NotificationList 
-              notifications={notifications}
+              notifications={notifications || []}
               isLoading={isLoading}
               markAsRead={markAsRead}
               markAllAsRead={markAllAsRead}
