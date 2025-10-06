@@ -1,4 +1,4 @@
-# Cortext
+# Cortext 1
 
 AI powered content management system built with React, TypeScript, and Appwrite.
 
