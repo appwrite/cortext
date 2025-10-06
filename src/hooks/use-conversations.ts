@@ -1,4 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+import React, { useState, useCallback, useEffect } from 'react'
 import { db } from '@/lib/appwrite/db'
 import { Query } from 'appwrite'
 import { useMessagesRealtime, useMessagesAndNotificationsRealtime } from './use-realtime'
@@ -63,19 +64,23 @@ export function useConversations(articleId: string, userId: string) {
 
 export function useMessages(conversationId: string | null, blogId?: string, articleId?: string) {
   const queryClient = useQueryClient()
+  const [offset, setOffset] = useState(0)
+  const [allMessages, setAllMessages] = useState<Messages[]>([])
+  const [hasMoreMessages, setHasMoreMessages] = useState(true)
 
   // Get all messages for a conversation
-  const queryKey = ['messages', conversationId]
+  const queryKey = ['messages', conversationId, offset]
   console.log('useMessages queryKey:', queryKey)
   
   const messagesQuery = useQuery({
     queryKey,
     queryFn: () => {
-      console.log('Fetching messages for conversation:', conversationId)
+      console.log('Fetching messages for conversation:', conversationId, 'offset:', offset)
       return db.messages.list([
         Query.equal('conversationId', conversationId!),
         Query.orderDesc('$createdAt'),
-        Query.limit(200)
+        Query.limit(25),
+        Query.offset(offset)
       ])
     },
     enabled: !!conversationId,
@@ -93,6 +98,51 @@ export function useMessages(conversationId: string | null, blogId?: string, arti
     status: messagesQuery.status,
     fetchStatus: messagesQuery.fetchStatus
   })
+
+  // Handle pagination logic
+  const handleMessagesData = useCallback(() => {
+    if (messagesQuery.data?.documents) {
+      const newMessages = messagesQuery.data.documents
+      const total = messagesQuery.data.total || 0
+      
+      if (offset === 0) {
+        // First load - replace all messages
+        setAllMessages(newMessages)
+      } else {
+        // Load more - append older messages to the beginning and sort the entire list
+        setAllMessages(prev => {
+          const combined = [...newMessages, ...prev]
+          // Sort by createdAt in descending order (newest first) since API returns newest first
+          return combined.sort((a, b) => new Date(b.$createdAt).getTime() - new Date(a.$createdAt).getTime())
+        })
+      }
+      
+      // Check if there are more messages to load
+      const currentTotal = offset + newMessages.length
+      setHasMoreMessages(currentTotal < total)
+    }
+  }, [messagesQuery.data, offset])
+
+  // Update messages when data changes
+  useEffect(() => {
+    handleMessagesData()
+  }, [handleMessagesData])
+
+  // Reset pagination when conversation changes
+  useEffect(() => {
+    if (conversationId) {
+      setOffset(0)
+      setAllMessages([])
+      setHasMoreMessages(true)
+    }
+  }, [conversationId])
+
+  // Load more messages function
+  const loadMoreMessages = useCallback(() => {
+    if (hasMoreMessages && !messagesQuery.isFetching) {
+      setOffset(prev => prev + 25)
+    }
+  }, [hasMoreMessages, messagesQuery.isFetching])
 
   // Set up realtime subscription for messages
   console.log('Setting up messages realtime:', { 
@@ -150,8 +200,11 @@ export function useMessages(conversationId: string | null, blogId?: string, arti
   })
 
   return {
-    messages: messagesQuery.data?.documents || [],
+    messages: allMessages,
     isLoadingMessages: messagesQuery.isLoading,
+    isLoadingMoreMessages: messagesQuery.isFetching && offset > 0,
+    hasMoreMessages,
+    loadMoreMessages,
     createMessage: createMessageMutation.mutateAsync,
     isCreatingMessage: createMessageMutation.isPending,
   }
@@ -204,24 +257,73 @@ export function useMessagesWithNotifications(
   enabled: boolean = true
 ) {
   const queryClient = useQueryClient()
+  const [offset, setOffset] = useState(0)
+  const [allMessages, setAllMessages] = useState<Messages[]>([])
+  const [hasMoreMessages, setHasMoreMessages] = useState(true)
 
   // Get all messages for a conversation
-  const queryKey = ['messages', conversationId]
+  const queryKey = ['messages', conversationId, offset]
   console.log('useMessagesWithNotifications queryKey:', queryKey)
   
   const messagesQuery = useQuery({
     queryKey,
     queryFn: () => {
-      console.log('Fetching messages for conversation:', conversationId)
+      console.log('Fetching messages for conversation:', conversationId, 'offset:', offset)
       return db.messages.list([
         Query.equal('conversationId', conversationId!),
         Query.orderDesc('$createdAt'),
-        Query.limit(200)
+        Query.limit(25),
+        Query.offset(offset)
       ])
     },
     enabled: !!conversationId,
     refetchInterval: false, // Disable polling since we're using realtime
   })
+
+  // Handle pagination logic
+  const handleMessagesData = useCallback(() => {
+    if (messagesQuery.data?.documents) {
+      const newMessages = messagesQuery.data.documents
+      const total = messagesQuery.data.total || 0
+      
+      if (offset === 0) {
+        // First load - replace all messages
+        setAllMessages(newMessages)
+      } else {
+        // Load more - append older messages to the beginning and sort the entire list
+        setAllMessages(prev => {
+          const combined = [...newMessages, ...prev]
+          // Sort by createdAt in descending order (newest first) since API returns newest first
+          return combined.sort((a, b) => new Date(b.$createdAt).getTime() - new Date(a.$createdAt).getTime())
+        })
+      }
+      
+      // Check if there are more messages to load
+      const currentTotal = offset + newMessages.length
+      setHasMoreMessages(currentTotal < total)
+    }
+  }, [messagesQuery.data, offset])
+
+  // Update messages when data changes
+  useEffect(() => {
+    handleMessagesData()
+  }, [handleMessagesData])
+
+  // Reset pagination when conversation changes
+  useEffect(() => {
+    if (conversationId) {
+      setOffset(0)
+      setAllMessages([])
+      setHasMoreMessages(true)
+    }
+  }, [conversationId])
+
+  // Load more messages function
+  const loadMoreMessages = useCallback(() => {
+    if (hasMoreMessages && !messagesQuery.isFetching) {
+      setOffset(prev => prev + 25)
+    }
+  }, [hasMoreMessages, messagesQuery.isFetching])
 
   // Set up consolidated realtime subscription for both messages and notifications
   console.log('Setting up consolidated realtime:', { 
@@ -287,8 +389,11 @@ export function useMessagesWithNotifications(
   })
 
   return {
-    messages: messagesQuery.data?.documents || [],
+    messages: allMessages,
     isLoadingMessages: messagesQuery.isLoading,
+    isLoadingMoreMessages: messagesQuery.isFetching && offset > 0,
+    hasMoreMessages,
+    loadMoreMessages,
     createMessage: createMessageMutation.mutateAsync,
     isCreatingMessage: createMessageMutation.isPending,
   }

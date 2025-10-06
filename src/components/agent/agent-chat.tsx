@@ -11,11 +11,13 @@ import { ConversationPlaceholder } from './conversation-placeholder'
 import { useAuth } from '@/hooks/use-auth'
 import type { Messages } from '@/lib/appwrite/appwrite.types'
 import { functionService } from '@/lib/appwrite/functions'
+import { formatDateRelative } from '@/lib/date-utils'
 
 type Message = {
     id: string
     role: 'user' | 'assistant'
     content: string
+    createdAt: string
 }
 
 export function AgentChat({
@@ -49,16 +51,22 @@ export function AgentChat({
     const {
         messages: dbMessages,
         isLoadingMessages,
+        isLoadingMoreMessages,
+        hasMoreMessages,
+        loadMoreMessages,
         createMessage,
         isCreatingMessage,
     } = useMessagesWithNotifications(currentConversationId, blogId, articleId, user?.$id)
 
-    // Convert database messages to local format
-    const messages: Message[] = dbMessages.map((msg: Messages) => ({
-        id: msg.$id,
-        role: msg.role,
-        content: msg.content,
-    }))
+    // Convert database messages to local format and sort with newest at bottom
+    const messages: Message[] = dbMessages
+        .map((msg: Messages) => ({
+            id: msg.$id,
+            role: msg.role,
+            content: msg.content,
+            createdAt: msg.$createdAt,
+        }))
+        .reverse() // Reverse to show newest at bottom
 
     // Debug messages updates
     console.log('AgentChat messages updated:', {
@@ -119,11 +127,40 @@ export function AgentChat({
         }
     }, [])
 
-    // Auto-scroll to newest message
+    // Auto-scroll to newest message (but not when loading more messages)
     const bottomRef = useRef<HTMLDivElement | null>(null)
+    const scrollAreaRef = useRef<HTMLDivElement | null>(null)
+    const [previousMessageCount, setPreviousMessageCount] = useState(0)
+    const [isLoadingMore, setIsLoadingMore] = useState(false)
+    const [shouldPreserveScroll, setShouldPreserveScroll] = useState(false)
+    
+    // Save scroll position when starting to load more messages
+    const handleLoadMore = useCallback(() => {
+        setShouldPreserveScroll(true)
+        loadMoreMessages()
+    }, [loadMoreMessages])
+    
     useEffect(() => {
-        bottomRef.current?.scrollIntoView({ behavior: 'smooth', block: 'end' })
-    }, [messages.length])
+        // Only scroll if we're not loading more messages and the message count increased
+        if (!isLoadingMore && messages.length > previousMessageCount && !shouldPreserveScroll) {
+            bottomRef.current?.scrollIntoView({ behavior: 'smooth', block: 'end' })
+        }
+        setPreviousMessageCount(messages.length)
+    }, [messages.length, isLoadingMore, shouldPreserveScroll])
+    
+    // Track when we're loading more messages
+    useEffect(() => {
+        if (isLoadingMoreMessages) {
+            setIsLoadingMore(true)
+        } else {
+            // Reset states after loading completes
+            const timer = setTimeout(() => {
+                setIsLoadingMore(false)
+                setShouldPreserveScroll(false)
+            }, 100)
+            return () => clearTimeout(timer)
+        }
+    }, [isLoadingMoreMessages])
 
     const send = async () => {
         const text = input.trim()
@@ -192,24 +229,44 @@ export function AgentChat({
 
     const chatContent = (
         <>
-            <ScrollArea className="flex-1">
+            <ScrollArea ref={scrollAreaRef} className="flex-1">
                 {hasMessages ? (
                     <div className="px-6 py-6 space-y-2">
-                        {messages.map((m) => (
-                            <div key={m.id} className={m.role === 'assistant' ? 'flex gap-2 items-start' : 'flex justify-end'}>
-                                {m.role === 'assistant' && (
-                                    <div className="mt-0.5 text-muted-foreground">
-                                        <Brain className="h-4 w-4" />
-                                    </div>
-                                )}
-                                <div
-                                    className={
-                                        m.role === 'assistant'
-                                            ? 'rounded-md bg-accent px-2.5 py-1.5 text-xs max-w-[220px]'
-                                            : 'rounded-md bg-primary text-primary-foreground px-2.5 py-1.5 text-xs max-w-[220px]'
-                                    }
+                        {/* Load More Button */}
+                        {hasMoreMessages && (
+                            <div className="flex justify-center py-2">
+                                <Button
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={handleLoadMore}
+                                    disabled={isLoadingMoreMessages}
+                                    className="text-xs"
                                 >
-                                    {m.content}
+                                    {isLoadingMoreMessages ? 'Loading...' : 'Load More Messages'}
+                                </Button>
+                            </div>
+                        )}
+                        
+                        {messages.map((m) => (
+                            <div key={m.id} className="space-y-1">
+                                <div className={m.role === 'assistant' ? 'flex gap-2 items-start' : 'flex justify-end'}>
+                                    {m.role === 'assistant' && (
+                                        <div className="mt-0.5 text-muted-foreground">
+                                            <Brain className="h-4 w-4" />
+                                        </div>
+                                    )}
+                                    <div
+                                        className={
+                                            m.role === 'assistant'
+                                                ? 'rounded-md bg-accent px-2.5 py-1.5 text-xs max-w-[220px]'
+                                                : 'rounded-md bg-primary text-primary-foreground px-2.5 py-1.5 text-xs max-w-[220px]'
+                                        }
+                                    >
+                                        {m.content}
+                                    </div>
+                                </div>
+                                <div className={`text-xs text-muted-foreground ${m.role === 'assistant' ? 'ml-6' : 'text-right'}`}>
+                                    {formatDateRelative(m.createdAt)}
                                 </div>
                             </div>
                         ))}

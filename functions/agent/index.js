@@ -160,7 +160,8 @@ export default async function ({ req, res, log, error }) {
       'messages',
       [
         ServerQuery.equal('conversationId', conversationId),
-        ServerQuery.orderAsc('$createdAt')
+        ServerQuery.orderAsc('$createdAt'),
+        ServerQuery.limit(200)
       ]
     );
 
