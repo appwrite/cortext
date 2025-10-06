@@ -168,6 +168,9 @@ export default async function ({ req, res, log, error }) {
 
     // Function to generate streaming LLM response and update database in real-time
     async function generateStreamingLLMResponse(messages, agentId, blogId, messageUserId) {
+      // Track generation start time
+      const generationStartTime = Date.now();
+      
       // Initialize debug logging at function level
       let debugLogs = [];
       const addDebugLog = (message) => {
@@ -483,6 +486,10 @@ export default async function ({ req, res, log, error }) {
           fullContent = "I apologize, but I'm having trouble generating a response right now. Please try again.";
         }
 
+        // Calculate total generation time
+        const generationTimeMs = Date.now() - generationStartTime;
+        addDebugLog(`Total generation time: ${generationTimeMs}ms`);
+
         // Final update with complete content and truncated debug logs
         await serverDatabases.updateDocument(
           databaseId,
@@ -490,6 +497,7 @@ export default async function ({ req, res, log, error }) {
           initialMessage.$id,
           {
             content: fullContent,
+            generationTimeMs: generationTimeMs,
             metadata: createMetadata({
               model: 'gpt-4o-mini',
               temperature: 0.7,
@@ -499,6 +507,7 @@ export default async function ({ req, res, log, error }) {
               chunkCount: chunkCount,
               tokensUsed: fullContent.length,
               completedAt: new Date().toISOString(),
+              generationTimeMs: generationTimeMs,
               cached: true
             }, 10, 80)
           }
@@ -521,6 +530,10 @@ export default async function ({ req, res, log, error }) {
         // Create fallback message if streaming fails
         const fallbackContent = "I apologize, but I'm experiencing technical difficulties. Please try again in a moment.";
         
+        // Calculate generation time even for error cases
+        const generationTimeMs = Date.now() - generationStartTime;
+        addDebugLog(`Generation failed after ${generationTimeMs}ms: ${error.message}`);
+        
         const fallbackMessage = await serverDatabases.createDocument(
           databaseId,
           'messages',
@@ -532,13 +545,15 @@ export default async function ({ req, res, log, error }) {
             userId: messageUserId || null,
             agentId: agentId || 'cortext-agent',
             blogId,
+            generationTimeMs: generationTimeMs,
             metadata: createMetadata({
               model: 'gpt-4o-mini',
               temperature: 0.7,
               generatedAt: new Date().toISOString(),
               streaming: false,
               status: 'error',
-              error: error.message.substring(0, 200)
+              error: error.message.substring(0, 200),
+              generationTimeMs: generationTimeMs
             }, 5, 80),
             isEdited: false
           },

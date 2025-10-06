@@ -437,7 +437,7 @@ export function AgentChat({
                                         {/* Show completion indicator */}
                                         {m.role === 'assistant' && m.metadata?.status === 'completed' && (
                                             <div className="text-xs text-muted-foreground mt-1">
-                                                ✓ Generated{m.generationTimeMs ? ` in ${formatDuration(m.generationTimeMs)}` : ''}
+                                                {m.generationTimeMs ? formatDuration(m.generationTimeMs) : '✓ Generated'}
                                                 {m.tokenCount ? ` • ${m.tokenCount} tokens` : ''}
                                             </div>
                                         )}
