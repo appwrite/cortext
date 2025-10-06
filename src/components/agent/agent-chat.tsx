@@ -50,6 +50,7 @@ export function AgentChat({
     const [isDrawerOpen, setIsDrawerOpen] = useState(false)
     const [isWaitingForAI, setIsWaitingForAI] = useState(false)
     const isMobile = useIsMobile()
+    const inputRef = useRef<HTMLInputElement>(null)
 
     // Scroll to bottom function
     const scrollToBottom = useCallback(() => {
@@ -233,17 +234,18 @@ export function AgentChat({
         }
     }, [isLoadingMoreMessages])
 
-    // Clear AI waiting state when a new assistant message arrives and streaming is complete
+    // Clear AI waiting state when a new assistant message arrives and starts streaming
     useEffect(() => {
         if (isWaitingForAI && messages.length > 0) {
             const lastMessage = messages[messages.length - 1]
             if (lastMessage.role === 'assistant') {
-                // Check if streaming is complete
-                const isStreamingComplete = !lastMessage.metadata?.streaming || 
-                    lastMessage.metadata?.status === 'completed' || 
-                    lastMessage.metadata?.status === 'error'
+                // Only clear loading state when the message has actual content (not just placeholder)
+                const hasRealContent = lastMessage.content && 
+                    lastMessage.content.trim().length > 0 && 
+                    lastMessage.content !== 'Thinking...'
                 
-                if (isStreamingComplete) {
+                if (hasRealContent) {
+                    // Clear loading state when AI starts streaming real content
                     setIsWaitingForAI(false)
                     // Scroll to the new assistant message
                     setTimeout(() => {
@@ -254,6 +256,28 @@ export function AgentChat({
             }
         }
     }, [messages, isWaitingForAI, scrollToBottom])
+
+    // Focus input when AI message completes streaming
+    useEffect(() => {
+        if (messages.length > 0) {
+            const lastMessage = messages[messages.length - 1]
+            if (lastMessage.role === 'assistant') {
+                // Check if streaming is complete
+                const isStreamingComplete = !lastMessage.metadata?.streaming || 
+                    lastMessage.metadata?.status === 'completed' || 
+                    lastMessage.metadata?.status === 'error'
+                
+                if (isStreamingComplete) {
+                    // Focus the input after a short delay to ensure smooth transition
+                    setTimeout(() => {
+                        if (inputRef.current) {
+                            inputRef.current.focus()
+                        }
+                    }, 100)
+                }
+            }
+        }
+    }, [messages])
 
     // Scroll to bottom when AI loading state changes
     useEffect(() => {
@@ -302,18 +326,23 @@ export function AgentChat({
         const text = input.trim()
         if (!text || !currentConversationId) return
 
+        // Clear input and show loading immediately for better UX
+        setInput('')
+        setIsWaitingForAI(true)
+
         try {
-            // Create user message
-            await createMessage({
+            // Create user message in background
+            createMessage({
                 role: 'user',
                 content: text,
                 userId: user?.$id || '',
+            }).catch(error => {
+                console.error('Failed to create user message:', error)
+                // Reset states if message creation fails
+                setIsWaitingForAI(false)
             })
 
-            setInput('')
-            setIsWaitingForAI(true)
-
-            // Scroll immediately after user message is created
+            // Scroll immediately for better UX
             setTimeout(() => {
                 scrollToBottom()
                 setLastScrollTime(Date.now())
@@ -461,11 +490,11 @@ export function AgentChat({
                                     </div>
                                     <div className="rounded-md bg-accent px-2.5 py-1.5 text-xs max-w-[220px]">
                                         <div className="flex items-center gap-1">
-                                            <span>Thinking</span>
+                                            <span className="text-muted-foreground">Thinking</span>
                                             <div className="flex gap-0.5">
-                                                <div className="w-1 h-1 bg-muted-foreground rounded-full animate-pulse" style={{ animationDelay: '0ms' }}></div>
-                                                <div className="w-1 h-1 bg-muted-foreground rounded-full animate-pulse" style={{ animationDelay: '150ms' }}></div>
-                                                <div className="w-1 h-1 bg-muted-foreground rounded-full animate-pulse" style={{ animationDelay: '300ms' }}></div>
+                                                <div className="w-1 h-1 bg-primary rounded-full animate-pulse" style={{ animationDelay: '0ms' }}></div>
+                                                <div className="w-1 h-1 bg-primary rounded-full animate-pulse" style={{ animationDelay: '150ms' }}></div>
+                                                <div className="w-1 h-1 bg-primary rounded-full animate-pulse" style={{ animationDelay: '300ms' }}></div>
                                             </div>
                                         </div>
                                     </div>
@@ -540,6 +569,7 @@ export function AgentChat({
                 </div>
                 <div className="flex items-center gap-2">
                     <Input
+                        ref={inputRef}
                         value={input}
                         onChange={(e) => {
                             if (!isWaitingForAI) {

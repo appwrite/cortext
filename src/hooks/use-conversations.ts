@@ -2,7 +2,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import React, { useState, useCallback, useEffect } from 'react'
 import { db } from '@/lib/appwrite/db'
 import { Query } from 'appwrite'
-import { useMessagesRealtime, useMessagesAndNotificationsRealtime } from './use-realtime'
+import { useMessagesAndNotificationsRealtime } from './use-realtime'
 import type { Conversations, Messages } from '@/lib/appwrite/appwrite.types'
 
 export function useConversations(articleId: string, userId: string) {
@@ -151,7 +151,7 @@ export function useMessages(conversationId: string | null, blogId?: string, arti
     conversationId, 
     enabled: !!conversationId 
   })
-  useMessagesRealtime(blogId, articleId, conversationId || undefined, !!conversationId)
+  // Removed duplicate realtime subscription - useMessagesAndNotificationsRealtime handles this
 
   // Create a new message
   const createMessageMutation = useMutation({
@@ -263,8 +263,8 @@ export function useMessagesWithNotifications(
   const [allMessages, setAllMessages] = useState<Messages[]>([])
   const [hasMoreMessages, setHasMoreMessages] = useState(true)
 
-  // Get all messages for a conversation
-  const queryKey = ['messages', conversationId, offset]
+  // Get all messages for a conversation - use a stable query key without offset
+  const queryKey = ['messages', conversationId]
   console.log('useMessagesWithNotifications queryKey:', queryKey)
   
   const messagesQuery = useQuery({
