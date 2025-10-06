@@ -484,9 +484,9 @@ export function AgentChat({
                 )}
             </ScrollArea>
 
-            <div className="relative px-6 py-6 space-y-2 bg-background">
+            <div className="relative px-6 py-6 space-y-2 bg-background border-t border-foreground/30">
                 {/* Gradient fade overlay - more gradual */}
-                <div className="absolute inset-x-0 -top-12 h-12 bg-gradient-to-t from-background via-background/80 to-transparent pointer-events-none" />
+                <div className="absolute inset-x-0 -top-8 h-12 bg-gradient-to-t from-background via-background/80 to-transparent pointer-events-none" />
                 <div className="flex gap-2">
                     <Button variant="secondary" size="sm" className="gap-1 h-7 px-2 text-[11px]" onClick={applySEOTitle}>
                         <Sparkles className="h-3.5 w-3.5" /> SEO title

@@ -18,15 +18,15 @@ const databases = new Databases(client);
 const serverClient = new ServerClient();
 const serverDatabases = new ServerDatabases(serverClient);
 
-// Initialize Mastra with OpenAI
+// Initialize OpenAI model
+const openaiModel = new OpenAICompatibleModel({
+  id: 'openai/gpt-4o-mini',
+  apiKey: process.env.OPENAI_API_KEY,
+});
+
+// Initialize Mastra
 const mastra = new Mastra({
   name: 'cortext-agent',
-  llms: {
-    openai: new OpenAICompatibleModel({
-      id: 'openai/gpt-4o-mini',
-      apiKey: process.env.OPENAI_API_KEY,
-    }),
-  },
 });
 
 // Optimized system prompt for token caching and cost reduction
@@ -208,14 +208,12 @@ export default async function ({ req, res, log, error }) {
 
         log('Created initial streaming message with ID: ' + initialMessage.$id);
 
-        // Use Mastra to generate streaming response with OpenAI
-        const stream = await mastra.llm('openai').generateStream({
-          messages: messagesWithSystem,
-          model: 'gpt-4o-mini',
+        // Use OpenAI model to generate streaming response
+        const streamResult = await openaiModel.doStream({
+          prompt: messagesWithSystem,
           temperature: 0.7,
           max_tokens: 1000,
-          cache: true,
-          context: {
+          providerOptions: {
             blogId: blogId,
             agentId: agentId,
             conversationLength: messages.length
@@ -226,7 +224,7 @@ export default async function ({ req, res, log, error }) {
         let chunkCount = 0;
 
         // Process streaming chunks
-        for await (const chunk of stream) {
+        for await (const chunk of streamResult.stream) {
           if (chunk.choices && chunk.choices[0] && chunk.choices[0].delta && chunk.choices[0].delta.content) {
             const content = chunk.choices[0].delta.content;
             fullContent += content;
