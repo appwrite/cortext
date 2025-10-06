@@ -255,22 +255,22 @@ export default async function ({ req, res, log, error }) {
         // Use OpenAI model to generate streaming response
         addDebugLog('Calling OpenAI model with ' + messagesWithSystem.length + ' messages');
         addDebugLog('Message format: ' + JSON.stringify(messagesWithSystem[0], null, 2));
+        
         // Create a new model instance with the verified API key
         const dynamicOpenaiModel = new OpenAICompatibleModel({
           id: 'openai/gpt-4o-mini',
           apiKey: apiKey,
         });
 
-        const streamResult = await dynamicOpenaiModel.doStream({
+        const streamParams = {
           prompt: messagesWithSystem,
           temperature: 0.7,
-          max_tokens: 1000,
-          providerOptions: {
-            blogId: blogId,
-            agentId: agentId,
-            conversationLength: messages.length
-          }
-        });
+          max_tokens: 1000
+        };
+        
+        addDebugLog('Stream parameters: ' + JSON.stringify(streamParams, null, 2));
+        
+        const streamResult = await dynamicOpenaiModel.doStream(streamParams);
         addDebugLog('OpenAI stream result received, starting to process...');
 
         // Check if stream exists
