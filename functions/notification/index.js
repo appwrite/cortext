@@ -86,7 +86,7 @@ export default async function ({ req, res, log, error }) {
         userId,
         title,
         message,
-        type: notificationType,
+        type: type,
         read: false,
         actionUrl: actionUrl || null,
         actionText: actionText || null,
