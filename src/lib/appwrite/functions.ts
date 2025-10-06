@@ -38,7 +38,7 @@ export const functionService = {
           agentId,
           metadata
         }),
-        true, // async: true
+        false, // async: false - wait for completion to trigger realtime events
         '/', // path
         ExecutionMethod.POST, // method
         {

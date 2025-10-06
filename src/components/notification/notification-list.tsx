@@ -1,23 +1,26 @@
-import { useNotifications } from '@/components/notification/use-notifications'
 import { Button } from '@/components/ui/button'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { Badge } from '@/components/ui/badge'
 import { formatDistanceToNow } from 'date-fns'
 import { ExternalLink, Check, CheckCheck, Bell, AlertTriangle, X } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import type { Notifications } from '@/lib/appwrite/appwrite.types'
 
 interface NotificationListProps {
-  userId: string
+  notifications: Notifications[]
+  isLoading: boolean
+  markAsRead: (id: string) => void
+  markAllAsRead: () => void
+  hasUnread: boolean
 }
 
-export function NotificationList({ userId }: NotificationListProps) {
-  const { 
-    notifications, 
-    isLoading, 
-    markAsRead, 
-    markAllAsRead,
-    hasUnread 
-  } = useNotifications(userId)
+export function NotificationList({ 
+  notifications, 
+  isLoading, 
+  markAsRead, 
+  markAllAsRead,
+  hasUnread 
+}: NotificationListProps) {
 
   const getNotificationIcon = (type: string | null) => {
     switch (type) {

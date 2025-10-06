@@ -13,7 +13,14 @@ interface NotificationBellProps {
 
 export function NotificationBell({ userId, className }: NotificationBellProps) {
   const [isOpen, setIsOpen] = useState(false)
-  const { unreadCount, isLoading } = useNotifications(userId)
+  const { 
+    notifications, 
+    isLoading, 
+    unreadCount, 
+    markAsRead, 
+    markAllAsRead,
+    hasUnread 
+  } = useNotifications(userId)
   const containerRef = useRef<HTMLDivElement>(null)
 
   // Close dropdown when clicking outside
@@ -58,7 +65,13 @@ export function NotificationBell({ userId, className }: NotificationBellProps) {
             <div className="p-3 border-b">
               <h3 className="font-semibold text-sm">Notifications</h3>
             </div>
-            <NotificationList userId={userId} />
+            <NotificationList 
+              notifications={notifications}
+              isLoading={isLoading}
+              markAsRead={markAsRead}
+              markAllAsRead={markAllAsRead}
+              hasUnread={hasUnread}
+            />
           </div>
         </>
       )}

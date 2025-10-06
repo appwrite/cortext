@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { db } from '@/lib/appwrite/db'
 import { Query } from 'appwrite'
+import { useMessagesRealtime, useMessagesAndNotificationsRealtime } from './use-realtime'
 import type { Conversations, Messages } from '@/lib/appwrite/appwrite.types'
 
 export function useConversations(articleId: string, userId: string) {
@@ -60,19 +61,47 @@ export function useConversations(articleId: string, userId: string) {
   }
 }
 
-export function useMessages(conversationId: string | null, blogId?: string) {
+export function useMessages(conversationId: string | null, blogId?: string, articleId?: string) {
   const queryClient = useQueryClient()
 
   // Get all messages for a conversation
+  const queryKey = ['messages', conversationId]
+  console.log('useMessages queryKey:', queryKey)
+  
   const messagesQuery = useQuery({
-    queryKey: ['messages', conversationId],
-    queryFn: () => 
-      db.messages.list([
+    queryKey,
+    queryFn: () => {
+      console.log('Fetching messages for conversation:', conversationId)
+      return db.messages.list([
         Query.equal('conversationId', conversationId!),
-        Query.orderAsc('$createdAt')
-      ]),
+        Query.orderDesc('$createdAt'),
+        Query.limit(200)
+      ])
+    },
     enabled: !!conversationId,
+    refetchInterval: false, // Disable polling since we're using realtime
   })
+
+  // Debug query state changes
+  console.log('Messages query state:', {
+    conversationId,
+    isLoading: messagesQuery.isLoading,
+    isFetching: messagesQuery.isFetching,
+    dataLength: messagesQuery.data?.documents?.length || 0,
+    hasData: !!messagesQuery.data,
+    error: messagesQuery.error,
+    status: messagesQuery.status,
+    fetchStatus: messagesQuery.fetchStatus
+  })
+
+  // Set up realtime subscription for messages
+  console.log('Setting up messages realtime:', { 
+    blogId, 
+    articleId, 
+    conversationId, 
+    enabled: !!conversationId 
+  })
+  useMessagesRealtime(blogId, articleId, conversationId || undefined, !!conversationId)
 
   // Create a new message
   const createMessageMutation = useMutation({
@@ -82,6 +111,7 @@ export function useMessages(conversationId: string | null, blogId?: string) {
       metadata?: any;
       userId: string;
     }) => {
+      console.log('Creating message:', { conversationId, data })
       if (!conversationId) throw new Error('No conversation selected')
       
       const message = await db.messages.create({
@@ -94,17 +124,28 @@ export function useMessages(conversationId: string | null, blogId?: string) {
         metadata: data.metadata ? JSON.stringify(data.metadata) : null,
       }, data.userId)
 
+      console.log('Message created successfully:', message)
+
       // Update conversation's last message time and count
       await db.conversations.update(conversationId, {
         lastMessageAt: new Date().toISOString(),
         messageCount: (messagesQuery.data?.total || 0) + 1,
       })
 
+      console.log('Conversation updated successfully')
       return message
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['messages', conversationId] })
-      queryClient.invalidateQueries({ queryKey: ['conversations'] })
+    onSuccess: (message) => {
+      console.log('createMessage onSuccess called:', { message, conversationId })
+      queryClient.invalidateQueries({ queryKey: ['messages', conversationId] }).then(() => {
+        console.log('Messages query invalidated successfully')
+      })
+      queryClient.invalidateQueries({ queryKey: ['conversations'] }).then(() => {
+        console.log('Conversations query invalidated successfully')
+      })
+    },
+    onError: (error) => {
+      console.error('createMessage error:', error)
     },
   })
 
@@ -143,5 +184,112 @@ export function useConversationManager(articleId: string, userId: string) {
     updateConversation,
     isCreatingConversation,
     getOrCreateFirstConversation,
+  }
+}
+
+/**
+ * Consolidated hook for messages with notifications realtime
+ * This reduces the number of realtime connections by combining both subscriptions
+ * @param conversationId Conversation ID for messages
+ * @param blogId Blog ID for messages
+ * @param articleId Article ID for messages
+ * @param userId User ID for notifications
+ * @param enabled Whether subscriptions should be active
+ */
+export function useMessagesWithNotifications(
+  conversationId: string | null, 
+  blogId?: string, 
+  articleId?: string, 
+  userId?: string,
+  enabled: boolean = true
+) {
+  const queryClient = useQueryClient()
+
+  // Get all messages for a conversation
+  const queryKey = ['messages', conversationId]
+  console.log('useMessagesWithNotifications queryKey:', queryKey)
+  
+  const messagesQuery = useQuery({
+    queryKey,
+    queryFn: () => {
+      console.log('Fetching messages for conversation:', conversationId)
+      return db.messages.list([
+        Query.equal('conversationId', conversationId!),
+        Query.orderDesc('$createdAt'),
+        Query.limit(200)
+      ])
+    },
+    enabled: !!conversationId,
+    refetchInterval: false, // Disable polling since we're using realtime
+  })
+
+  // Set up consolidated realtime subscription for both messages and notifications
+  console.log('Setting up consolidated realtime:', { 
+    blogId, 
+    articleId, 
+    conversationId, 
+    userId,
+    enabled: !!conversationId && !!userId
+  })
+  
+  useMessagesAndNotificationsRealtime(
+    userId || '', 
+    blogId, 
+    articleId, 
+    conversationId || undefined, 
+    !!conversationId && !!userId && enabled
+  )
+
+  // Create a new message
+  const createMessageMutation = useMutation({
+    mutationFn: async (data: { 
+      role: 'user' | 'assistant'; 
+      content: string; 
+      metadata?: any;
+      userId: string;
+    }) => {
+      console.log('Creating message:', { conversationId, data })
+      if (!conversationId) throw new Error('No conversation selected')
+      
+      const message = await db.messages.create({
+        conversationId,
+        role: data.role,
+        content: data.content,
+        userId: data.userId,
+        agentId: 'temp-agent-id', // Temporary fake ID
+        blogId: blogId || null,
+        metadata: data.metadata ? JSON.stringify(data.metadata) : null,
+      }, data.userId)
+
+      console.log('Message created successfully:', message)
+
+      // Update conversation's last message time and count
+      await db.conversations.update(conversationId, {
+        lastMessageAt: new Date().toISOString(),
+        messageCount: (messagesQuery.data?.total || 0) + 1,
+      })
+
+      console.log('Conversation updated successfully')
+      return message
+    },
+    onSuccess: (message) => {
+      console.log('createMessage onSuccess called:', { message, conversationId })
+      queryClient.invalidateQueries({ queryKey: ['messages', conversationId] }).then(() => {
+        console.log('Messages query invalidated successfully')
+      })
+      queryClient.invalidateQueries({ queryKey: ['conversations'] }).then(() => {
+        console.log('Conversations query invalidated successfully')
+      })
+    },
+    onError: (error) => {
+      console.error('createMessage error:', error)
+    },
+  })
+
+  return {
+    messages: messagesQuery.data?.documents || [],
+    isLoadingMessages: messagesQuery.isLoading,
+    createMessage: createMessageMutation.mutateAsync,
+    isCreatingMessage: createMessageMutation.isPending,
   }
 }

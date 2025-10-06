@@ -5,7 +5,7 @@ import { ScrollArea } from '@/components/ui/scroll-area'
 import { Drawer, DrawerContent, DrawerHeader, DrawerTitle } from '@/components/ui/drawer'
 import { Brain, Sparkles, Send, MessageCircle } from 'lucide-react'
 import { useIsMobile } from '@/hooks/use-mobile'
-import { useConversationManager, useMessages } from '@/hooks/use-conversations'
+import { useConversationManager, useMessages, useMessagesWithNotifications } from '@/hooks/use-conversations'
 import { ConversationSelector } from './conversation-selector'
 import { ConversationPlaceholder } from './conversation-placeholder'
 import { useAuth } from '@/hooks/use-auth'
@@ -51,7 +51,7 @@ export function AgentChat({
         isLoadingMessages,
         createMessage,
         isCreatingMessage,
-    } = useMessages(currentConversationId, blogId)
+    } = useMessagesWithNotifications(currentConversationId, blogId, articleId, user?.$id)
 
     // Convert database messages to local format
     const messages: Message[] = dbMessages.map((msg: Messages) => ({
@@ -59,6 +59,14 @@ export function AgentChat({
         role: msg.role,
         content: msg.content,
     }))
+
+    // Debug messages updates
+    console.log('AgentChat messages updated:', {
+        conversationId: currentConversationId,
+        dbMessagesLength: dbMessages.length,
+        messagesLength: messages.length,
+        messages: messages.map(m => ({ id: m.id, role: m.role, content: m.content.substring(0, 50) + '...' }))
+    })
 
     // Memoize the conversation creation function to prevent infinite loops
     const createInitialConversation = useCallback(async () => {
