@@ -6,21 +6,21 @@ This Appwrite function generates AI agent responses and creates assistant messag
 
 - **Runtime**: Node.js
 - **Entry Point**: `index.js`
-- **Dependencies**: Appwrite SDK
+- **Dependencies**: Appwrite Client SDK, Node Appwrite Server SDK
 
-## Authentication
+## Authentication Architecture
 
-The function supports two authentication methods:
+The function uses a hybrid authentication approach for enhanced security:
 
-1. **JWT Authentication (Recommended)**: Uses the JWT token from the authenticated user
+1. **JWT Authentication (User Verification)**: Uses the JWT token from the authenticated user
    - Automatically provided in the `x-appwrite-user-jwt` header when called from client-side
-   - Allows the function to act on behalf of the authenticated user
-   - Respects user permissions and access controls
+   - Used for user verification and permission validation
+   - Ensures the function operates on behalf of the authenticated user
 
-2. **API Key Authentication (Fallback)**: Uses the dynamic API key
-   - Requires `APPWRITE_FUNCTION_API_KEY` environment variable
-   - Acts as an admin-type role with broader permissions
-   - Used when no JWT token is provided
+2. **Server SDK with Dynamic API Key (Database Operations)**: Uses the server-side Node SDK
+   - Requires `x-appwrite-key` header with dynamic API key
+   - Handles all database write operations with fine-grained permissions
+   - Provides better security by separating authentication from data operations
 
 ## Environment Variables
 
@@ -29,7 +29,13 @@ The function requires the following environment variables:
 - `APPWRITE_ENDPOINT`: Your Appwrite endpoint URL
 - `APPWRITE_PROJECT_ID`: Your Appwrite project ID
 - `APPWRITE_DATABASE_ID`: Your Appwrite database ID
-- `APPWRITE_FUNCTION_API_KEY`: Dynamic API key (optional, used as fallback)
+
+## Required Headers
+
+The function requires the following headers:
+
+- `x-appwrite-user-jwt`: JWT token for user authentication
+- `x-appwrite-key`: Dynamic API key for server operations
 
 ## Request Format
 
@@ -108,8 +114,8 @@ Send a POST request with the following JSON body:
 ## Features
 
 - **AI Agent Response Generation**: Creates dummy LLM responses based on conversation context
-- **JWT Authentication**: Primary authentication method using user JWT tokens
-- **API Key Fallback**: Fallback authentication using dynamic API keys
+- **Hybrid Authentication**: JWT for user verification, Server SDK for database operations
+- **Enhanced Security**: Separates user authentication from data operations
 - **User Context**: Automatically extracts user information from JWT tokens
 - **Read-Only Agent Messages**: Users can read agent messages but cannot modify or delete them
 - **Conversation History Loading**: Loads complete conversation history for LLM context

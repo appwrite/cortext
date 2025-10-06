@@ -1,8 +1,21 @@
 import { Client, Databases, ID, Permission, Role, Query } from 'appwrite';
+import { Client as ServerClient, Databases as ServerDatabases, ID as ServerID, Permission as ServerPermission, Role as ServerRole, Query as ServerQuery } from 'node-appwrite';
 
-// Initialize Appwrite client
+/**
+ * Agent Function Architecture:
+ * - Uses client SDK with JWT token for user authentication and verification
+ * - Uses server SDK with dynamic API key for all database write operations
+ * - This provides better security by separating authentication from data operations
+ * - Dynamic API key allows fine-grained permissions for server-side operations
+ */
+
+// Initialize Appwrite client for JWT authentication
 const client = new Client();
 const databases = new Databases(client);
+
+// Initialize server client for database writes with dynamic API key
+const serverClient = new ServerClient();
+const serverDatabases = new ServerDatabases(serverClient);
 
 // Set up the client with environment variables
 const endpoint = process.env.APPWRITE_ENDPOINT;
@@ -16,6 +29,7 @@ if (!projectId) {
   throw new Error('APPWRITE_PROJECT_ID environment variable is required');
 }
 
+// Configure client for JWT authentication
 client
   .setEndpoint(endpoint)
   .setProject(projectId);
@@ -27,30 +41,41 @@ export default async function ({ req, res, log, error }) {
     log('Request method: ' + req.method);
     log('Request headers: ' + JSON.stringify(req.headers));
 
-    // Get JWT token from headers
+    // Get JWT token and dynamic API key from headers
     const jwtToken = req.headers['x-appwrite-user-jwt'];
     const userId = req.headers['x-appwrite-user-id'];
+    const dynamicApiKey = req.headers['x-appwrite-key'];
     
     log('JWT token present: ' + (jwtToken ? 'Yes' : 'No'));
     log('User ID: ' + (userId || 'Not provided'));
+    log('Dynamic API key present: ' + (dynamicApiKey ? 'Yes' : 'No'));
 
-    // Authenticate using JWT token
+    // Authenticate using JWT token for user verification
     if (jwtToken) {
       client.setJWT(jwtToken);
       log('Authenticated with JWT token');
     } else {
-      // Fallback to API key if no JWT is provided
-      const apiKey = process.env.APPWRITE_FUNCTION_API_KEY;
-      if (apiKey) {
-        client.setKey(apiKey);
-        log('Using API key authentication as fallback');
-      } else {
-        return res.json({
-          success: false,
-          error: 'Authentication required. Please provide JWT token or configure API key.'
-        }, 401);
-      }
+      return res.json({
+        success: false,
+        error: 'Authentication required. Please provide JWT token.'
+      }, 401);
     }
+
+    // Validate dynamic API key for server operations
+    if (!dynamicApiKey) {
+      return res.json({
+        success: false,
+        error: 'Dynamic API key required. Please provide x-appwrite-key header.'
+      }, 401);
+    }
+
+    // Configure server client for database writes with dynamic API key
+    serverClient
+      .setEndpoint(endpoint)
+      .setProject(projectId)
+      .setKey(dynamicApiKey);
+    
+    log('Server client configured with dynamic API key');
 
     // Parse the request body
     const body = req.bodyJson;
@@ -128,14 +153,14 @@ export default async function ({ req, res, log, error }) {
       }
     }
 
-    // Load conversation history for LLM context
+    // Load conversation history for LLM context using server SDK
     log('Loading conversation history for conversation: ' + conversationId);
-    const conversationMessages = await databases.listDocuments(
+    const conversationMessages = await serverDatabases.listDocuments(
       databaseId,
       'messages',
       [
-        Query.equal('conversationId', conversationId),
-        Query.orderAsc('$createdAt')
+        ServerQuery.equal('conversationId', conversationId),
+        ServerQuery.orderAsc('$createdAt')
       ]
     );
 
@@ -145,12 +170,12 @@ export default async function ({ req, res, log, error }) {
     const dummyResponse = generateDummyLLMResponse(conversationMessages.documents, agentId);
     log('Generated dummy LLM response: ' + dummyResponse.substring(0, 100) + '...');
 
-    // Create the message in the database
+    // Create the message in the database using server SDK
     // Agent messages should be read-only for users (no write permissions)
-    const message = await databases.createDocument(
+    const message = await serverDatabases.createDocument(
       databaseId,
       'messages',
-      ID.unique(),
+      ServerID.unique(),
       {
         conversationId,
         content: dummyResponse,
@@ -168,20 +193,20 @@ export default async function ({ req, res, log, error }) {
       [
         // Users can only read agent messages, not modify or delete them
         ...(messageUserId ? [
-          Permission.read(Role.user(messageUserId))
+          ServerPermission.read(ServerRole.user(messageUserId))
         ] : [])
       ]
     );
 
     log('Message created successfully with ID: ' + message.$id);
 
-    // Update conversation's last message time and count
+    // Update conversation's last message time and count using server SDK
     try {
       // Get current conversation
-      const conversation = await databases.getDocument(databaseId, 'conversations', conversationId);
+      const conversation = await serverDatabases.getDocument(databaseId, 'conversations', conversationId);
       
       // Update conversation with new message count and timestamp
-      await databases.updateDocument(databaseId, 'conversations', conversationId, {
+      await serverDatabases.updateDocument(databaseId, 'conversations', conversationId, {
         lastMessageAt: new Date().toISOString(),
         messageCount: (conversation.messageCount || 0) + 1
       });
