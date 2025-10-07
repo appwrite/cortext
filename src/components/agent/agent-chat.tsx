@@ -641,7 +641,7 @@ export function AgentChat({
                                         {m.role === 'assistant' && m.metadata?.streaming && m.metadata?.status === 'generating' && (
                                             <div className="flex items-center gap-1 mt-1">
                                                 <span className="text-xs text-muted-foreground">
-                                                    Generating
+                                                    Writing
                                                 </span>
                                                 <div className="flex gap-0.5">
                                                     <div className="w-1 h-1 bg-muted-foreground rounded-full animate-pulse" style={{ animationDelay: '0ms' }}></div>
@@ -669,6 +669,26 @@ export function AgentChat({
                             </div>
                         ))}
                         
+                        {/* Show loading indicator when waiting for AI response */}
+                        {isWaitingForStream && (
+                            <div className="space-y-1">
+                                <div className="flex gap-2 items-start">
+                                    <div className="mt-0.5 text-muted-foreground">
+                                        <Brain className="h-4 w-4" />
+                                    </div>
+                                    <div className="rounded-md bg-accent px-2.5 py-1.5 text-xs max-w-[220px]">
+                                        <div className="flex items-center gap-2">
+                                            <div className="flex gap-0.5">
+                                                <div className="w-1 h-1 bg-muted-foreground rounded-full animate-pulse" style={{ animationDelay: '0ms' }}></div>
+                                                <div className="w-1 h-1 bg-muted-foreground rounded-full animate-pulse" style={{ animationDelay: '150ms' }}></div>
+                                                <div className="w-1 h-1 bg-muted-foreground rounded-full animate-pulse" style={{ animationDelay: '300ms' }}></div>
+                                            </div>
+                                            <span className="text-xs text-muted-foreground">Thinking...</span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        )}
                         
                         <div ref={bottomRef} />
                     </div>
