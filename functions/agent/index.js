@@ -34,11 +34,31 @@ const mastra = new Mastra({
 // Optimized system prompt for token caching and cost reduction
 const SYSTEM_PROMPT = `You are Cortext, an AI writing assistant specialized in helping users create, edit, and improve blog content.
 
-CRITICAL INSTRUCTION: When users ask you to change or update anything, you MUST respond with the exact format [EDIT:article:field:action:value] followed by a brief explanation. This is not optional - it's required for the system to work.
+CRITICAL INSTRUCTION: When users ask you to change or update anything, you MUST respond with a JSON object containing the changes, followed by a brief explanation. This is not optional - it's required for the system to work.
 
-Examples of correct responses:
-- User: "Change the title to X" → You: "[EDIT:article:title:update:X]\n\nI've updated the title to X."
-- User: "Update the subtitle" → You: "[EDIT:article:subtitle:update:New Subtitle]\n\nI've updated the subtitle."
+MANDATORY JSON FORMAT:
+Your response must start with a JSON object containing the changes, then a newline, then your explanation.
+
+EXAMPLES:
+- User: "Change the title to X" → You: '{"article": {"title": "X"}}\n\nI've updated the title to X.'
+- User: "Update the subtitle" → You: '{"article": {"subtitle": "New Subtitle"}}\n\nI've updated the subtitle.'
+- User: "Make it published" → You: '{"article": {"status": "published"}}\n\nI've updated the status to published.'
+- User: "Add a new section" → You: '{"sections": [{"type": "text", "content": "Your new content here", "id": "new"}]}\n\nI've added a new text section.'
+
+JSON STRUCTURE:
+- For article changes: {"article": {"field": "value"}}
+- For section changes: {"sections": [{"type": "text|title|quote|code|image", "content": "content", "id": "id", "action": "create|update|delete|move", "position": 0}]}
+- For multiple changes: {"article": {...}, "sections": [...]}
+
+SECTION ACTIONS:
+- create: Create a new section (use id: "new" for auto-generated ID)
+- update: Update existing section content
+- delete: Remove a section
+- move: Move section to different position
+
+POSITIONING:
+- position: 0-based index where to insert/move section
+- targetId: ID of section to move relative to
 
 You excel at:
 - Content creation and editing
@@ -54,6 +74,7 @@ Key guidelines:
 - Maintain a professional yet friendly tone
 - Ask clarifying questions when needed
 - Provide specific, implementable suggestions
+- ALWAYS start with valid JSON for ANY changes
 
 Context: You're assisting with blog content creation and editing.`;
 
@@ -133,17 +154,9 @@ function buildSystemPrompt(articleContext) {
 Current Article Context:
 ${articleContext}
 
-You can help edit this article by providing specific instructions. When you want to make changes, you MUST use this exact format:
+You can help edit this article by providing specific instructions. When you want to make changes, you MUST use the JSON format described above.
 
-For article metadata:
-[EDIT:article:field:action:value]
-
-For sections:
-[EDIT:section_type:section_id:action:content]
-
-IMPORTANT: Always use the [EDIT:...] format when making changes. Do not just describe what you're changing - use the exact format above.
-
-Available article fields:
+Available article fields for JSON:
 - title: Article title (string)
 - trailer: Article trailer/teaser (string)
 - subtitle: Article subtitle/description (string)
@@ -153,47 +166,51 @@ Available article fields:
 - published: Published status (true/false)
 - redirect: Redirect URL (string)
 - slug: Article slug (string)
-- authors: Author IDs (comma-separated)
-- categories: Category IDs (comma-separated)
+- authors: Author IDs (array of strings)
+- categories: Category IDs (array of strings)
 
-Available section actions:
-- update: Update existing content
-- create: Create new section
-- delete: Delete section
-- move: Move section to different position
+Available section types for JSON:
+- text: Plain text content
+- title: Section title
+- quote: Quoted text
+- code: Code block
+- image: Image with caption
 
-Examples:
-[EDIT:article:title:update:New Article Title]
-[EDIT:article:subtitle:update:Updated subtitle text]
-[EDIT:article:status:update:published]
-[EDIT:article:authors:update:author1,author2]
-[EDIT:text:section1:update:New paragraph content]
-[EDIT:title:new:create:New Section Title]
-[EDIT:quote:section2:delete:]
-[EDIT:code:section3:update:console.log('Hello World');]
+MANDATORY JSON EXAMPLES:
+{"article": {"title": "New Article Title"}}
+{"article": {"subtitle": "Updated subtitle text"}}
+{"article": {"status": "published"}}
+{"article": {"authors": ["author1", "author2"]}}
 
-When the user asks you to change something, respond with the [EDIT:...] format immediately, followed by a brief explanation. For example:
+// Section examples:
+{"sections": [{"type": "text", "content": "New paragraph content", "id": "section1", "action": "update"}]}
+{"sections": [{"type": "title", "content": "New Section Title", "id": "new", "action": "create"}]}
+{"sections": [{"type": "code", "content": "console.log('Hello World');", "id": "section3", "action": "update"}]}
+
+// Positioning examples:
+{"sections": [{"type": "text", "content": "Insert at beginning", "id": "new", "action": "create", "position": 0}]}
+{"sections": [{"type": "text", "content": "Insert at position 2", "id": "new", "action": "create", "position": 2}]}
+{"sections": [{"type": "text", "id": "section1", "action": "move", "position": 0}]}
+{"sections": [{"type": "text", "id": "section1", "action": "move", "targetId": "section3"}]}
+{"sections": [{"type": "text", "id": "section1", "action": "delete"}]}
+
+// Multiple changes:
+{"article": {"title": "New Title"}, "sections": [{"type": "text", "content": "New content", "id": "new", "action": "create"}]}
+
+When the user asks you to change something, respond with the JSON format immediately, followed by a brief explanation. For example:
 User: "Change the title to 'My New Title'"
-You: "[EDIT:article:title:update:My New Title]
+You: '{"article": {"title": "My New Title"}}
 
-I've updated the title to 'My New Title' as requested."
+I've updated the title to 'My New Title' as requested.'
 
-REMEMBER: You MUST use the [EDIT:...] format for ALL changes. Do not just describe what you're changing - use the exact format above.`;
+REMEMBER: You MUST use the JSON format for ALL changes. Start with valid JSON, then add your explanation.`;
     }
     
     return basePrompt + `
 
-You can help edit articles by providing specific instructions. When you want to make changes, you MUST use this exact format:
+You can help edit articles by providing specific instructions. When you want to make changes, you MUST use the JSON format described above.
 
-For article metadata:
-[EDIT:article:field:action:value]
-
-For sections:
-[EDIT:section_type:section_id:action:content]
-
-IMPORTANT: Always use the [EDIT:...] format when making changes. Do not just describe what you're changing - use the exact format above.
-
-Available article fields:
+Available article fields for JSON:
 - title: Article title (string)
 - trailer: Article trailer/teaser (string)
 - subtitle: Article subtitle/description (string)
@@ -203,12 +220,12 @@ Available article fields:
 - published: Published status (true/false)
 - redirect: Redirect URL (string)
 - slug: Article slug (string)
-- authors: Author IDs (comma-separated)
-- categories: Category IDs (comma-separated)
+- authors: Author IDs (array of strings)
+- categories: Category IDs (array of strings)
 
-When the user asks you to change something, respond with the [EDIT:...] format immediately, followed by a brief explanation.
+When the user asks you to change something, respond with the JSON format immediately, followed by a brief explanation.
 
-REMEMBER: You MUST use the [EDIT:...] format for ALL changes. Do not just describe what you're changing - use the exact format above.`;
+REMEMBER: You MUST use the JSON format for ALL changes. Start with valid JSON, then add your explanation.`;
 }
 
 // Set up the client with environment variables
@@ -647,13 +664,28 @@ export default async function ({ req, res, log, error }) {
               }
             } else if (chunk.type === 'error') {
               addDebugLog('Stream error received: ' + (chunk.error || 'Unknown error'));
+              streamCompleted = true;
               break;
             } else if (chunk.type === 'finish') {
-              addDebugLog('Stream finished normally');
-              break;
+              addDebugLog('Stream finished normally - waiting for final content');
+              // Don't break immediately, wait for potential final content
+              // Set a short timeout to allow for final content
+              setTimeout(() => {
+                if (!streamCompleted) {
+                  addDebugLog('No more content after finish signal, completing stream');
+                  streamCompleted = true;
+                }
+              }, 1000); // Wait 1 second for final content
             } else if (chunk.type === 'text-end') {
-              addDebugLog('Text stream ended');
-              break;
+              addDebugLog('Text stream ended - waiting for final content');
+              // Don't break immediately, wait for potential final content
+              // Set a short timeout to allow for final content
+              setTimeout(() => {
+                if (!streamCompleted) {
+                  addDebugLog('No more content after text-end signal, completing stream');
+                  streamCompleted = true;
+                }
+              }, 1000); // Wait 1 second for final content
             } else {
               addDebugLog(`Unhandled chunk type: ${chunk.type}, chunk: ${JSON.stringify(chunk)}`);
             }
@@ -678,6 +710,9 @@ export default async function ({ req, res, log, error }) {
         // Calculate total generation time
         const generationTimeMs = Date.now() - generationStartTime;
         addDebugLog(`Total generation time: ${generationTimeMs}ms`);
+
+        // Add a small delay to ensure all content is processed
+        await new Promise(resolve => setTimeout(resolve, 500));
 
         // Final update with complete content and truncated debug logs
         await serverDatabases.updateDocument(
