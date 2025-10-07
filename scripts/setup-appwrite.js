@@ -635,6 +635,23 @@ async function ensureFunctionVariables(functionId, variables) {
 
 async function deployFunction(functionId, functionPath) {
   try {
+    log(`Checking deployments for function '${functionId}'...`, 'info');
+    
+    // Check if function already has deployments
+    try {
+      const existingDeployments = await functions.listDeployments(functionId);
+      if (existingDeployments.deployments && existingDeployments.deployments.length > 0) {
+        log(`Function '${functionId}' already has ${existingDeployments.deployments.length} deployment(s). Skipping deployment.`, 'success');
+        return existingDeployments.deployments[0]; // Return the first deployment
+      }
+    } catch (listError) {
+      if (listError.code === 404) {
+        log(`Function '${functionId}' not found, will create it first`, 'info');
+      } else {
+        log(`Warning: Could not check existing deployments: ${listError.message}`, 'warning');
+      }
+    }
+    
     log(`Deploying function '${functionId}' from ${functionPath}...`, 'info');
     
     // Check if function directory exists
@@ -794,10 +811,13 @@ async function setupAppwrite() {
         await ensureFunctionVariables(functionId, config.variables);
       }
       
-      // Deploy function
+      // Deploy function (only if no existing deployments)
       const functionPath = join(process.cwd(), 'functions', functionId);
       try {
-        await deployFunction(functionId, functionPath);
+        const deployment = await deployFunction(functionId, functionPath);
+        if (deployment) {
+          log(`Function '${functionId}' deployment status: ${deployment.$id}`, 'success');
+        }
       } catch (deployError) {
         log(`Warning: Could not deploy function '${functionId}': ${deployError.message}`, 'warning');
         log(`You can manually deploy the function from the Appwrite Console`, 'info');
