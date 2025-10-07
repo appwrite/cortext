@@ -53,12 +53,24 @@ export function useConversations(articleId: string, userId: string) {
     },
   })
 
+  // Delete conversation
+  const deleteConversationMutation = useMutation({
+    mutationFn: async (conversationId: string) => {
+      return db.conversations.delete(conversationId)
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['conversations', articleId] })
+    },
+  })
+
   return {
     conversations: conversationsQuery.data?.documents || [],
     isLoadingConversations: conversationsQuery.isLoading,
     createConversation: createConversationMutation.mutateAsync,
     updateConversation: updateConversationMutation.mutateAsync,
+    deleteConversation: deleteConversationMutation.mutateAsync,
     isCreatingConversation: createConversationMutation.isPending,
+    isDeletingConversation: deleteConversationMutation.isPending,
   }
 }
 
@@ -184,7 +196,9 @@ export function useConversationManager(articleId: string, userId: string) {
     isLoadingConversations,
     createConversation,
     updateConversation,
+    deleteConversation,
     isCreatingConversation,
+    isDeletingConversation,
   } = useConversations(articleId, userId)
 
   // Get the first conversation or create one if none exist
@@ -203,7 +217,9 @@ export function useConversationManager(articleId: string, userId: string) {
     isLoadingConversations,
     createConversation,
     updateConversation,
+    deleteConversation,
     isCreatingConversation,
+    isDeletingConversation,
     getOrCreateFirstConversation,
   }
 }

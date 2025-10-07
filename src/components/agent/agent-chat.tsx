@@ -101,7 +101,40 @@ export function AgentChat({
         conversations,
         isLoadingConversations,
         createConversation,
+        updateConversation,
+        deleteConversation,
+        isDeletingConversation,
     } = useConversationManager(articleId, user?.$id || '')
+
+    // Handle conversation edit
+    const handleEditConversation = useCallback(async (conversationId: string, newTitle: string) => {
+        try {
+            await updateConversation({
+                conversationId,
+                data: { title: newTitle.trim() }
+            })
+        } catch (error) {
+            console.error('Failed to update conversation:', error)
+        }
+    }, [updateConversation])
+
+    // Handle conversation delete
+    const handleDeleteConversation = useCallback(async (conversationId: string) => {
+        try {
+            await deleteConversation(conversationId)
+            // If we're deleting the current conversation, switch to another one
+            if (currentConversationId === conversationId) {
+                const remainingConversations = conversations.filter(c => c.$id !== conversationId)
+                if (remainingConversations.length > 0) {
+                    setCurrentConversationId(remainingConversations[0].$id)
+                } else {
+                    setCurrentConversationId(null)
+                }
+            }
+        } catch (error) {
+            console.error('Failed to delete conversation:', error)
+        }
+    }, [conversations, currentConversationId, deleteConversation])
 
     const {
         messages: dbMessages,
@@ -789,7 +822,9 @@ export function AgentChat({
                         })
                         setCurrentConversationId(newConversation.$id)
                     }}
-                    isLoading={isLoadingConversations || isCreatingMessage}
+                    onEditConversation={handleEditConversation}
+                    onDeleteConversation={handleDeleteConversation}
+                    isLoading={isLoadingConversations || isCreatingMessage || isDeletingConversation}
                 />
             </header>
             {chatContent}
