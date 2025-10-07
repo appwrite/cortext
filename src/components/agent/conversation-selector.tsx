@@ -103,11 +103,6 @@ export function ConversationSelector({
             <div className="flex items-center justify-between">
               <h4 className="text-sm font-medium">Conversations</h4>
             </div>
-            {/* Debug info */}
-            <div className="mt-2 p-2 bg-gray-100 dark:bg-gray-800 rounded text-xs">
-              <div>Current: {currentConversationId || 'None'}</div>
-              <div>Total: {conversations.length}</div>
-            </div>
           </div>
           <ScrollArea className="max-h-64">
             {conversations.length === 0 ? (

@@ -127,13 +127,23 @@ export function AgentChat({
                 if (remainingConversations.length > 0) {
                     setCurrentConversationId(remainingConversations[0].$id)
                 } else {
-                    setCurrentConversationId(null)
+                    // If no conversations remain, create a new one automatically
+                    try {
+                        const newConversation = await createConversation({
+                            title: 'New conversation',
+                            blogId,
+                        })
+                        setCurrentConversationId(newConversation.$id)
+                    } catch (createError) {
+                        console.error('Failed to create new conversation after deletion:', createError)
+                        setCurrentConversationId(null)
+                    }
                 }
             }
         } catch (error) {
             console.error('Failed to delete conversation:', error)
         }
-    }, [conversations, currentConversationId, deleteConversation])
+    }, [conversations, currentConversationId, deleteConversation, createConversation, blogId])
 
     // Streaming state callbacks for the consolidated realtime system
     const streamingCallbacks = useMemo(() => ({
