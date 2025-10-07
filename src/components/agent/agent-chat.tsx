@@ -58,8 +58,33 @@ export function AgentChat({
     const [isWaitingForStream, setIsWaitingForStream] = useState(false)
     const [streamingMessageId, setStreamingMessageId] = useState<string | null>(null)
     const [debugEvents, setDebugEvents] = useState<string[]>([])
+    const [lastStreamingContent, setLastStreamingContent] = useState<string>('')
+    const [streamingContentCheckCount, setStreamingContentCheckCount] = useState(0)
+    const [lastMetadataStatus, setLastMetadataStatus] = useState<string>('None')
+    const [showDebugPanel, setShowDebugPanel] = useState<boolean>(false)
     const isMobile = useIsMobile()
     const inputRef = useRef<HTMLInputElement>(null)
+    const currentConversationIdRef = useRef<string | null>(currentConversationId)
+    const isStreamingRef = useRef<boolean>(false)
+
+    // Update ref when conversation ID changes and clear streaming state
+    useEffect(() => {
+        currentConversationIdRef.current = currentConversationId
+        // Clear streaming state when switching conversations
+        setIsStreaming(false)
+        setIsWaitingForStream(false)
+        setStreamingMessageId(null)
+        setLoaderMessages(new Set())
+        setLastStreamingContent('')
+        setStreamingContentCheckCount(0)
+        setLastMetadataStatus('None')
+        isStreamingRef.current = false
+    }, [currentConversationId])
+
+    // Update streaming ref whenever streaming state changes
+    useEffect(() => {
+        isStreamingRef.current = isStreaming
+    }, [isStreaming])
 
     // Scroll to bottom function
     const scrollToBottom = useCallback(() => {
@@ -82,17 +107,17 @@ export function AgentChat({
 
     const {
         messages: dbMessages,
+        isLoadingMessages,
         isLoadingMoreMessages,
         hasMoreMessages,
         loadMoreMessages,
         createMessage,
         isCreatingMessage,
+        offset,
     } = useMessagesWithNotifications(currentConversationId, blogId, articleId, user?.$id)
 
-    // Custom realtime event handler for streaming debug
+    // Custom realtime event handler for streaming debug - stable subscription
     useEffect(() => {
-        if (!currentConversationId) return
-
         const databaseId = import.meta.env.VITE_APPWRITE_DATABASE_ID
         const messagesChannel = `databases.${databaseId}.collections.messages.documents`
         
@@ -105,10 +130,11 @@ export function AgentChat({
             const messagePayload = payload as any
             
             // Only process events for the current conversation
-            if (messagePayload.conversationId !== currentConversationId) return
+            if (!currentConversationIdRef.current || messagePayload.conversationId !== currentConversationIdRef.current) return
             
             const isCreateEvent = events.some(event => event.includes('.create'))
             const isUpdateEvent = events.some(event => event.includes('.update'))
+            
             
             if (isCreateEvent && messagePayload.role === 'assistant') {
                 // Streaming started - new assistant message created
@@ -116,14 +142,82 @@ export function AgentChat({
                 setIsStreaming(true)
                 setStreamingMessageId(messagePayload.$id)
                 setLoaderMessages(new Set()) // Clear loader messages when streaming starts
-                setDebugEvents(prev => [...prev.slice(-4), `Streaming started: ${messagePayload.$id} at ${new Date().toISOString()}`])
-            } else if (isUpdateEvent && messagePayload.role === 'assistant' && messagePayload.$id === streamingMessageId) {
-                // Check if streaming is complete
+                
+                // Update metadata status for create event too
                 const metadata = messagePayload.metadata ? JSON.parse(messagePayload.metadata) : undefined
-                if (metadata?.status === 'completed' || !metadata?.streaming) {
+                if (metadata) {
+                    const statusText = metadata.status || 'unknown'
+                    const streamingText = metadata.streaming ? 'streaming' : 'not-streaming'
+                    setLastMetadataStatus(`${statusText} (${streamingText})`)
+                }
+                
+                setDebugEvents(prev => [...prev.slice(-4), `Streaming started: ${messagePayload.$id} at ${new Date().toISOString()}`])
+            } else if (isUpdateEvent && messagePayload.role === 'assistant') {
+                // Check if this is the streaming message we're tracking
+                const isStreamingMessage = messagePayload.$id === streamingMessageId
+                const metadata = messagePayload.metadata ? JSON.parse(messagePayload.metadata) : undefined
+                const currentContent = messagePayload.content || ''
+                
+                // Update last metadata status for debug
+                if (metadata) {
+                    const statusText = metadata.status || 'unknown'
+                    const streamingText = metadata.streaming ? 'streaming' : 'not-streaming'
+                    setLastMetadataStatus(`${statusText} (${streamingText})`)
+                }
+                
+                
+                // If this is our streaming message, check for completion
+                if (isStreamingMessage) {
+                    // Check if content has changed (still streaming)
+                    if (currentContent !== lastStreamingContent) {
+                        setLastStreamingContent(currentContent)
+                        setStreamingContentCheckCount(0)
+                    } else {
+                        // Content hasn't changed, increment check count
+                        setStreamingContentCheckCount(prev => prev + 1)
+                    }
+                    
+                    // Complete if metadata says so OR if content hasn't changed for 3 updates
+                    if (metadata?.status === 'completed' || !metadata?.streaming || streamingContentCheckCount >= 3) {
+                        setIsStreaming(false)
+                        setIsWaitingForStream(false) // Also reset waiting state
+                        setStreamingMessageId(null)
+                        setLastStreamingContent('')
+                        setStreamingContentCheckCount(0)
+                        setDebugEvents(prev => [...prev.slice(-4), `Streaming completed: ${messagePayload.$id} at ${new Date().toISOString()}`])
+                    }
+                }
+                
+                // Also check if any assistant message has completed status (fallback)
+                if (metadata?.status === 'completed' && isStreamingRef.current) {
                     setIsStreaming(false)
+                    setIsWaitingForStream(false)
                     setStreamingMessageId(null)
-                    setDebugEvents(prev => [...prev.slice(-4), `Streaming completed: ${messagePayload.$id} at ${new Date().toISOString()}`])
+                    setLastStreamingContent('')
+                    setStreamingContentCheckCount(0)
+                    setDebugEvents(prev => [...prev.slice(-4), `Streaming completed via fallback: ${messagePayload.$id} at ${new Date().toISOString()}`])
+                }
+            }
+            
+            // Always update metadata status for any assistant message event (fallback)
+            if (messagePayload.role === 'assistant' && messagePayload.metadata) {
+                try {
+                    const metadata = JSON.parse(messagePayload.metadata)
+                    const statusText = metadata.status || 'unknown'
+                    const streamingText = metadata.streaming ? 'streaming' : 'not-streaming'
+                    setLastMetadataStatus(`${statusText} (${streamingText})`)
+                    
+                    // If we detect completed status and we're currently streaming, reset streaming state
+                    if (metadata.status === 'completed' && isStreamingRef.current) {
+                        setIsStreaming(false)
+                        setIsWaitingForStream(false)
+                        setStreamingMessageId(null)
+                        setLastStreamingContent('')
+                        setStreamingContentCheckCount(0)
+                        setDebugEvents(prev => [...prev.slice(-4), `Streaming completed via metadata fallback: ${messagePayload.$id} at ${new Date().toISOString()}`])
+                    }
+                } catch (error) {
+                    setLastMetadataStatus('parse-error')
                 }
             }
         })
@@ -131,7 +225,7 @@ export function AgentChat({
         return () => {
             unsubscribe()
         }
-    }, [currentConversationId, streamingMessageId])
+    }, []) // Remove currentConversationId and streamingMessageId from dependencies to avoid reconnection
 
     // Convert database messages to local format and sort with newest at bottom
     const dbMessagesFormatted: Message[] = dbMessages
@@ -148,6 +242,7 @@ export function AgentChat({
 
     // Use database messages directly
     const messages: Message[] = dbMessagesFormatted
+
 
     // Determine if prompt should be locked (waiting for stream or streaming)
     const isPromptLocked = isWaitingForStream || isStreaming
@@ -177,8 +272,9 @@ export function AgentChat({
         }
     }, [conversations, currentConversationId, isLoadingConversations, createInitialConversation])
 
-    // Show messages if they exist, otherwise show placeholder
+    // Show messages if they exist, otherwise show placeholder (only when not loading)
     const hasMessages = messages.length > 0
+    const shouldShowPlaceholder = !isLoadingMessages && messages.length === 0
     
 
     // Precisely align with the app header; footer does not occupy the left rail
@@ -388,6 +484,38 @@ export function AgentChat({
         }
     }, [isPromptLocked])
 
+    // Safety timeout to reset lock state if it gets stuck
+    useEffect(() => {
+        if (isPromptLocked) {
+            const safetyTimeout = setTimeout(() => {
+                setIsStreaming(false)
+                setIsWaitingForStream(false)
+                setStreamingMessageId(null)
+                setLoaderMessages(new Set())
+                setLastStreamingContent('')
+                setStreamingContentCheckCount(0)
+                setLastMetadataStatus('None')
+                isStreamingRef.current = false
+            }, 30000) // 30 second safety timeout
+
+            return () => clearTimeout(safetyTimeout)
+        }
+    }, [isPromptLocked])
+
+    // Keyboard shortcut to toggle debug panel (.)
+    useEffect(() => {
+        const handleKeyDown = (e: KeyboardEvent) => {
+            // Check for period key
+            if (e.key === '.') {
+                e.preventDefault()
+                setShowDebugPanel(prev => !prev)
+            }
+        }
+
+        document.addEventListener('keydown', handleKeyDown)
+        return () => document.removeEventListener('keydown', handleKeyDown)
+    }, [showDebugPanel])
+
     const send = async () => {
         const text = input.trim()
         if (!text || !currentConversationId) return
@@ -484,7 +612,71 @@ export function AgentChat({
     const chatContent = (
         <>
             <ScrollArea ref={scrollAreaRef} className="flex-1">
-                {hasMessages ? (
+                {/* Debug panel - sticky to top (toggleable with .) */}
+                {showDebugPanel && (
+                    <div className="sticky top-0 z-10 p-2 bg-slate-100 dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700">
+                    <div className="flex items-center gap-1 mb-1">
+                        <div className={`w-1.5 h-1.5 rounded-full ${isLoadingConversations ? 'bg-yellow-500' : 'bg-green-500'}`}></div>
+                        <span className="text-[10px] font-semibold text-slate-700 dark:text-slate-300">Debug</span>
+                        <div className="ml-auto flex items-center gap-1">
+                            {isPromptLocked && (
+                                <button
+                                    onClick={() => {
+                                        setIsStreaming(false)
+                                        setIsWaitingForStream(false)
+                                        setStreamingMessageId(null)
+                                        setLoaderMessages(new Set())
+                                        setLastStreamingContent('')
+                                        setStreamingContentCheckCount(0)
+                                        setLastMetadataStatus('None')
+                                        isStreamingRef.current = false
+                                    }}
+                                    className="px-1 py-0.5 text-[9px] bg-red-500 text-white rounded hover:bg-red-600"
+                                >
+                                    Reset
+                                </button>
+                            )}
+                            <div className="text-[9px] text-slate-500 dark:text-slate-400">
+                                {new Date().toLocaleTimeString()}
+                            </div>
+                        </div>
+                    </div>
+                    <div className="grid grid-cols-2 text-[10px]">
+                        <div>
+                            <div className="text-slate-500 dark:text-slate-400 font-medium text-[9px]">Conversation</div>
+                            <div className="text-slate-800 dark:text-slate-200 font-mono text-[10px]">
+                                {conversations.find(c => c.$id === currentConversationId)?.title || 'None'}
+                            </div>
+                            <div className="text-slate-600 dark:text-slate-400 text-[9px] font-mono">
+                                ID: {currentConversationId?.slice(-8) || 'None'}
+                            </div>
+                        </div>
+                        <div>
+                            <div className="text-slate-500 dark:text-slate-400 font-medium text-[9px]">Messages & Status</div>
+                            <div className="text-slate-800 dark:text-slate-200 font-mono text-[10px]">
+                                UI: {messages.length} | DB: {dbMessages.length}
+                            </div>
+                            <div className="text-slate-600 dark:text-slate-400 text-[9px] font-mono">
+                                Offset: {offset} | More: {hasMoreMessages ? 'Yes' : 'No'}
+                            </div>
+                            <div className="text-slate-600 dark:text-slate-400 text-[9px] font-mono">
+                                {isWaitingForStream ? '⏳ Waiting' : ''} {isStreaming ? '🔄 Streaming' : ''} {isPromptLocked ? '🔒 Locked' : '🔓 Unlocked'}
+                            </div>
+                            <div className="text-slate-500 dark:text-slate-400 text-[8px] font-mono">
+                                Last: {lastMetadataStatus}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                )}
+                {isLoadingMessages ? (
+                    <div className="flex items-center justify-center min-h-full pt-32">
+                        <div className="flex items-center gap-2 text-muted-foreground">
+                            <div className="w-3 h-3 border-2 border-muted-foreground border-t-transparent rounded-full animate-spin"></div>
+                            <span className="text-xs">Loading messages...</span>
+                        </div>
+                    </div>
+                ) : hasMessages ? (
                     <div className="px-6 py-6 space-y-2">
                         {/* Load More Button */}
                         {hasMoreMessages && (
@@ -575,7 +767,7 @@ export function AgentChat({
                         
                         <div ref={bottomRef} />
                     </div>
-                ) : (
+                ) : shouldShowPlaceholder ? (
                     <div className="flex items-center justify-center min-h-full">
                         <ConversationPlaceholder onSendMessage={async (message) => {
                             if (!currentConversationId) return
@@ -613,7 +805,7 @@ export function AgentChat({
                             }
                         }} />
                     </div>
-                )}
+                ) : null}
             </ScrollArea>
 
             <div className="relative px-6 py-6 space-y-2 bg-background border-t border-foreground/30">

@@ -50,6 +50,11 @@ export function ConversationSelector({
             <div className="flex items-center justify-between">
               <h4 className="text-sm font-medium">Conversations</h4>
             </div>
+            {/* Debug info */}
+            <div className="mt-2 p-2 bg-gray-100 dark:bg-gray-800 rounded text-xs">
+              <div>Current: {currentConversationId || 'None'}</div>
+              <div>Total: {conversations.length}</div>
+            </div>
           </div>
           <ScrollArea className="max-h-64">
             {conversations.length === 0 ? (
@@ -65,6 +70,7 @@ export function ConversationSelector({
                     size="sm"
                     className="w-full justify-between h-auto px-3 py-2 text-left"
                     onClick={() => {
+                      console.log('🔄 Switching to conversation:', conversation.$id, conversation.title)
                       onSelectConversation(conversation.$id)
                       setIsOpen(false)
                     }}
