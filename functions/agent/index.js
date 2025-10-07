@@ -126,13 +126,15 @@ function buildSystemPrompt(articleContext) {
 Current Article Context:
 ${articleContext}
 
-You can help edit this article by providing specific instructions. When you want to make changes, use this format:
+You can help edit this article by providing specific instructions. When you want to make changes, you MUST use this exact format:
 
 For article metadata:
 [EDIT:article:field:action:value]
 
 For sections:
 [EDIT:section_type:section_id:action:content]
+
+IMPORTANT: Always use the [EDIT:...] format when making changes. Do not just describe what you're changing - use the exact format above.
 
 Available article fields:
 - title: Article title (string)
@@ -163,10 +165,39 @@ Examples:
 [EDIT:quote:section2:delete:]
 [EDIT:code:section3:update:console.log('Hello World');]
 
-Always provide helpful suggestions and explain your reasoning.`;
+When the user asks you to change something, respond with the [EDIT:...] format immediately, followed by a brief explanation. For example:
+User: "Change the title to 'My New Title'"
+You: "[EDIT:article:title:update:My New Title]
+
+I've updated the title to 'My New Title' as requested."`;
     }
     
-    return basePrompt;
+    return basePrompt + `
+
+You can help edit articles by providing specific instructions. When you want to make changes, you MUST use this exact format:
+
+For article metadata:
+[EDIT:article:field:action:value]
+
+For sections:
+[EDIT:section_type:section_id:action:content]
+
+IMPORTANT: Always use the [EDIT:...] format when making changes. Do not just describe what you're changing - use the exact format above.
+
+Available article fields:
+- title: Article title (string)
+- trailer: Article trailer/teaser (string)
+- subtitle: Article subtitle/description (string)
+- status: Article status (draft, unpublished, published)
+- live: Live status (true/false)
+- pinned: Pinned status (true/false)
+- published: Published status (true/false)
+- redirect: Redirect URL (string)
+- slug: Article slug (string)
+- authors: Author IDs (comma-separated)
+- categories: Category IDs (comma-separated)
+
+When the user asks you to change something, respond with the [EDIT:...] format immediately, followed by a brief explanation.`;
 }
 
 // Set up the client with environment variables
@@ -248,6 +279,8 @@ export default async function ({ req, res, log, error }) {
 
     const { conversationId, agentId, blogId, metadata, articleId } = body;
 
+    log('Request body fields: ' + JSON.stringify({ conversationId, agentId, blogId, articleId, metadata }));
+
     // Use userId from JWT token if available, otherwise from request body
     const messageUserId = userId || body.userId;
 
@@ -271,12 +304,21 @@ export default async function ({ req, res, log, error }) {
       try {
         log('Loading article context for articleId: ' + articleId);
         const article = await serverDatabases.getDocument(databaseId, 'articles', articleId);
+        log('Article loaded: ' + JSON.stringify({
+          id: article.$id,
+          title: article.title,
+          subtitle: article.subtitle,
+          status: article.status
+        }));
         articleContext = buildArticleContext(article);
         log('Article context loaded: ' + (articleContext ? 'Yes' : 'No'));
+        log('Article context preview: ' + articleContext.substring(0, 200) + '...');
       } catch (error) {
         log('Failed to load article context: ' + error.message);
         // Continue without article context
       }
+    } else {
+      log('No articleId provided, skipping article context loading');
     }
 
     // If using JWT authentication, userId should be available from the token
@@ -357,6 +399,10 @@ export default async function ({ req, res, log, error }) {
 
         // Add system prompt at the beginning for context
         const systemPrompt = buildSystemPrompt(articleContext);
+        addDebugLog(`System prompt length: ${systemPrompt.length}`);
+        addDebugLog(`Article context: ${articleContext ? 'Yes' : 'No'}`);
+        addDebugLog(`System prompt preview: ${systemPrompt.substring(0, 200)}...`);
+        
         const messagesWithSystem = [
           { role: 'system', content: [{ type: 'text', text: systemPrompt }] },
           ...limitedConversationMessages
