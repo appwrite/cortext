@@ -84,6 +84,7 @@ const COLLECTIONS = {
       { key: 'published', type: 'boolean', required: false, array: false, default: false },
       { key: 'slug', type: 'string', size: 255, required: false, array: false, default: null },
       { key: 'publishedAt', type: 'datetime', required: false, array: false, default: null },
+      { key: 'activeRevisionId', type: 'string', size: 255, required: false, array: false, default: null }, // Reference to current active revision
       { key: 'blogId', type: 'string', size: 255, required: false, array: false, default: null },
     ],
     indexes: [
@@ -96,6 +97,7 @@ const COLLECTIONS = {
       { key: 'blogId_published', type: 'key', attributes: ['blogId', 'published'] },
       { key: 'blogId_status', type: 'key', attributes: ['blogId', 'status'] },
       { key: 'blogId_slug', type: 'unique', attributes: ['blogId', 'slug'] },
+      { key: 'activeRevisionId', type: 'key', attributes: ['activeRevisionId'] },
       // Note: subtitle, body are large fields (2048+ chars) - if indexed in future, use lengths: [191]
     ],
   },
