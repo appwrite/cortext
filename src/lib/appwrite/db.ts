@@ -1,5 +1,5 @@
-import { Client, Databases, ID, Permission, Role, type Models } from 'appwrite';
-import type { Articles, Authors, Categories, Images, Notifications, Blogs, Comments, Conversations, Messages } from './appwrite.types';
+import { Client, Databases, ID, Permission, Role, Query, type Models } from 'appwrite';
+import type { Articles, Authors, Categories, Images, Notifications, Blogs, Comments, Conversations, Messages, Revisions } from './appwrite.types';
 
 // Environment variables validation
 const APPWRITE_ENDPOINT = import.meta.env.VITE_APPWRITE_ENDPOINT;
@@ -223,7 +223,206 @@ export const db = {
       databases.deleteDocument(APPWRITE_DATABASE_ID, 'messages', id),
     list: (queries?: string[]) => 
       databases.listDocuments<Messages>(APPWRITE_DATABASE_ID, 'messages', queries),
+  },
+  revisions: {
+    create: (data: Omit<Revisions, keyof Models.Document>, teamId?: string) => 
+      databases.createDocument<Revisions>(
+        APPWRITE_DATABASE_ID, 
+        'revisions', 
+        ID.unique(), 
+        data,
+        teamId ? [
+          Permission.read(Role.team(teamId)),
+          Permission.update(Role.team(teamId)),
+          Permission.delete(Role.team(teamId))
+        ] : undefined
+      ),
+    get: (id: string) => 
+      databases.getDocument<Revisions>(APPWRITE_DATABASE_ID, 'revisions', id),
+    update: (id: string, data: Partial<Omit<Revisions, keyof Models.Document>>) => 
+      databases.updateDocument<Revisions>(APPWRITE_DATABASE_ID, 'revisions', id, data),
+    delete: (id: string) => 
+      databases.deleteDocument(APPWRITE_DATABASE_ID, 'revisions', id),
+    list: (queries?: string[]) => 
+      databases.listDocuments<Revisions>(APPWRITE_DATABASE_ID, 'revisions', queries),
   }
+};
+
+// Helper function to detect changes between two article states
+export const detectChanges = (oldArticle: Articles, newArticle: Articles) => {
+  const changes: string[] = [];
+  const changedAttributes: Record<string, any> = {};
+
+  // Check each attribute for changes
+  const attributes = [
+    'title', 'subtitle', 'trailer', 'status', 'live', 'pinned', 
+    'redirect', 'slug', 'authors', 'categories', 'images'
+  ];
+
+  attributes.forEach(attr => {
+    const oldValue = oldArticle[attr as keyof Articles];
+    const newValue = newArticle[attr as keyof Articles];
+    
+    if (JSON.stringify(oldValue) !== JSON.stringify(newValue)) {
+      changedAttributes[attr] = newValue;
+      changes.push(`Updated ${attr}: ${oldValue} → ${newValue}`);
+    }
+  });
+
+  // Check for body/sections changes
+  if (oldArticle.body !== newArticle.body) {
+    const oldSections = oldArticle.body ? JSON.parse(oldArticle.body) : [];
+    const newSections = newArticle.body ? JSON.parse(newArticle.body) : [];
+    
+    // Track section changes by ID
+    const sectionChanges = detectSectionChanges(oldSections, newSections);
+    if (sectionChanges.length > 0) {
+      changedAttributes.sections = sectionChanges;
+      changes.push(...sectionChanges.map(change => `Section ${change.id}: ${change.action}`));
+    }
+  }
+
+  return { changes, changedAttributes };
+};
+
+// Helper function to detect section-specific changes
+export const detectSectionChanges = (oldSections: any[], newSections: any[]) => {
+  const changes: any[] = [];
+  
+  // Create maps for easier lookup
+  const oldSectionMap = new Map(oldSections.map(s => [s.id, s]));
+  const newSectionMap = new Map(newSections.map(s => [s.id, s]));
+  
+  // Check for updated sections
+  newSections.forEach(section => {
+    const oldSection = oldSectionMap.get(section.id);
+    if (oldSection) {
+      // Section exists, check if content changed
+      if (oldSection.content !== section.content || oldSection.type !== section.type) {
+        changes.push({
+          id: section.id,
+          action: 'update',
+          type: section.type,
+          content: section.content,
+          oldContent: oldSection.content
+        });
+      }
+    } else if (section.id !== 'new') {
+      // New section (not auto-generated)
+      changes.push({
+        id: section.id,
+        action: 'create',
+        type: section.type,
+        content: section.content
+      });
+    }
+  });
+  
+  // Check for deleted sections
+  oldSections.forEach(section => {
+    if (!newSectionMap.has(section.id)) {
+      changes.push({
+        id: section.id,
+        action: 'delete',
+        type: section.type,
+        content: section.content
+      });
+    }
+  });
+  
+  return changes;
+};
+
+// Helper function to create an initial revision for a new article
+export const createInitialRevision = async (article: Articles, teamId?: string) => {
+  const revisionData: Omit<Revisions, keyof Models.Document> = {
+    articleId: article.$id,
+    version: 1,
+    status: 'draft',
+    createdBy: article.createdBy,
+    messageId: null,
+    data: JSON.stringify({
+      initial: true,
+      // Store the complete article state directly (not nested in attributes)
+      title: article.title,
+      subtitle: article.subtitle,
+      trailer: article.trailer,
+      status: article.status,
+      live: article.live,
+      pinned: article.pinned,
+      redirect: article.redirect,
+      slug: article.slug,
+      authors: article.authors,
+      categories: article.categories,
+      images: article.images,
+      blogId: article.blogId,
+      sections: article.body ? JSON.parse(article.body) : []
+    }),
+    changes: ['Initial article creation'],
+    parentRevisionId: null,
+  };
+
+  return db.revisions.create(revisionData, teamId);
+};
+
+// Helper function to create a revision for article updates
+export const createUpdateRevision = async (
+  articleId: string, 
+  oldArticle: Articles, 
+  newArticle: Articles, 
+  teamId?: string,
+  messageId?: string
+) => {
+  const { changes, changedAttributes } = detectChanges(oldArticle, newArticle);
+  
+  if (changes.length === 0) {
+    return null; // No changes detected
+  }
+
+  // Get the current revision to determine the next version
+  const currentRevisions = await db.revisions.list([
+    Query.equal('articleId', articleId),
+    Query.orderDesc('version'),
+    Query.limit(1)
+  ]);
+  
+  const nextVersion = currentRevisions.documents.length > 0 
+    ? currentRevisions.documents[0].version + 1 
+    : 1;
+
+  // Store the complete article state in the revision
+  const revisionData: Omit<Revisions, keyof Models.Document> = {
+    articleId: articleId,
+    version: nextVersion,
+    status: 'draft',
+    createdBy: newArticle.createdBy,
+    messageId: messageId || null,
+    data: JSON.stringify({
+      initial: false,
+      // Store the complete article state
+      title: newArticle.title,
+      subtitle: newArticle.subtitle,
+      trailer: newArticle.trailer,
+      status: newArticle.status,
+      live: newArticle.live,
+      pinned: newArticle.pinned,
+      redirect: newArticle.redirect,
+      slug: newArticle.slug,
+      authors: newArticle.authors,
+      categories: newArticle.categories,
+      images: newArticle.images,
+      blogId: newArticle.blogId,
+      // Store sections separately
+      sections: newArticle.body ? JSON.parse(newArticle.body) : [],
+      // Also store what changed for reference
+      changedAttributes,
+      timestamp: new Date().toISOString()
+    }),
+    changes: changes,
+    parentRevisionId: currentRevisions.documents[0]?.$id || null,
+  };
+
+  return db.revisions.create(revisionData, teamId);
 };
 
 export { client, databases };

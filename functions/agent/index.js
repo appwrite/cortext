@@ -89,10 +89,8 @@ function buildArticleContext(article, maxTokens = 2000) {
         status: article.status || 'unpublished',
         live: article.live || false,
         pinned: article.pinned || false,
-        published: article.published || false,
         redirect: article.redirect || '',
         slug: article.slug || '',
-        publishedAt: article.publishedAt || '',
         authors: article.authors || [],
         categories: article.categories || [],
         images: article.images || [],
@@ -122,7 +120,7 @@ function buildArticleContext(article, maxTokens = 2000) {
     let contextStr = `Article: "${context.title}"\n`;
     if (context.trailer) contextStr += `Trailer: "${context.trailer}"\n`;
     if (context.subtitle) contextStr += `Subtitle: "${context.subtitle}"\n`;
-    contextStr += `Status: ${context.status} | Live: ${context.live} | Published: ${context.published}\n`;
+    contextStr += `Status: ${context.status} | Live: ${context.live}\n`;
     if (context.slug) contextStr += `Slug: ${context.slug}\n`;
     if (context.redirect) contextStr += `Redirect: ${context.redirect}\n`;
     if (context.authors.length > 0) contextStr += `Authors: ${context.authors.join(', ')}\n`;
@@ -163,7 +161,6 @@ Available article fields for JSON:
 - status: Article status (draft, unpublished, published)
 - live: Live status (true/false)
 - pinned: Pinned status (true/false)
-- published: Published status (true/false)
 - redirect: Redirect URL (string)
 - slug: Article slug (string)
 - authors: Author IDs (array of strings)
@@ -217,7 +214,6 @@ Available article fields for JSON:
 - status: Article status (draft, unpublished, published)
 - live: Live status (true/false)
 - pinned: Pinned status (true/false)
-- published: Published status (true/false)
 - redirect: Redirect URL (string)
 - slug: Article slug (string)
 - authors: Author IDs (array of strings)

@@ -2,7 +2,9 @@ import { createFileRoute, Link, useNavigate, useSearch } from '@tanstack/react-r
 import { useAuth } from '@/hooks/use-auth'
 import { useEffect, useMemo, useRef, useState, useCallback, memo } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { db } from '@/lib/appwrite/db'
+import { db, createInitialRevision, createUpdateRevision } from '@/lib/appwrite/db'
+import { useLatestRevision } from '@/hooks/use-latest-revision'
+import { useAutoSave } from '@/hooks/use-auto-save'
 import { files } from '@/lib/appwrite/storage'
 import { getAccountClient } from '@/lib/appwrite'
 import type { Articles } from '@/lib/appwrite/appwrite.types'
@@ -13,17 +15,19 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { Checkbox } from '@/components/ui/checkbox'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Switch } from '@/components/ui/switch'
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog'
 import { Separator } from '@/components/ui/separator'
 import { toast } from '@/hooks/use-toast'
-import { Image as ImageIcon, Plus, Trash2, Save, Video, MapPin, Type as TypeIcon, Upload, ArrowLeft, LogOut, GripVertical, Brain, Loader2, Heading1, Quote, Pin as PinIcon, FileText, Quote as QuoteIcon, Code, ChevronLeft, ChevronRight, MoreHorizontal, Copy, MessageCircle, Eye, EyeOff } from 'lucide-react'
+import { Image as ImageIcon, Plus, Trash2, Save, Video, MapPin, Type as TypeIcon, Upload, ArrowLeft, LogOut, GripVertical, Brain, Loader2, Heading1, Quote, Pin as PinIcon, FileText, Quote as QuoteIcon, Code, ChevronLeft, ChevronRight, MoreHorizontal, Copy, MessageCircle, Eye, EyeOff, Archive } from 'lucide-react'
 import { AgentChat } from '@/components/agent/agent-chat'
 import { AuthorSelector } from '@/components/author'
 import { CategorySelector } from '@/components/category'
 import { ImageGallery } from '@/components/image'
 import { NotificationBell } from '@/components/notification'
 import { TeamBlogSelector } from '@/components/team-blog'
+import { RevisionPopover, UnpublishedChangesBanner } from '@/components/revisions'
 import { CodeEditor } from '@/components/ui/code-editor'
 import { UserAvatar } from '@/components/user-avatar'
 import { useTeamBlog } from '@/hooks/use-team-blog'
@@ -167,12 +171,18 @@ function EmptyArticlesState({ currentBlog, userId }: { currentBlog: any; userId:
                                 redirect: null,
                                 categories: null,
                                 createdBy: userId,
-                                published: false,
                                 slug: null,
-                                publishedAt: null,
                                 blogId: currentBlog?.$id || null,
+                                activeRevisionId: null, // Will be set after revision creation
                             }
                             const article = await db.articles.create(payload, currentTeam?.$id)
+                            
+                            // Create initial revision
+                            const revision = await createInitialRevision(article, currentTeam?.$id)
+                            
+                            // Update article with revision ID
+                            await db.articles.update(article.$id, { activeRevisionId: revision.$id })
+                            
                             navigate({ to: '/dashboard', search: { articleId: article.$id } })
                         } catch (error) {
                             toast({ 
@@ -339,7 +349,7 @@ function ArticlesList({ userId }: { userId: string }) {
                                     <Link to="/dashboard" search={{ articleId: a.$id }} className="hover:underline">
                                         {a.title || 'Untitled'}
                                     </Link>
-                                    {!a.published && (
+                                    {a.status === 'unpublished' && (
                                         <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-white text-black border border-black/20">
                                             Draft
                                         </span>
@@ -376,12 +386,18 @@ function ArticlesList({ userId }: { userId: string }) {
                         redirect: null,
                         categories: null,
                         createdBy: userId,
-                        published: false,
                         slug: null,
-                        publishedAt: null,
                         blogId: currentBlog?.$id || null,
+                        activeRevisionId: null, // Will be set after revision creation
                       }
                       const article = await db.articles.create(payload, currentTeam?.$id)
+                      
+                      // Create initial revision
+                      const revision = await createInitialRevision(article, currentTeam?.$id)
+                      
+                      // Update article with revision ID
+                      await db.articles.update(article.$id, { activeRevisionId: revision.$id })
+                      
                       navigate({ to: '/dashboard', search: { articleId: article.$id } })
                     } catch (error) {
                       toast({
@@ -429,12 +445,18 @@ function ArticlesList({ userId }: { userId: string }) {
                                     redirect: null,
                                     categories: null,
                                     createdBy: userId,
-                                    published: false,
                                     slug: null,
-                                    publishedAt: null,
                                     blogId: currentBlog?.$id || null,
+                                    activeRevisionId: null, // Will be set after revision creation
                                 }
                                 const article = await db.articles.create(payload, currentTeam?.$id)
+                                
+                                // Create initial revision
+                                const revision = await createInitialRevision(article, currentTeam?.$id)
+                                
+                                // Update article with revision ID
+                                await db.articles.update(article.$id, { activeRevisionId: revision.$id })
+                                
                                 navigate({ to: '/dashboard', search: { articleId: article.$id } })
                             } catch (error) {
                                 toast({ 
@@ -563,12 +585,19 @@ function CreateArticleView({ userId, onDone, onCancel }: { userId: string; onDon
                 redirect: redirect.trim() || null,
                 categories: categories.length > 0 ? categories : null,
                 createdBy: userId,
-                published: false,
                 slug: null,
-                publishedAt: null,
                 blogId: currentBlog?.$id || null,
+                activeRevisionId: null, // Will be set after revision creation
             }
-            return db.articles.create(payload, currentTeam?.$id)
+            const article = await db.articles.create(payload, currentTeam?.$id)
+            
+            // Create initial revision
+            const revision = await createInitialRevision(article, currentTeam?.$id)
+            
+            // Update article with revision ID
+            await db.articles.update(article.$id, { activeRevisionId: revision.$id })
+            
+            return article
         },
         onSuccess: (doc) => {
             qc.invalidateQueries({ queryKey: ['articles', userId, currentBlog?.$id] })
@@ -659,10 +688,8 @@ function ArticleEditor({ articleId, userId, onBack }: { articleId: string; userI
         }
     }, [isMenuOpen])
 
-    const { data: article, isPending } = useQuery({
-        queryKey: ['article', articleId],
-        queryFn: () => db.articles.get(articleId),
-    })
+    const { article, formData: latestFormData, hasUnpublishedChanges, latestRevision, isLoading: isLoadingRevision } = useLatestRevision(articleId)
+    const isPending = isLoadingRevision
 
     // User preferences for hide comments
     const account = getAccountClient()
@@ -817,15 +844,21 @@ function ArticleEditor({ articleId, userId, onBack }: { articleId: string; userI
     }, [updateRowPositions])
 
     useEffect(() => {
-        if (article?.body) {
+        if (latestFormData?.body) {
             try {
-                const sections = JSON.parse(article.body)
-                setLocalSections(Array.isArray(sections) ? sections : [])
+                const sections = JSON.parse(latestFormData.body)
+                const parsedSections = Array.isArray(sections) ? sections : []
+                setLocalSections(parsedSections)
+                // Store initial sections for comparison
+                setInitialSections(parsedSections)
             } catch {
                 setLocalSections([])
+                setInitialSections([])
             }
+            // Mark data as loaded after sections are loaded
+            setIsDataLoaded(true)
         }
-    }, [article?.body])
+    }, [latestFormData?.body, latestFormData?.$updatedAt]) // Only update when the body or data actually changes
 
     // Track a newly created section to focus its first relevant input when it renders
     const focusTargetRef = useRef<{ id: string; type: string } | null>(null)
@@ -834,7 +867,11 @@ function ArticleEditor({ articleId, userId, onBack }: { articleId: string; userI
         mutationFn: async (data: Partial<Omit<Articles, keyof Models.Document>>) => {
             const current = await db.articles.get(articleId)
             if (current.createdBy !== userId) throw new Error('Forbidden')
-            return db.articles.update(articleId, sanitizeArticleUpdate(data))
+            
+            // Update the article
+            const updatedArticle = await db.articles.update(articleId, sanitizeArticleUpdate(data))
+            
+            return updatedArticle
         },
         onSuccess: () => {
             qc.invalidateQueries({ queryKey: ['article', articleId] })
@@ -883,13 +920,20 @@ function ArticleEditor({ articleId, userId, onBack }: { articleId: string; userI
                 redirect: current.redirect,
                 categories: current.categories,
                 createdBy: userId,
-                published: false, // Always create as unpublished
                 slug: null, // Will be generated from title
-                publishedAt: null,
                 blogId: current.blogId,
+                activeRevisionId: null, // Will be set after revision creation
             }
             
-            return db.articles.create(duplicateData, currentTeam?.$id)
+            const article = await db.articles.create(duplicateData, currentTeam?.$id)
+            
+            // Create initial revision
+            const revision = await createInitialRevision(article, currentTeam?.$id)
+            
+            // Update article with revision ID
+            await db.articles.update(article.$id, { activeRevisionId: revision.$id })
+            
+            return article
         },
         onSuccess: (newArticle) => {
             qc.invalidateQueries({ queryKey: ['articles', userId, currentBlog?.$id] })
@@ -910,39 +954,6 @@ function ArticleEditor({ articleId, userId, onBack }: { articleId: string; userI
         },
     })
 
-    const createSection = (type: string) => {
-        const newSection = {
-            id: Date.now().toString(),
-            type,
-            position: (localSections?.length ?? 0),
-            content: '',
-            title: '',
-            speaker: null,
-        }
-        const updatedSections = [...localSections, newSection]
-        setLocalSections(updatedSections)
-        // Focus the first input after the component re-renders
-        focusTargetRef.current = { id: newSection.id, type: String(type) }
-    }
-
-    const updateSection = useCallback((id: string, data: any) => {
-        setLocalSections(prev => prev.map(section => 
-            section.id === id ? { ...section, ...data } : section
-        ))
-    }, [])
-
-    // Memoized onLocalChange handler for each section
-    const onLocalChangeHandlers = useMemo(() => {
-        const handlers: Record<string, (patch: any) => void> = {}
-        localSections.forEach(section => {
-            handlers[section.id] = (patch: any) => updateSection(section.id, patch)
-        })
-        return handlers
-    }, [localSections, updateSection])
-
-    const deleteSection = (id: string) => {
-        setLocalSections(prev => prev.filter(section => section.id !== id))
-    }
 
     // Function to count words, characters, and assets from sections
     const getContentStats = () => {
@@ -996,7 +1007,7 @@ function ArticleEditor({ articleId, userId, onBack }: { articleId: string; userI
     useEffect(() => {
         const target = focusTargetRef.current
         if (!target) return
-        const inputId = firstInputIdFor(target.type, target.id)
+        const inputId = firstInputIdFor(target.type)
         // try immediately and on next frame for safety
         const tryFocus = () => {
             const el = document.getElementById(inputId) as HTMLInputElement | HTMLTextAreaElement | null
@@ -1043,11 +1054,6 @@ function ArticleEditor({ articleId, userId, onBack }: { articleId: string; userI
         e.stopPropagation()
         setOverInfo({ id: 'bottom', where: 'below' })
         e.dataTransfer.dropEffect = 'move'
-    }
-
-    const persistOrder = (next: any[]) => {
-        const updatedSections = next.map((s, i) => ({ ...s, position: i }))
-        setLocalSections(updatedSections)
     }
 
     const onDropRow = (targetId: string, e: React.DragEvent) => {
@@ -1098,27 +1104,283 @@ function ArticleEditor({ articleId, userId, onBack }: { articleId: string; userI
     const [redirect, setRedirect] = useState('')
     const [authors, setAuthors] = useState<string[]>([])
     const [categories, setCategories] = useState<string[]>([])
+    const [status, setStatus] = useState('unpublished')
     const [saving, setSaving] = useState(false)
+    const [showDebug, setShowDebug] = useState(false)
+    const [bannerWasVisible, setBannerWasVisible] = useState(false)
+    const [isInitialLoad, setIsInitialLoad] = useState(true)
+    const [hasUserInteracted, setHasUserInteracted] = useState(false)
+    const [isDataLoaded, setIsDataLoaded] = useState(false)
+    const [isFullyLoaded, setIsFullyLoaded] = useState(false)
+    const [initialSections, setInitialSections] = useState<any[]>([])
+    const [autoSaveEvents, setAutoSaveEvents] = useState<Array<{
+        id: string
+        timestamp: Date
+        trigger: string
+        reason: string
+        data?: any
+    }>>([])
+
+    // Section management functions
+    const createSection = (type: string) => {
+        const newSection = {
+            id: Date.now().toString(),
+            type,
+            position: (localSections?.length ?? 0),
+            content: '',
+            title: '',
+            speaker: null,
+        }
+        const updatedSections = [...localSections, newSection]
+        setLocalSections(updatedSections)
+        // Only set hasUserInteracted if we're not in initial load
+        if (isFullyLoaded) {
+            console.log('Section added, setting hasUserInteracted to true')
+            setHasUserInteracted(true)
+        } else {
+            console.log('Section added during initial load, not setting hasUserInteracted')
+        }
+        // Focus the first input after the component re-renders
+        focusTargetRef.current = { id: newSection.id, type: String(type) }
+    }
+
+    const updateSection = useCallback((id: string, data: any) => {
+        setLocalSections(prev => prev.map(section => 
+            section.id === id ? { ...section, ...data } : section
+        ))
+        // Only set hasUserInteracted if we're not in initial load
+        if (isFullyLoaded) {
+            setHasUserInteracted(true)
+        }
+    }, [isFullyLoaded])
+
+    // Create onLocalChange handler that doesn't depend on localSections
+    const createOnLocalChangeHandler = useCallback((sectionId: string) => {
+        return (patch: any) => updateSection(sectionId, patch)
+    }, [updateSection])
+
+
+    const deleteSection = (id: string) => {
+        setLocalSections(prev => prev.filter(section => section.id !== id))
+        // Only set hasUserInteracted if we're not in initial load
+        if (isFullyLoaded) {
+            setHasUserInteracted(true)
+        }
+    }
+
+    const persistOrder = (next: any[]) => {
+        const updatedSections = next.map((s, i) => ({ ...s, position: i }))
+        setLocalSections(updatedSections)
+        // Only set hasUserInteracted if we're not in initial load
+        if (isFullyLoaded) {
+            setHasUserInteracted(true)
+        }
+    }
+
+    // Auto-save functionality with optimized debounce for faster response
+    const { isAutoSaving, lastSaved, hasUnsavedChanges, showSaved, triggerAutoSave } = useAutoSave({
+        articleId,
+        article,
+        teamId: currentTeam?.$id,
+        userId,
+        debounceMs: 1000 // Reduced to 1 second for faster auto-save
+    })
+    
+    // Use ref to avoid dependency issues
+    const triggerAutoSaveRef = useRef(triggerAutoSave)
+    triggerAutoSaveRef.current = triggerAutoSave
+    
+    // Ref to prevent auto-save during initial data loading
+    const isInitialLoadRef = useRef(true)
+    
+    // Ref to track last saved form data to prevent unnecessary auto-saves
+    const lastSavedFormDataRef = useRef<string | null>(null)
+    
+    // Ref for auto-save debounce timeout
+    const autoSaveTimeoutRef = useRef<NodeJS.Timeout | null>(null)
+
+    // Function to log auto-save events
+    const logAutoSaveEvent = (trigger: string, reason: string, data?: any) => {
+        const event = {
+            id: Math.random().toString(36).substr(2, 9),
+            timestamp: new Date(),
+            trigger,
+            reason,
+            data
+        }
+        setAutoSaveEvents(prev => [event, ...prev].slice(0, 50)) // Keep last 50 events
+    }
+
+    const handleStatusChange = useCallback((newStatus: string) => {
+        setStatus(newStatus)
+        setHasUserInteracted(true)
+    }, [])
+
+    // Wrapper functions to track user interaction
+    const handleTrailerChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+        setTrailer(e.target.value)
+        setHasUserInteracted(true)
+    }, [])
+
+    const handleTitleChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+        setTitle(e.target.value)
+        setHasUserInteracted(true)
+    }, [])
+
+    const handleSubtitleChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+        setExcerpt(e.target.value)
+        setHasUserInteracted(true)
+    }, [])
+
+    const handleLiveChange = useCallback((checked: boolean) => {
+        setLive(checked)
+        setHasUserInteracted(true)
+    }, [])
+
+    const handleRedirectChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+        setRedirect(e.target.value)
+        setHasUserInteracted(true)
+    }, [])
+
+    const handleAuthorsChange = useCallback((authors: string[]) => {
+        setAuthors(authors)
+        setHasUserInteracted(true)
+    }, [])
+
+    const handleCategoriesChange = useCallback((categories: string[]) => {
+        setCategories(categories)
+        setHasUserInteracted(true)
+    }, [])
+
+    // Memoized selectors to prevent unnecessary re-renders during auto-save
+    const memoizedAuthorSelector = useMemo(() => (
+        <AuthorSelector 
+            selectedAuthorIds={authors}
+            onAuthorsChange={handleAuthorsChange}
+            userId={userId}
+        />
+    ), [authors, handleAuthorsChange, userId])
+
+    const memoizedCategorySelector = useMemo(() => (
+        <CategorySelector 
+            selectedCategoryIds={categories}
+            onCategoriesChange={handleCategoriesChange}
+            userId={userId}
+        />
+    ), [categories, handleCategoriesChange, userId])
+
+    // Track when banner becomes visible to prevent hiding during save
+    useEffect(() => {
+        if (hasUnpublishedChanges && !saving) {
+            setBannerWasVisible(true)
+        } else if (!hasUnpublishedChanges && !saving) {
+            setBannerWasVisible(false)
+        }
+    }, [hasUnpublishedChanges, saving])
 
     useEffect(() => {
-        if (article) {
-            setTrailer(article.trailer ?? '')
-            setTitle(article.title ?? '')
-            setExcerpt(article.subtitle ?? '')
-            setLive(article.live ?? false)
-            setRedirect(article.redirect ?? '')
-            setAuthors(article.authors ?? [])
-            setCategories(article.categories ?? [])
+        if (latestFormData) {
+            setTrailer(latestFormData.trailer ?? '')
+            setTitle(latestFormData.title ?? '')
+            setExcerpt(latestFormData.subtitle ?? '')
+            setLive(latestFormData.live ?? false)
+            setRedirect(latestFormData.redirect ?? '')
+            setAuthors(latestFormData.authors ?? [])
+            setCategories(latestFormData.categories ?? [])
+            setStatus(latestFormData.status ?? 'unpublished')
         }
-    }, [article])
+    }, [latestFormData?.$id, latestFormData?.$updatedAt]) // Only update when the data actually changes
+
+    // Auto-save when form data changes (only after user interaction and fully loaded)
+    useEffect(() => {
+        if (hasUserInteracted && article && isFullyLoaded && !isInitialLoadRef.current) {
+            // Check if sections have actually changed from initial state
+            const sectionsChanged = JSON.stringify(localSections) !== JSON.stringify(initialSections)
+            
+            // Only trigger auto-save if there are actual changes
+            const hasFormChanges = (title || trailer || subtitle || live || redirect || authors.length > 0 || categories.length > 0)
+            
+            if (hasFormChanges || sectionsChanged) {
+                const formData = {
+                    trailer,
+                    title,
+                    slug: title ? slugify(title) : '',
+                    subtitle,
+                    live,
+                    redirect,
+                    authors,
+                    categories,
+                    body: JSON.stringify(localSections),
+                    status,
+                    pinned: article.pinned || false,
+                    images: article.images || null,
+                    blogId: article.blogId || null,
+                    createdBy: article.createdBy || userId,
+                }
+                
+                // Check if form data has actually changed from last saved
+                const currentFormDataString = JSON.stringify(formData)
+                if (lastSavedFormDataRef.current !== currentFormDataString) {
+                    // Clear existing timeout
+                    if (autoSaveTimeoutRef.current) {
+                        clearTimeout(autoSaveTimeoutRef.current)
+                    }
+                    
+                    // Set new timeout for debounced auto-save
+                    autoSaveTimeoutRef.current = setTimeout(() => {
+                        lastSavedFormDataRef.current = currentFormDataString
+                        triggerAutoSaveRef.current(formData)
+                    }, 300) // 300ms debounce for very fast response
+                }
+            }
+        }
+    }, [hasUserInteracted, trailer, title, subtitle, live, redirect, authors, categories, status, article, userId, isFullyLoaded, localSections, initialSections])
+
+    // Set fully loaded state after all data is loaded and settled
+    useEffect(() => {
+        if (isDataLoaded && latestFormData) {
+            // Add a small delay to ensure all data is settled
+            const timer = setTimeout(() => {
+                setIsFullyLoaded(true)
+                // Mark initial load as complete to enable auto-save
+                isInitialLoadRef.current = false
+            }, 200) // Reduced delay for faster auto-save activation
+            return () => clearTimeout(timer)
+        }
+    }, [isDataLoaded, latestFormData])
 
     // Set document title based on article title
     useDocumentTitle(title || 'Editor')
+    
+    // Cleanup timeout on unmount
+    useEffect(() => {
+        return () => {
+            if (autoSaveTimeoutRef.current) {
+                clearTimeout(autoSaveTimeoutRef.current)
+            }
+        }
+    }, [])
 
-    const handleMainSave = async () => {
+    // Debug mode toggle with Cmd+. or Ctrl+.
+    useEffect(() => {
+        const handleKeyDown = (e: KeyboardEvent) => {
+            if ((e.metaKey || e.ctrlKey) && e.key === '.') {
+                e.preventDefault()
+                setShowDebug(prev => !prev)
+            }
+        }
+
+        window.addEventListener('keydown', handleKeyDown)
+        return () => window.removeEventListener('keydown', handleKeyDown)
+    }, [])
+
+
+    const handleDeploy = async () => {
         try {
             setSaving(true)
-            await updateArticle.mutateAsync({ 
+            
+            // First, save current changes as a revision
+            const currentFormData = {
                 trailer,
                 title, 
                 slug: slugify(title), 
@@ -1127,13 +1389,59 @@ function ArticleEditor({ articleId, userId, onBack }: { articleId: string; userI
                 redirect,
                 authors,
                 categories,
-                body: JSON.stringify(localSections)
-            })
-
-            toast({ title: 'Saved' })
-            qc.invalidateQueries({ queryKey: ['article', articleId] })
+                body: JSON.stringify(localSections),
+                status: status,
+                pinned: article?.pinned || false,
+                images: article?.images || null,
+                blogId: article?.blogId || null,
+                createdBy: article?.createdBy || userId,
+            }
+            
+            // Create revision with deployed data
+            const revision = await createUpdateRevision(
+                articleId, 
+                article!, 
+                currentFormData as Articles, 
+                currentTeam?.$id
+            )
+            
+            if (revision) {
+                // Update the article with the latest revision data AND set as deployed
+                await updateArticle.mutateAsync({ 
+                    trailer,
+                    title, 
+                    slug: slugify(title), 
+                    subtitle,
+                    live,
+                    redirect,
+                    authors,
+                    categories,
+                    body: JSON.stringify(localSections),
+                    status: status,
+                    activeRevisionId: revision.$id
+                })
+                
+                // Mark the revision as deployed
+                await db.revisions.update(revision.$id, { 
+                    status: 'published'
+                })
+                
+                // Invalidate queries to refresh the data
+                qc.invalidateQueries({ queryKey: ['article', articleId] })
+                qc.invalidateQueries({ queryKey: ['latest-revision', articleId] })
+                qc.invalidateQueries({ queryKey: ['revisions', articleId] })
+                
+                toast({ title: 'Article deployed successfully' })
+            } else {
+                toast({ title: 'No changes to deploy' })
+            }
         } catch (e) {
-            toast({ title: 'Failed to save changes' })
+            console.error('Deploy error:', e)
+            toast({ 
+                title: 'Failed to deploy article', 
+                description: e instanceof Error ? e.message : 'Unknown error',
+                variant: 'destructive'
+            })
         } finally {
             setSaving(false)
         }
@@ -1252,12 +1560,180 @@ function ArticleEditor({ articleId, userId, onBack }: { articleId: string; userI
             <div className="flex justify-center px-6 py-6 pb-24 ml-0 md:ml-[18rem] lg:ml-[20rem] xl:ml-[24rem]">
                 <div className="w-full max-w-3xl space-y-8">
 
+                {/* Debug panel */}
+                {showDebug && (
+                    <div className="mb-6 p-4 bg-gray-100 dark:bg-gray-800 rounded-lg border">
+                        <div className="flex items-center justify-between mb-3">
+                            <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-300">Debug Information</h3>
+                            <button 
+                                onClick={() => setShowDebug(false)}
+                                className="text-xs text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
+                            >
+                                Close
+                            </button>
+                        </div>
+                        <div className="space-y-3 text-xs">
+                            <div>
+                                <strong>Article:</strong>
+                                <div className="ml-2 text-gray-600 dark:text-gray-400">
+                                    <div>ID: {article?.$id}</div>
+                                    <div>Updated: {article?.$updatedAt}</div>
+                                    <div>Status: {article?.status || 'Unknown'}</div>
+                                    <div>Active Revision ID: {article?.activeRevisionId || 'None'}</div>
+                                </div>
+                            </div>
+                            <div>
+                                <strong>Latest Revision:</strong>
+                                <div className="ml-2 text-gray-600 dark:text-gray-400">
+                                    <div>ID: {latestRevision?.$id || 'None'}</div>
+                                    <div>Updated: {latestRevision?.$updatedAt || 'None'}</div>
+                                    <div>Version: {latestRevision?.version || 'None'}</div>
+                                    <div>Status: {latestRevision?.status || 'Unknown'}</div>
+                                </div>
+                            </div>
+                            <div>
+                                <strong>Comparison:</strong>
+                                <div className="ml-2 text-gray-600 dark:text-gray-400">
+                                    <div>Has Unpublished Changes: {hasUnpublishedChanges ? 'Yes' : 'No'}</div>
+                                    <div className="mt-2">
+                                        <div className="font-medium mb-1">Revision ID Comparison:</div>
+                                        <div className="space-y-1">
+                                            <div className={`flex items-center gap-2 ${
+                                                article?.activeRevisionId === latestRevision?.$id 
+                                                    ? 'text-green-600 dark:text-green-400 font-semibold' 
+                                                    : 'text-orange-600 dark:text-orange-400 font-semibold'
+                                            }`}>
+                                                <span>Article Active Revision:</span>
+                                                <span className="font-mono text-xs">{article?.activeRevisionId || 'None'}</span>
+                                                {article?.activeRevisionId === latestRevision?.$id && (
+                                                    <span className="text-xs bg-green-100 dark:bg-green-900 px-1 rounded">CURRENT</span>
+                                                )}
+                                                {article?.activeRevisionId && latestRevision?.$id && article?.activeRevisionId !== latestRevision?.$id && (
+                                                    <span className="text-xs bg-orange-100 dark:bg-orange-900 px-1 rounded">OUTDATED</span>
+                                                )}
+                                            </div>
+                                            <div className="flex items-center gap-2 text-gray-600 dark:text-gray-400">
+                                                <span>Latest Revision:</span>
+                                                <span className="font-mono text-xs">{latestRevision?.$id || 'None'}</span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    {article && latestRevision && (
+                                        <div className="space-y-1">
+                                            <div className={`flex items-center gap-2 ${
+                                                new Date(article.$updatedAt) > new Date(latestRevision.$updatedAt) 
+                                                    ? 'text-green-600 dark:text-green-400 font-semibold' 
+                                                    : new Date(article.$updatedAt).getTime() === new Date(latestRevision.$updatedAt).getTime()
+                                                    ? 'text-blue-600 dark:text-blue-400 font-semibold'
+                                                    : 'text-gray-600 dark:text-gray-400'
+                                            }`}>
+                                                <span>Article Time:</span>
+                                                <span>{new Date(article.$updatedAt).toLocaleString(undefined, { 
+                                                    year: 'numeric', 
+                                                    month: '2-digit', 
+                                                    day: '2-digit', 
+                                                    hour: '2-digit', 
+                                                    minute: '2-digit', 
+                                                    second: '2-digit',
+                                                    hour12: false 
+                                                })}.{new Date(article.$updatedAt).getMilliseconds().toString().padStart(3, '0')}</span>
+                                                {new Date(article.$updatedAt) > new Date(latestRevision.$updatedAt) && (
+                                                    <span className="text-xs bg-green-100 dark:bg-green-900 px-1 rounded">NEWER</span>
+                                                )}
+                                                {new Date(article.$updatedAt).getTime() === new Date(latestRevision.$updatedAt).getTime() && (
+                                                    <span className="text-xs bg-blue-100 dark:bg-blue-900 px-1 rounded">SAME</span>
+                                                )}
+                                            </div>
+                                            <div className={`flex items-center gap-2 ${
+                                                new Date(latestRevision.$updatedAt) > new Date(article.$updatedAt) 
+                                                    ? 'text-green-600 dark:text-green-400 font-semibold' 
+                                                    : new Date(article.$updatedAt).getTime() === new Date(latestRevision.$updatedAt).getTime()
+                                                    ? 'text-blue-600 dark:text-blue-400 font-semibold'
+                                                    : 'text-gray-600 dark:text-gray-400'
+                                            }`}>
+                                                <span>Revision Time:</span>
+                                                <span>{new Date(latestRevision.$updatedAt).toLocaleString(undefined, { 
+                                                    year: 'numeric', 
+                                                    month: '2-digit', 
+                                                    day: '2-digit', 
+                                                    hour: '2-digit', 
+                                                    minute: '2-digit', 
+                                                    second: '2-digit',
+                                                    hour12: false 
+                                                })}.{new Date(latestRevision.$updatedAt).getMilliseconds().toString().padStart(3, '0')}</span>
+                                                {new Date(latestRevision.$updatedAt) > new Date(article.$updatedAt) && (
+                                                    <span className="text-xs bg-green-100 dark:bg-green-900 px-1 rounded">NEWER</span>
+                                                )}
+                                                {new Date(article.$updatedAt).getTime() === new Date(latestRevision.$updatedAt).getTime() && (
+                                                    <span className="text-xs bg-blue-100 dark:bg-blue-900 px-1 rounded">SAME</span>
+                                                )}
+                                            </div>
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
+                            <div>
+                                <strong>Auto-Save Events:</strong>
+                                <div className="ml-2 text-gray-600 dark:text-gray-400">
+                                    <div className="max-h-40 overflow-y-auto border rounded p-2 bg-white dark:bg-gray-900">
+                                        {autoSaveEvents.length === 0 ? (
+                                            <div className="text-gray-500 dark:text-gray-400 italic">No auto-save events yet</div>
+                                        ) : (
+                                            <div className="space-y-2">
+                                                {autoSaveEvents.map((event) => (
+                                                    <div key={event.id} className="text-xs border-b border-gray-200 dark:border-gray-700 pb-2 last:border-b-0">
+                                                        <div className="flex items-center justify-between">
+                                                            <span className="font-medium text-blue-600 dark:text-blue-400">
+                                                                {event.trigger}
+                                                            </span>
+                                                            <span className="text-gray-500 dark:text-gray-400">
+                                                                {event.timestamp.toLocaleTimeString()}
+                                                            </span>
+                                                        </div>
+                                                        <div className="text-gray-600 dark:text-gray-400 mt-1">
+                                                            {event.reason}
+                                                        </div>
+                                                        {event.data && (
+                                                            <div className="mt-1 text-gray-500 dark:text-gray-400">
+                                                                <details className="cursor-pointer">
+                                                                    <summary className="hover:text-gray-700 dark:hover:text-gray-300">
+                                                                        Details
+                                                                    </summary>
+                                                                    <pre className="mt-1 text-xs bg-gray-50 dark:bg-gray-800 p-2 rounded overflow-x-auto">
+                                                                        {JSON.stringify(event.data, null, 2)}
+                                                                    </pre>
+                                                                </details>
+                                                            </div>
+                                                        )}
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        )}
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                )}
+
+                {/* Unpublished changes banner */}
+                <div className={`mb-6 transition-all duration-500 ease-out ${
+                    ((hasUnpublishedChanges && !saving) || (bannerWasVisible && saving)) 
+                        ? 'opacity-100 translate-y-0' 
+                        : 'opacity-0 -translate-y-2 h-0 mb-0 overflow-hidden'
+                }`}>
+                    <UnpublishedChangesBanner 
+                        onSave={handleDeploy}
+                        isSaving={saving}
+                    />
+                </div>
+
                 {/* Article meta form */}
                 <section className="space-y-4">
                     <div>
                         <Label htmlFor="trailer">Trailer</Label>
                         {hideComments ? (
-                            <Input id="trailer" value={trailer} onChange={(e) => setTrailer(e.target.value)} placeholder="Breaking news, Exclusive..." />
+                            <Input id="trailer" value={trailer} onChange={handleTrailerChange} placeholder="Breaking news, Exclusive..." />
                         ) : (
                             <CommentableInput
                                 articleId={articleId}
@@ -1266,7 +1742,7 @@ function ArticleEditor({ articleId, userId, onBack }: { articleId: string; userI
                                 commentCount={getCommentCount('trailer').count}
                                 hasNewComments={getCommentCount('trailer').hasNewComments}
                             >
-                                <Input id="trailer" value={trailer} onChange={(e) => setTrailer(e.target.value)} placeholder="Breaking news, Exclusive..." />
+                                <Input id="trailer" value={trailer} onChange={handleTrailerChange} placeholder="Breaking news, Exclusive..." />
                             </CommentableInput>
                         )}
                     </div>
@@ -1277,7 +1753,7 @@ function ArticleEditor({ articleId, userId, onBack }: { articleId: string; userI
                                 <Input 
                                     id="title" 
                                     value={title} 
-                                    onChange={(e) => setTitle(e.target.value)} 
+                                    onChange={handleTitleChange} 
                                     placeholder="Article title" 
                                     className="pr-20" 
                                 />
@@ -1292,14 +1768,14 @@ function ArticleEditor({ articleId, userId, onBack }: { articleId: string; userI
                                     <Input 
                                         id="title" 
                                         value={title} 
-                                        onChange={(e) => setTitle(e.target.value)} 
+                                        onChange={handleTitleChange} 
                                         placeholder="Article title" 
                                         className="pr-20" 
                                     />
                                 </CommentableInput>
                             )}
                             <div className="absolute right-3 mr-2 top-1/2 -translate-y-1/2 flex items-center space-x-2">
-                                <Checkbox id="live" checked={live} onCheckedChange={(checked) => setLive(checked === true)} />
+                                <Checkbox id="live" checked={live} onCheckedChange={(checked) => handleLiveChange(checked === true)} />
                                 <Label htmlFor="live" className="text-xs text-muted-foreground inline-label">Live</Label>
                             </div>
                         </div>
@@ -1307,7 +1783,7 @@ function ArticleEditor({ articleId, userId, onBack }: { articleId: string; userI
                     <div>
                         <Label htmlFor="subtitle">Subtitle</Label>
                         {hideComments ? (
-                            <Input id="subtitle" value={subtitle} onChange={(e) => setExcerpt(e.target.value)} placeholder="Short summary (optional)" />
+                            <Input id="subtitle" value={subtitle} onChange={handleSubtitleChange} placeholder="Short summary (optional)" />
                         ) : (
                             <CommentableInput
                                 articleId={articleId}
@@ -1316,23 +1792,64 @@ function ArticleEditor({ articleId, userId, onBack }: { articleId: string; userI
                                 commentCount={getCommentCount('subtitle').count}
                                 hasNewComments={getCommentCount('subtitle').hasNewComments}
                             >
-                                <Input id="subtitle" value={subtitle} onChange={(e) => setExcerpt(e.target.value)} placeholder="Short summary (optional)" />
+                                <Input id="subtitle" value={subtitle} onChange={handleSubtitleChange} placeholder="Short summary (optional)" />
                             </CommentableInput>
                         )}
                     </div>
                     <div>
-                        <AuthorSelector 
-                            selectedAuthorIds={authors}
-                            onAuthorsChange={setAuthors}
-                            userId={userId}
-                        />
+                        <Label htmlFor="status">Status</Label>
+                        <Select value={status} onValueChange={handleStatusChange}>
+                            <SelectTrigger>
+                                <div className="flex items-center gap-2">
+                                    <div className={`w-3 h-3 rounded-full ${
+                                        status === 'unpublished' ? 'bg-gray-400' :
+                                        status === 'published' ? 'bg-green-500' :
+                                        status === 'draft' ? 'bg-blue-500' :
+                                        status === 'archived' ? 'bg-orange-500' :
+                                        'bg-gray-300'
+                                    }`} />
+                                    <span className="text-sm">
+                                        {status === 'unpublished' ? 'Unpublished' :
+                                         status === 'published' ? 'Deployed' :
+                                         status === 'draft' ? 'Draft' :
+                                         status === 'archived' ? 'Archived' :
+                                         'Select status'}
+                                    </span>
+                                </div>
+                            </SelectTrigger>
+                            <SelectContent>
+                                <SelectItem value="unpublished">
+                                    <div className="flex items-center gap-2">
+                                        <div className="w-3 h-3 rounded-full bg-gray-400" />
+                                        <span>Unpublished</span>
+                                    </div>
+                                </SelectItem>
+                                <SelectItem value="published">
+                                    <div className="flex items-center gap-2">
+                                        <div className="w-3 h-3 rounded-full bg-green-500" />
+                                        <span>Deployed</span>
+                                    </div>
+                                </SelectItem>
+                                <SelectItem value="draft">
+                                    <div className="flex items-center gap-2">
+                                        <div className="w-3 h-3 rounded-full bg-blue-500" />
+                                        <span>Draft</span>
+                                    </div>
+                                </SelectItem>
+                                <SelectItem value="archived">
+                                    <div className="flex items-center gap-2">
+                                        <div className="w-3 h-3 rounded-full bg-orange-500" />
+                                        <span>Archived</span>
+                                    </div>
+                                </SelectItem>
+                            </SelectContent>
+                        </Select>
                     </div>
-                    <div>
-                        <CategorySelector 
-                            selectedCategoryIds={categories}
-                            onCategoriesChange={setCategories}
-                            userId={userId}
-                        />
+                    <div className="mt-6">
+                        {memoizedAuthorSelector}
+                    </div>
+                    <div className="mt-6">
+                        {memoizedCategorySelector}
                     </div>
                 </section>
 
@@ -1424,7 +1941,7 @@ function ArticleEditor({ articleId, userId, onBack }: { articleId: string; userI
                                                         <div className="w-full min-w-0">
                                                             <SectionEditor
                                                                 section={s}
-                                                                onLocalChange={onLocalChangeHandlers[s.id]}
+                                                                onLocalChange={createOnLocalChangeHandler(s.id)}
                                                                 isDragging={!!draggingId}
                                                                 userId={userId}
                                                             />
@@ -1505,7 +2022,7 @@ function ArticleEditor({ articleId, userId, onBack }: { articleId: string; userI
                     <div>
                         <Label htmlFor="redirect">Redirect URL</Label>
                         {hideComments ? (
-                            <Input id="redirect" value={redirect} onChange={(e) => setRedirect(e.target.value)} placeholder="Redirect URL (optional)" />
+                            <Input id="redirect" value={redirect} onChange={handleRedirectChange} placeholder="Redirect URL (optional)" />
                         ) : (
                             <CommentableInput
                                 articleId={articleId}
@@ -1514,7 +2031,7 @@ function ArticleEditor({ articleId, userId, onBack }: { articleId: string; userI
                                 commentCount={getCommentCount('redirect').count}
                                 hasNewComments={getCommentCount('redirect').hasNewComments}
                             >
-                                <Input id="redirect" value={redirect} onChange={(e) => setRedirect(e.target.value)} placeholder="Redirect URL (optional)" />
+                                <Input id="redirect" value={redirect} onChange={handleRedirectChange} placeholder="Redirect URL (optional)" />
                             </CommentableInput>
                         )}
                     </div>
@@ -1525,24 +2042,55 @@ function ArticleEditor({ articleId, userId, onBack }: { articleId: string; userI
                 <div className="fixed bottom-0 inset-x-0 md:left-[18rem] md:right-0 lg:left-[20rem] lg:right-0 xl:left-[24rem] xl:right-0 z-20 border-t bg-background/90 backdrop-blur supports-[backdrop-filter]:bg-background/70">
                     <div className="px-6 py-3 flex items-center justify-between max-w-6xl mx-auto">
                         <div className="text-xs text-muted-foreground flex items-center gap-2">
-                            {article.published ? <span className="text-green-600">Published</span> : <span className="text-amber-600">Draft</span>}
-                            {article.publishedAt && <span>• {formatDateForDisplay(article.publishedAt)}</span>}
+                            <RevisionPopover 
+                                articleId={articleId}
+                                currentRevisionId={latestFormData?.activeRevisionId}
+                                currentRevisionVersion={latestRevision?.version}
+                                onDeleteRevision={async (revisionId) => {
+                                    try {
+                                        await db.revisions.delete(revisionId)
+                                        qc.invalidateQueries({ queryKey: ['revisions', articleId] })
+                                        qc.invalidateQueries({ queryKey: ['latest-revision', articleId] })
+                                        toast({ title: 'Revision deleted' })
+                                    } catch (error) {
+                                        toast({ 
+                                            title: 'Failed to delete revision', 
+                                            description: error instanceof Error ? error.message : 'Unknown error',
+                                            variant: 'destructive'
+                                        })
+                                    }
+                                }}
+                            />
+                            <div className={`flex items-center gap-1.5 transition-all duration-500 ease-in-out ${
+                                isAutoSaving || hasUnsavedChanges || showSaved ? 'opacity-100 animate-in fade-in' : 'opacity-0 animate-out fade-out'
+                            }`}>
+                                {isAutoSaving ? (
+                                    <div className="flex items-center gap-1.5 animate-in fade-in duration-300">
+                                        <Loader2 className="h-3 w-3 animate-spin text-muted-foreground" />
+                                        <span className="text-xs text-muted-foreground">Saving...</span>
+                                    </div>
+                                ) : hasUnsavedChanges ? (
+                                    <div className="flex items-center gap-1.5 animate-in fade-in duration-300">
+                                        <div className="w-1.5 h-1.5 bg-amber-400 rounded-full animate-pulse" />
+                                        <span className="text-xs text-muted-foreground">Unsaved changes</span>
+                                    </div>
+                                ) : showSaved ? (
+                                    <div className="flex items-center gap-1.5 animate-in fade-in duration-500">
+                                        <div className="w-1.5 h-1.5 bg-emerald-400 rounded-full" />
+                                        <span className="text-xs text-muted-foreground">Saved {lastSaved ? formatDateRelative(lastSaved) : ''}</span>
+                                    </div>
+                                ) : null}
+                            </div>
                         </div>
                         <div className="flex items-center gap-2">
                             <Button
-                                variant="secondary"
-                                className="whitespace-nowrap cursor-pointer"
-                                onClick={() => updateArticle.mutate({ published: !article.published, publishedAt: !article.published ? new Date().toISOString() : null })}
+                                variant="default"
+                                size="lg"
+                                className="whitespace-nowrap cursor-pointer bg-black hover:bg-gray-800 text-white font-semibold px-6 py-2.5 shadow-lg hover:shadow-xl transition-all duration-200 dark:bg-white dark:text-black dark:hover:bg-gray-200"
+                                onClick={handleDeploy}
+                                disabled={saving}
                             >
-                                {article.published ? 'Unpublish' : 'Publish'}
-                            </Button>
-                            <Button onClick={handleMainSave} disabled={saving}>
-                                {saving ? (
-                                    <Loader2 className="h-4 w-4 mr-1 animate-spin" />
-                                ) : (
-                                    <Save className="h-4 w-4 mr-1" />
-                                )}
-                                Save
+                                {saving ? 'Deploying...' : 'Deploy'}
                             </Button>
                         </div>
                     </div>
@@ -1616,11 +2164,17 @@ function SectionEditor({ section, onLocalChange, isDragging = false, userId }: {
     return <span className="text-sm text-muted-foreground">Unsupported section</span>
 }
 
-function TitleEditor({ section, onLocalChange }: { section: any; onLocalChange: (data: Partial<any>) => void }) {
+const TitleEditor = memo(({ section, onLocalChange }: { section: any; onLocalChange: (data: Partial<any>) => void }) => {
     const [value, setValue] = useState(section.content ?? '')
+    const onLocalChangeRef = useRef(onLocalChange)
+    onLocalChangeRef.current = onLocalChange
+
+    const handleChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+        setValue(e.target.value)
+    }, [])
 
     useEffect(() => {
-        onLocalChange({ content: value, type: 'title' })
+        onLocalChangeRef.current({ content: value, type: 'title' })
     }, [value])
 
     return (
@@ -1629,19 +2183,29 @@ function TitleEditor({ section, onLocalChange }: { section: any; onLocalChange: 
             <Input
                 id={`title-${section.id}`}
                 value={value}
-                onChange={(e) => setValue(e.target.value)}
+                onChange={handleChange}
                 placeholder="Section title"
             />
         </div>
     )
-}
+})
 
-function QuoteEditor({ section, onLocalChange }: { section: any; onLocalChange: (data: Partial<any>) => void }) {
+const QuoteEditor = memo(({ section, onLocalChange }: { section: any; onLocalChange: (data: Partial<any>) => void }) => {
     const [quote, setQuote] = useState(section.content ?? '')
     const [speaker, setSpeaker] = useState(section.speaker ?? '')
+    const onLocalChangeRef = useRef(onLocalChange)
+    onLocalChangeRef.current = onLocalChange
+
+    const handleQuoteChange = useCallback((e: React.ChangeEvent<HTMLTextAreaElement>) => {
+        setQuote(e.target.value)
+    }, [])
+
+    const handleSpeakerChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+        setSpeaker(e.target.value)
+    }, [])
 
     useEffect(() => {
-        onLocalChange({ content: quote, speaker, type: 'quote' })
+        onLocalChangeRef.current({ content: quote, speaker, type: 'quote' })
     }, [quote, speaker])
 
     return (
@@ -1651,7 +2215,7 @@ function QuoteEditor({ section, onLocalChange }: { section: any; onLocalChange: 
                 <Textarea 
                     id={`quote-${section.id}`} 
                     value={quote} 
-                    onChange={(e) => setQuote(e.target.value)} 
+                    onChange={handleQuoteChange} 
                     placeholder="Add a memorable line…" 
                     rows={2}
                     className="w-full min-w-0"
@@ -1663,7 +2227,7 @@ function QuoteEditor({ section, onLocalChange }: { section: any; onLocalChange: 
                 <Input 
                     id={`speaker-${section.id}`} 
                     value={speaker} 
-                    onChange={(e) => setSpeaker(e.target.value)} 
+                    onChange={handleSpeakerChange} 
                     placeholder="Who said it?"
                     className="w-full min-w-0"
                     style={{ width: '100%', maxWidth: '100%' }}
@@ -1671,11 +2235,13 @@ function QuoteEditor({ section, onLocalChange }: { section: any; onLocalChange: 
             </div>
         </div>
     )
-}
+})
 
-function TextEditor({ section, onLocalChange }: { section: any; onLocalChange: (data: Partial<any>) => void }) {
+const TextEditor = memo(({ section, onLocalChange }: { section: any; onLocalChange: (data: Partial<any>) => void }) => {
     const [value, setValue] = useState(section.content ?? '')
     const ref = useRef<HTMLTextAreaElement | null>(null)
+    const onLocalChangeRef = useRef(onLocalChange)
+    onLocalChangeRef.current = onLocalChange
 
     useEffect(() => {
         if (!ref.current) return
@@ -1684,8 +2250,12 @@ function TextEditor({ section, onLocalChange }: { section: any; onLocalChange: (
     }, [value])
 
     useEffect(() => {
-        onLocalChange({ content: value, type: 'text' })
+        onLocalChangeRef.current({ content: value, type: 'text' })
     }, [value])
+
+    const handleChange = useCallback((e: React.ChangeEvent<HTMLTextAreaElement>) => {
+        setValue(e.target.value)
+    }, [])
 
     return (
         <div className="space-y-1 w-full min-w-0">
@@ -1694,7 +2264,7 @@ function TextEditor({ section, onLocalChange }: { section: any; onLocalChange: (
                 id={`text-${section.id}`}
                 ref={ref}
                 value={value}
-                onChange={(e) => setValue(e.target.value)}
+                onChange={handleChange}
                 placeholder="Write text…"
                 rows={1}
                 className="min-h-[40px] text-sm w-full min-w-0"
@@ -1702,7 +2272,7 @@ function TextEditor({ section, onLocalChange }: { section: any; onLocalChange: (
             />
         </div>
     )
-}
+})
 
 function ImageEditor({ section, onLocalChange, userId }: { section: any; onLocalChange: (data: Partial<any>) => void; userId: string }) {
     // Convert mediaId to array format for ImageGallery, also check for imageIds
@@ -1801,9 +2371,11 @@ function MapEditor({ section, onLocalChange }: { section: any; onLocalChange: (d
     )
 }
 
-function CodeSectionEditor({ section, onLocalChange, isDragging = false }: { section: any; onLocalChange: (data: Partial<any>) => void; isDragging?: boolean }) {
+const CodeSectionEditor = memo(({ section, onLocalChange, isDragging = false }: { section: any; onLocalChange: (data: Partial<any>) => void; isDragging?: boolean }) => {
     const [code, setCode] = useState(section.content ?? '')
     const [language, setLanguage] = useState('javascript')
+    const onLocalChangeRef = useRef(onLocalChange)
+    onLocalChangeRef.current = onLocalChange
 
     // Parse language from section data
     useEffect(() => {
@@ -1822,16 +2394,16 @@ function CodeSectionEditor({ section, onLocalChange, isDragging = false }: { sec
 
     const handleCodeChange = useCallback((newCode: string) => {
         setCode(newCode)
-        onLocalChange({ content: newCode })
-    }, [onLocalChange])
+        onLocalChangeRef.current({ content: newCode })
+    }, [])
 
     const handleLanguageChange = useCallback((newLanguage: string) => {
         setLanguage(newLanguage)
         // Store language in section data for persistence
         const data = section.data ? JSON.parse(section.data) : {}
         data.language = newLanguage
-        onLocalChange({ data: JSON.stringify(data) })
-    }, [onLocalChange, section.data])
+        onLocalChangeRef.current({ data: JSON.stringify(data) })
+    }, [section.data])
 
     return (
         <div className="space-y-2">
@@ -1844,7 +2416,7 @@ function CodeSectionEditor({ section, onLocalChange, isDragging = false }: { sec
             />
         </div>
     )
-}
+})
 
 function slugify(input: string) {
     return input
@@ -1864,58 +2436,30 @@ function sanitizeSectionUpdate(data: Partial<Omit<any, keyof Models.Document>>) 
     return rest
 }
 
-function toYouTubeEmbed(url: string | null | undefined) {
-    if (!url) return null
-    try {
-        const u = new URL(url)
-        if (u.hostname.includes('youtu.be')) {
-            const id = u.pathname.split('/')[1]
-            return `https://www.youtube.com/embed/${id}`
-        }
-        if (u.hostname.includes('youtube.com')) {
-            const id = u.searchParams.get('v')
-            if (id) return `https://www.youtube.com/embed/${id}`
-        }
-    } catch { }
-    return null
-}
-
-function parseLatLng(json: string | null) {
-    try {
-        return json ? JSON.parse(json) as { lat: number; lng: number } : null
-    } catch {
-        return null
-    }
-}
-
-function toOSMEmbed(lat?: number, lng?: number) {
-    if (!lat || !lng) return ''
-    const d = 0.005
-    const left = lng - d
-    const right = lng + d
-    const top = lat + d
-    const bottom = lat - d
-    const bbox = `${left}%2C${bottom}%2C${right}%2C${top}`
-    return `https://www.openstreetmap.org/export/embed.html?bbox=${bbox}&layer=mapnik&marker=${lat}%2C${lng}`
-}
-
-function firstInputIdFor(type: string, id: string) {
+function firstInputIdFor(type: string) {
     switch (type) {
-        case 'title':
-            return `title-${id}`
-        case 'quote':
-            return `quote-${id}`
-        case 'text':
-        case 'paragraph':
-            return `text-${id}`
-        case 'video':
-            return `video-url-${id}`
-        case 'map':
-            return `lat-${id}`
-        case 'image':
-            // file input is hidden; focus caption for best UX
-            return `caption-${id}`
-        default:
-            return `text-${id}`
+        case 'title': return 'title'
+        case 'text': return 'text'
+        case 'quote': return 'quote'
+        case 'image': return 'caption'
+        case 'video': return 'url'
+        case 'map': return 'lat'
+        case 'code': return 'code'
+        default: return 'content'
     }
 }
+
+function toYouTubeEmbed(url: string) {
+    const videoId = url.match(/(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/embed\/)([^&\n?#]+)/)?.[1]
+    return videoId ? `https://www.youtube.com/embed/${videoId}` : url
+}
+
+function parseLatLng(input: string) {
+    const match = input.match(/(-?\d+\.?\d*),\s*(-?\d+\.?\d*)/)
+    return match ? { lat: parseFloat(match[1]), lng: parseFloat(match[2]) } : null
+}
+
+function toOSMEmbed(lat: number, lng: number, zoom = 15) {
+    return `https://www.openstreetmap.org/export/embed.html?bbox=${lng-0.01},${lat-0.01},${lng+0.01},${lat+0.01}&layer=mapnik&marker=${lat},${lng}`
+}
+

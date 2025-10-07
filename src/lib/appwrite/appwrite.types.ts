@@ -13,10 +13,9 @@ export type Articles = Models.Document & {
     redirect: string | null;
     categories: string[] | null;
     createdBy: string | null;
-    published: boolean;
     slug: string | null;
-    publishedAt: string | null;
     blogId: string | null;
+    activeRevisionId: string | null;
 }
 
 export type Authors = Models.Document & {
@@ -112,5 +111,16 @@ export type Messages = Models.Document & {
     metadata: string | null; // JSON string for additional data like AI model used, etc.
     tokenCount: number | null; // Number of tokens in the message
     generationTimeMs: number | null; // Time taken to generate the message in milliseconds
+}
+
+export type Revisions = Models.Document & {
+    articleId: string;
+    version: number;
+    status: string | null;
+    createdBy: string | null;
+    messageId: string | null;
+    data: string; // JSON string for full article snapshot
+    changes: string[] | null; // Array of change descriptions
+    parentRevisionId: string | null;
 }
 

@@ -9,13 +9,6 @@ import { Query } from 'appwrite';
  */
 export const byBlogId = (blogId: string) => Query.equal('blogId', blogId);
 
-/**
- * Create a query to filter by blog ID and published status
- */
-export const byBlogIdAndPublished = (blogId: string, published: boolean = true) => [
-  Query.equal('blogId', blogId),
-  Query.equal('published', published)
-];
 
 /**
  * Create a query to filter by blog ID and status

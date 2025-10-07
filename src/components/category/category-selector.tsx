@@ -140,8 +140,8 @@ export function CategorySelector({ selectedCategoryIds, onCategoriesChange, user
 
   const allCategories = allCategoriesData?.documents || []
   
-  // Debug logging
-  console.log('Categories query result:', { isPending, error, allCategoriesData, allCategories })
+  // Debug logging (commented out to reduce console noise)
+  // console.log('Categories query result:', { isPending, error, allCategoriesData, allCategories })
 
   // Memoize selected categories to prevent unnecessary re-renders
   // This should only change when selectedCategoryIds changes, not during search

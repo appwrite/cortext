@@ -140,8 +140,8 @@ export function AuthorSelector({ selectedAuthorIds, onAuthorsChange, userId }: A
 
   const allAuthors = allAuthorsData?.documents || []
   
-  // Debug logging
-  console.log('Authors query result:', { isPending, error, allAuthorsData, allAuthors })
+  // Debug logging (commented out to reduce console noise)
+  // console.log('Authors query result:', { isPending, error, allAuthorsData, allAuthors })
 
   // Memoize selected authors to prevent unnecessary re-renders
   // This should only change when selectedAuthorIds changes, not during search

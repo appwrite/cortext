@@ -81,9 +81,7 @@ const COLLECTIONS = {
       { key: 'redirect', type: 'string', size: 500, required: false, array: false, default: null },
       { key: 'categories', type: 'string', size: 512, required: false, array: true, default: null },
       { key: 'createdBy', type: 'string', size: 255, required: false, array: false, default: null },
-      { key: 'published', type: 'boolean', required: false, array: false, default: false },
       { key: 'slug', type: 'string', size: 255, required: false, array: false, default: null },
-      { key: 'publishedAt', type: 'datetime', required: false, array: false, default: null },
       { key: 'activeRevisionId', type: 'string', size: 255, required: false, array: false, default: null }, // Reference to current active revision
       { key: 'blogId', type: 'string', size: 255, required: false, array: false, default: null },
     ],
@@ -94,7 +92,6 @@ const COLLECTIONS = {
       { key: 'title', type: 'key', attributes: ['title'], lengths: [191] },
       { key: 'title_fulltext', type: 'fulltext', attributes: ['title'] },
       { key: 'blogId', type: 'key', attributes: ['blogId'] },
-      { key: 'blogId_published', type: 'key', attributes: ['blogId', 'published'] },
       { key: 'blogId_status', type: 'key', attributes: ['blogId', 'status'] },
       { key: 'blogId_slug', type: 'unique', attributes: ['blogId', 'slug'] },
       { key: 'activeRevisionId', type: 'key', attributes: ['activeRevisionId'] },
@@ -338,8 +335,6 @@ const COLLECTIONS = {
       { key: 'messageId', type: 'string', size: 255, required: false, array: false, default: null },
       { key: 'data', type: 'string', size: 200000, required: true, array: false, default: null }, // JSON string for full article snapshot
       { key: 'changes', type: 'string', size: 1000, required: false, array: true, default: null }, // Array of change descriptions
-      { key: 'isPublished', type: 'boolean', required: false, array: false, default: false },
-      { key: 'publishedAt', type: 'datetime', required: false, array: false, default: null },
       { key: 'parentRevisionId', type: 'string', size: 255, required: false, array: false, default: null },
     ],
     indexes: [
@@ -348,8 +343,6 @@ const COLLECTIONS = {
       { key: 'articleId_status', type: 'key', attributes: ['articleId', 'status'] },
       { key: 'messageId', type: 'key', attributes: ['messageId'] },
       { key: 'createdBy', type: 'key', attributes: ['createdBy'] },
-      { key: 'isPublished', type: 'key', attributes: ['isPublished'] },
-      { key: 'publishedAt', type: 'key', attributes: ['publishedAt'] },
       { key: 'parentRevisionId', type: 'key', attributes: ['parentRevisionId'] },
       { key: 'createdAt', type: 'key', attributes: ['$createdAt'] },
     ],
