@@ -9,6 +9,13 @@ export interface RealtimeSubscription {
   onEvent?: (payload: any, event: string[]) => void
 }
 
+export interface StreamingStateCallbacks {
+  onStreamingStart?: (messageId: string, metadata: any) => void
+  onStreamingUpdate?: (messageId: string, metadata: any, content: string) => void
+  onStreamingComplete?: (messageId: string, metadata: any) => void
+  onMetadataUpdate?: (metadata: any) => void
+}
+
 /**
  * Custom hook for managing Appwrite realtime subscriptions
  * @param subscriptions Array of subscription configurations
@@ -372,7 +379,8 @@ export function useMessagesAndNotificationsRealtime(
   blogId?: string,
   articleId?: string,
   conversationId?: string,
-  enabled: boolean = true
+  enabled: boolean = true,
+  streamingCallbacks?: StreamingStateCallbacks
 ) {
   const databaseId = import.meta.env.VITE_APPWRITE_DATABASE_ID
   const queryClient = useQueryClient()
@@ -403,7 +411,7 @@ export function useMessagesAndNotificationsRealtime(
     return true
   }, [blogId, conversationId])
 
-  // Messages event handler with race condition protection
+  // Messages event handler with race condition protection and streaming state management
   const messagesOnEvent = useMemo(() => (payload: any, events: string[]) => {
     const queryKey = ['messages', conversationId || '']
     
@@ -440,7 +448,34 @@ export function useMessagesAndNotificationsRealtime(
       return oldData
     })
 
-  }, [conversationId, queryClient])
+    // Handle streaming state callbacks for assistant messages
+    if (payload.role === 'assistant' && streamingCallbacks) {
+      const messageId = payload.$id
+      const metadata = payload.metadata ? JSON.parse(payload.metadata) : undefined
+      const isCreateEvent = events.some(event => event.includes('.create'))
+      const isUpdateEvent = events.some(event => event.includes('.update'))
+
+      if (isCreateEvent) {
+        // Streaming started - new assistant message created
+        streamingCallbacks.onStreamingStart?.(messageId, metadata)
+      } else if (isUpdateEvent) {
+        // Streaming update - check for completion
+        const currentContent = payload.content || ''
+        streamingCallbacks.onStreamingUpdate?.(messageId, metadata, currentContent)
+        
+        // Check for completion
+        if (metadata?.status === 'completed' || !metadata?.streaming) {
+          streamingCallbacks.onStreamingComplete?.(messageId, metadata)
+        }
+      }
+
+      // Always update metadata status
+      if (metadata) {
+        streamingCallbacks.onMetadataUpdate?.(metadata)
+      }
+    }
+
+  }, [conversationId, queryClient, streamingCallbacks])
 
   // Notifications filter
   const notificationsFilter = useMemo(() => (payload: any) => {

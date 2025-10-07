@@ -238,7 +238,8 @@ export function useMessagesWithNotifications(
   blogId?: string, 
   articleId?: string, 
   userId?: string,
-  enabled: boolean = true
+  enabled: boolean = true,
+  streamingCallbacks?: import('./use-realtime').StreamingStateCallbacks
 ) {
   const queryClient = useQueryClient()
   const [allMessages, setAllMessages] = useState<Messages[]>([])
@@ -324,7 +325,8 @@ export function useMessagesWithNotifications(
     blogId, 
     articleId, 
     conversationId || undefined, 
-    !!conversationId && !!userId && enabled
+    !!conversationId && !!userId && enabled,
+    streamingCallbacks
   )
 
 

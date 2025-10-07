@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, useCallback } from 'react'
+import { useEffect, useRef, useState, useCallback, useMemo } from 'react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { ScrollArea } from '@/components/ui/scroll-area'
@@ -13,7 +13,6 @@ import { useAuth } from '@/hooks/use-auth'
 import type { Messages } from '@/lib/appwrite/appwrite.types'
 import { functionService } from '@/lib/appwrite/functions'
 import { formatDuration } from '@/lib/date-utils'
-import { client } from '@/lib/appwrite/db'
 
 type Message = {
     id: string
@@ -136,123 +135,101 @@ export function AgentChat({
         }
     }, [conversations, currentConversationId, deleteConversation])
 
-    const {
-        messages: dbMessages,
-        isLoadingMessages,
-        createMessage,
-        isCreatingMessage,
-    } = useMessagesWithNotifications(currentConversationId, blogId, articleId, user?.$id)
-
-    // Custom realtime event handler for streaming debug - stable subscription
-    useEffect(() => {
-        const databaseId = import.meta.env.VITE_APPWRITE_DATABASE_ID
-        const messagesChannel = `databases.${databaseId}.collections.messages.documents`
-        
-        const unsubscribe = client.subscribe(messagesChannel, (response) => {
-            const { payload, events } = response
+    // Streaming state callbacks for the consolidated realtime system
+    const streamingCallbacks = useMemo(() => ({
+        onStreamingStart: (messageId: string, metadata: any) => {
+            console.log('🤖 Assistant message created via realtime:', messageId)
+            setIsWaitingForStream(false)
+            setIsStreaming(true)
+            setStreamingMessageId(messageId)
             
-            // Type guard for payload
-            if (!payload || typeof payload !== 'object' || !('conversationId' in payload)) return
+            // Update metadata status for create event too
+            if (metadata) {
+                const statusText = metadata.status || 'unknown'
+                const streamingText = metadata.streaming ? 'streaming' : 'not-streaming'
+                setLastMetadataStatus(`${statusText} (${streamingText})`)
+            }
             
-            const messagePayload = payload as any
+            setDebugEvents(prev => [...prev.slice(-4), `Streaming started: ${messageId} at ${new Date().toISOString()}`])
+        },
+        onStreamingUpdate: (messageId: string, metadata: any, content: string) => {
+            // Check if this is the streaming message we're tracking
+            const isStreamingMessage = messageId === streamingMessageId
             
-            // Only process events for the current conversation
-            if (!currentConversationIdRef.current || messagePayload.conversationId !== currentConversationIdRef.current) return
+            // Update last metadata status for debug
+            if (metadata) {
+                const statusText = metadata.status || 'unknown'
+                const streamingText = metadata.streaming ? 'streaming' : 'not-streaming'
+                setLastMetadataStatus(`${statusText} (${streamingText})`)
+            }
             
-            const isCreateEvent = events.some(event => event.includes('.create'))
-            const isUpdateEvent = events.some(event => event.includes('.update'))
+            // If this is our streaming message, check for completion
+            if (isStreamingMessage) {
+                // Check if content has changed (still streaming)
+                if (content !== lastStreamingContent) {
+                    setLastStreamingContent(content)
+                    setStreamingContentCheckCount(0)
+                } else {
+                    // Content hasn't changed, increment check count
+                    setStreamingContentCheckCount(prev => prev + 1)
+                }
+                
+                // Complete if metadata says so OR if content hasn't changed for 3 updates
+                if (metadata?.status === 'completed' || !metadata?.streaming || streamingContentCheckCount >= 3) {
+                    setIsStreaming(false)
+                    setIsWaitingForStream(false) // Also reset waiting state
+                    setStreamingMessageId(null)
+                    setLastStreamingContent('')
+                    setStreamingContentCheckCount(0)
+                    setDebugEvents(prev => [...prev.slice(-4), `Streaming completed: ${messageId} at ${new Date().toISOString()}`])
+                }
+            }
             
-            
-            if (isCreateEvent && messagePayload.role === 'assistant') {
-                // Streaming started - new assistant message created
-                console.log('🤖 Assistant message created via realtime:', messagePayload.$id)
+            // Also check if any assistant message has completed status (fallback)
+            if (metadata?.status === 'completed' && isStreamingRef.current) {
+                setIsStreaming(false)
                 setIsWaitingForStream(false)
-                setIsStreaming(true)
-                setStreamingMessageId(messagePayload.$id)
+                setStreamingMessageId(null)
+                setLastStreamingContent('')
+                setStreamingContentCheckCount(0)
+                setDebugEvents(prev => [...prev.slice(-4), `Streaming completed via fallback: ${messageId} at ${new Date().toISOString()}`])
+            }
+        },
+        onStreamingComplete: (messageId: string, metadata: any) => {
+            setIsStreaming(false)
+            setIsWaitingForStream(false)
+            setStreamingMessageId(null)
+            setLastStreamingContent('')
+            setStreamingContentCheckCount(0)
+            setDebugEvents(prev => [...prev.slice(-4), `Streaming completed: ${messageId} at ${new Date().toISOString()}`])
+        },
+        onMetadataUpdate: (metadata: any) => {
+            if (metadata) {
+                const statusText = metadata.status || 'unknown'
+                const streamingText = metadata.streaming ? 'streaming' : 'not-streaming'
+                setLastMetadataStatus(`${statusText} (${streamingText})`)
                 
-                // Update metadata status for create event too
-                const metadata = messagePayload.metadata ? JSON.parse(messagePayload.metadata) : undefined
-                if (metadata) {
-                    const statusText = metadata.status || 'unknown'
-                    const streamingText = metadata.streaming ? 'streaming' : 'not-streaming'
-                    setLastMetadataStatus(`${statusText} (${streamingText})`)
-                }
-                
-                setDebugEvents(prev => [...prev.slice(-4), `Streaming started: ${messagePayload.$id} at ${new Date().toISOString()}`])
-            } else if (isUpdateEvent && messagePayload.role === 'assistant') {
-                // Check if this is the streaming message we're tracking
-                const isStreamingMessage = messagePayload.$id === streamingMessageId
-                const metadata = messagePayload.metadata ? JSON.parse(messagePayload.metadata) : undefined
-                const currentContent = messagePayload.content || ''
-                
-                // Update last metadata status for debug
-                if (metadata) {
-                    const statusText = metadata.status || 'unknown'
-                    const streamingText = metadata.streaming ? 'streaming' : 'not-streaming'
-                    setLastMetadataStatus(`${statusText} (${streamingText})`)
-                }
-                
-                
-                // If this is our streaming message, check for completion
-                if (isStreamingMessage) {
-                    // Check if content has changed (still streaming)
-                    if (currentContent !== lastStreamingContent) {
-                        setLastStreamingContent(currentContent)
-                        setStreamingContentCheckCount(0)
-                    } else {
-                        // Content hasn't changed, increment check count
-                        setStreamingContentCheckCount(prev => prev + 1)
-                    }
-                    
-                    // Complete if metadata says so OR if content hasn't changed for 3 updates
-                    if (metadata?.status === 'completed' || !metadata?.streaming || streamingContentCheckCount >= 3) {
-                        setIsStreaming(false)
-                        setIsWaitingForStream(false) // Also reset waiting state
-                        setStreamingMessageId(null)
-                        setLastStreamingContent('')
-                        setStreamingContentCheckCount(0)
-                        setDebugEvents(prev => [...prev.slice(-4), `Streaming completed: ${messagePayload.$id} at ${new Date().toISOString()}`])
-                    }
-                }
-                
-                // Also check if any assistant message has completed status (fallback)
-                if (metadata?.status === 'completed' && isStreamingRef.current) {
+                // If we detect completed status and we're currently streaming, reset streaming state
+                if (metadata.status === 'completed' && isStreamingRef.current) {
                     setIsStreaming(false)
                     setIsWaitingForStream(false)
                     setStreamingMessageId(null)
                     setLastStreamingContent('')
                     setStreamingContentCheckCount(0)
-                    setDebugEvents(prev => [...prev.slice(-4), `Streaming completed via fallback: ${messagePayload.$id} at ${new Date().toISOString()}`])
+                    setDebugEvents(prev => [...prev.slice(-4), `Streaming completed via metadata fallback at ${new Date().toISOString()}`])
                 }
             }
-            
-            // Always update metadata status for any assistant message event (fallback)
-            if (messagePayload.role === 'assistant' && messagePayload.metadata) {
-                try {
-                    const metadata = JSON.parse(messagePayload.metadata)
-                    const statusText = metadata.status || 'unknown'
-                    const streamingText = metadata.streaming ? 'streaming' : 'not-streaming'
-                    setLastMetadataStatus(`${statusText} (${streamingText})`)
-                    
-                    // If we detect completed status and we're currently streaming, reset streaming state
-                    if (metadata.status === 'completed' && isStreamingRef.current) {
-                        setIsStreaming(false)
-                        setIsWaitingForStream(false)
-                        setStreamingMessageId(null)
-                        setLastStreamingContent('')
-                        setStreamingContentCheckCount(0)
-                        setDebugEvents(prev => [...prev.slice(-4), `Streaming completed via metadata fallback: ${messagePayload.$id} at ${new Date().toISOString()}`])
-                    }
-                } catch (error) {
-                    setLastMetadataStatus('parse-error')
-                }
-            }
-        })
-
-        return () => {
-            unsubscribe()
         }
-    }, []) // Remove currentConversationId and streamingMessageId from dependencies to avoid reconnection
+    }), [streamingMessageId, lastStreamingContent, streamingContentCheckCount])
+
+    const {
+        messages: dbMessages,
+        isLoadingMessages,
+        createMessage,
+        isCreatingMessage,
+    } = useMessagesWithNotifications(currentConversationId, blogId, articleId, user?.$id, true, streamingCallbacks)
+
+    // Streaming state management is now handled by the consolidated realtime system
 
     // Convert database messages to local format and sort with oldest at top
     const dbMessagesFormatted: Message[] = dbMessages

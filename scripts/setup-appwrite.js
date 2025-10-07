@@ -325,6 +325,33 @@ const COLLECTIONS = {
       { key: 'isResolved_createdAt', type: 'key', attributes: ['isResolved', '$createdAt'] },
     ],
   },
+  revisions: {
+    name: 'Revisions',
+    permissions: [Permission.create(Role.any())],
+    attributes: [
+      { key: 'articleId', type: 'string', size: 255, required: true, array: false, default: null },
+      { key: 'version', type: 'integer', required: true, array: false, default: null },
+      { key: 'status', type: 'string', size: 50, required: false, array: false, default: 'draft' },
+      { key: 'createdBy', type: 'string', size: 255, required: false, array: false, default: null },
+      { key: 'messageId', type: 'string', size: 255, required: false, array: false, default: null },
+      { key: 'data', type: 'string', size: 200000, required: true, array: false, default: null }, // JSON string for full article snapshot
+      { key: 'changes', type: 'string', size: 1000, required: false, array: true, default: null }, // Array of change descriptions
+      { key: 'isPublished', type: 'boolean', required: false, array: false, default: false },
+      { key: 'publishedAt', type: 'datetime', required: false, array: false, default: null },
+      { key: 'parentRevisionId', type: 'string', size: 255, required: false, array: false, default: null },
+    ],
+    indexes: [
+      { key: 'articleId', type: 'key', attributes: ['articleId'] },
+      { key: 'articleId_version', type: 'unique', attributes: ['articleId', 'version'] },
+      { key: 'articleId_status', type: 'key', attributes: ['articleId', 'status'] },
+      { key: 'messageId', type: 'key', attributes: ['messageId'] },
+      { key: 'createdBy', type: 'key', attributes: ['createdBy'] },
+      { key: 'isPublished', type: 'key', attributes: ['isPublished'] },
+      { key: 'publishedAt', type: 'key', attributes: ['publishedAt'] },
+      { key: 'parentRevisionId', type: 'key', attributes: ['parentRevisionId'] },
+      { key: 'createdAt', type: 'key', attributes: ['$createdAt'] },
+    ],
+  },
 };
 
 // Storage configuration
