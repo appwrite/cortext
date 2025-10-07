@@ -50,7 +50,6 @@ export function AgentChat({
     const [currentConversationId, setCurrentConversationId] = useState<string | null>(null)
     const [isDrawerOpen, setIsDrawerOpen] = useState(false)
     const [isWaitingForAI, setIsWaitingForAI] = useState(false)
-    const [loaderMessages, setLoaderMessages] = useState<Set<string>>(new Set())
     const [previousMessageCount, setPreviousMessageCount] = useState(0)
     const [previousAssistantCount, setPreviousAssistantCount] = useState(0)
     const [previousAssistantMessages, setPreviousAssistantMessages] = useState<Messages[]>([])
@@ -74,7 +73,6 @@ export function AgentChat({
         setIsStreaming(false)
         setIsWaitingForStream(false)
         setStreamingMessageId(null)
-        setLoaderMessages(new Set())
         setLastStreamingContent('')
         setStreamingContentCheckCount(0)
         setLastMetadataStatus('None')
@@ -108,12 +106,8 @@ export function AgentChat({
     const {
         messages: dbMessages,
         isLoadingMessages,
-        isLoadingMoreMessages,
-        hasMoreMessages,
-        loadMoreMessages,
         createMessage,
         isCreatingMessage,
-        offset,
     } = useMessagesWithNotifications(currentConversationId, blogId, articleId, user?.$id)
 
     // Custom realtime event handler for streaming debug - stable subscription
@@ -138,10 +132,10 @@ export function AgentChat({
             
             if (isCreateEvent && messagePayload.role === 'assistant') {
                 // Streaming started - new assistant message created
+                console.log('🤖 Assistant message created via realtime:', messagePayload.$id)
                 setIsWaitingForStream(false)
                 setIsStreaming(true)
                 setStreamingMessageId(messagePayload.$id)
-                setLoaderMessages(new Set()) // Clear loader messages when streaming starts
                 
                 // Update metadata status for create event too
                 const metadata = messagePayload.metadata ? JSON.parse(messagePayload.metadata) : undefined
@@ -227,7 +221,7 @@ export function AgentChat({
         }
     }, []) // Remove currentConversationId and streamingMessageId from dependencies to avoid reconnection
 
-    // Convert database messages to local format and sort with newest at bottom
+    // Convert database messages to local format and sort with oldest at top
     const dbMessagesFormatted: Message[] = dbMessages
         .map((msg: Messages) => ({
             id: msg.$id,
@@ -238,7 +232,7 @@ export function AgentChat({
             generationTimeMs: msg.generationTimeMs,
             metadata: msg.metadata ? JSON.parse(msg.metadata) : undefined,
         }))
-        .reverse() // Reverse to show newest at bottom
+        .sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()) // Sort oldest to newest
 
     // Use database messages directly
     const messages: Message[] = dbMessagesFormatted
@@ -301,26 +295,17 @@ export function AgentChat({
         }
     }, [])
 
-    // Auto-scroll to newest message (but not when loading more messages)
+    // Auto-scroll to newest message
     const bottomRef = useRef<HTMLDivElement | null>(null)
     const scrollAreaRef = useRef<HTMLDivElement | null>(null)
-    const [isLoadingMore, setIsLoadingMore] = useState(false)
-    const [shouldPreserveScroll, setShouldPreserveScroll] = useState(false)
     const [lastScrollTime, setLastScrollTime] = useState(0)
     
-    // Save scroll position when starting to load more messages
-    const handleLoadMore = useCallback(() => {
-        setShouldPreserveScroll(true)
-        loadMoreMessages()
-    }, [loadMoreMessages])
-    
+    // Simple scroll to bottom when messages change
     useEffect(() => {
-        // Only scroll if we're not loading more messages and the message count increased
-        if (!isLoadingMore && messages.length > previousMessageCount && !shouldPreserveScroll) {
+        if (messages.length > previousMessageCount) {
             const now = Date.now()
             // Prevent rapid scrolling by ensuring at least 50ms between scrolls
             if (now - lastScrollTime > 50) {
-                // Use a small delay to ensure the DOM has updated
                 setTimeout(() => {
                     scrollToBottom()
                     setLastScrollTime(Date.now())
@@ -328,31 +313,16 @@ export function AgentChat({
             }
         }
         setPreviousMessageCount(messages.length)
-    }, [messages.length, isLoadingMore, shouldPreserveScroll, scrollToBottom, lastScrollTime, previousMessageCount])
+    }, [messages.length, scrollToBottom, lastScrollTime, previousMessageCount])
 
-    // Additional scroll trigger for any message changes (more reliable)
+    // Scroll during streaming for better UX
     useEffect(() => {
-        if (!isLoadingMore && !shouldPreserveScroll && dbMessages.length > 0) {
-            const now = Date.now()
-            // Only scroll if we haven't scrolled recently (prevent rapid scrolling)
-            if (now - lastScrollTime > 100) {
-                setTimeout(() => {
-                    scrollToBottom()
-                    setLastScrollTime(Date.now())
-                }, 10)
-            }
-        }
-    }, [dbMessages, isLoadingMore, shouldPreserveScroll, scrollToBottom, lastScrollTime])
-
-    // Special scroll effect for streaming messages - scroll more frequently during streaming
-    useEffect(() => {
-        if (!isLoadingMore && !shouldPreserveScroll && dbMessages.length > 0) {
+        if (dbMessages.length > 0) {
             const lastMessage = dbMessages[dbMessages.length - 1]
             const metadata = lastMessage.metadata ? JSON.parse(lastMessage.metadata) : undefined
             if (lastMessage.role === 'assistant' && metadata?.streaming && metadata?.status === 'generating') {
-                // Scroll more frequently during streaming
                 const now = Date.now()
-                if (now - lastScrollTime > 50) { // More frequent scrolling for streaming
+                if (now - lastScrollTime > 50) {
                     setTimeout(() => {
                         scrollToBottom()
                         setLastScrollTime(Date.now())
@@ -360,21 +330,7 @@ export function AgentChat({
                 }
             }
         }
-    }, [dbMessages, isLoadingMore, shouldPreserveScroll, scrollToBottom, lastScrollTime])
-    
-    // Track when we're loading more messages
-    useEffect(() => {
-        if (isLoadingMoreMessages) {
-            setIsLoadingMore(true)
-        } else {
-            // Reset states after loading completes
-            const timer = setTimeout(() => {
-                setIsLoadingMore(false)
-                setShouldPreserveScroll(false)
-            }, 100)
-            return () => clearTimeout(timer)
-        }
-    }, [isLoadingMoreMessages])
+    }, [dbMessages, scrollToBottom, lastScrollTime])
 
 
     // Clear AI waiting state when a new assistant message arrives and starts streaming
@@ -457,7 +413,6 @@ export function AgentChat({
             const timeout = setTimeout(() => {
                 setIsWaitingForAI(false)
                 setIsWaitingForStream(false)
-                setLoaderMessages(new Set())
             }, 10000) // 10 second timeout
 
             return () => clearTimeout(timeout)
@@ -491,7 +446,6 @@ export function AgentChat({
                 setIsStreaming(false)
                 setIsWaitingForStream(false)
                 setStreamingMessageId(null)
-                setLoaderMessages(new Set())
                 setLastStreamingContent('')
                 setStreamingContentCheckCount(0)
                 setLastMetadataStatus('None')
@@ -502,11 +456,11 @@ export function AgentChat({
         }
     }, [isPromptLocked])
 
-    // Keyboard shortcut to toggle debug panel (.)
+    // Keyboard shortcut to toggle debug panel (Cmd+. or Ctrl+.)
     useEffect(() => {
         const handleKeyDown = (e: KeyboardEvent) => {
-            // Check for period key
-            if (e.key === '.') {
+            // Check for Cmd+. (Mac) or Ctrl+. (Windows/Linux)
+            if (e.key === '.' && (e.metaKey || e.ctrlKey)) {
                 e.preventDefault()
                 setShowDebugPanel(prev => !prev)
             }
@@ -516,8 +470,8 @@ export function AgentChat({
         return () => document.removeEventListener('keydown', handleKeyDown)
     }, [showDebugPanel])
 
-    const send = async () => {
-        const text = input.trim()
+    const send = async (messageText?: string) => {
+        const text = (messageText || input).trim()
         if (!text || !currentConversationId) return
 
         // Clear input and show loading immediately for better UX
@@ -528,16 +482,13 @@ export function AgentChat({
 
         try {
             // Create user message in background
+            console.log('📝 Creating user message:', text.substring(0, 50))
             const userMessage = await createMessage({
                 role: 'user',
                 content: text,
                 userId: user?.$id || '',
             })
-
-            // Add loader message for this user message
-            if (userMessage) {
-                setLoaderMessages(prev => new Set(prev).add(userMessage.$id))
-            }
+            console.log('📝 User message created:', userMessage.$id)
 
             // Scroll immediately for better UX
             setTimeout(() => {
@@ -625,7 +576,6 @@ export function AgentChat({
                                         setIsStreaming(false)
                                         setIsWaitingForStream(false)
                                         setStreamingMessageId(null)
-                                        setLoaderMessages(new Set())
                                         setLastStreamingContent('')
                                         setStreamingContentCheckCount(0)
                                         setLastMetadataStatus('None')
@@ -654,10 +604,7 @@ export function AgentChat({
                         <div>
                             <div className="text-slate-500 dark:text-slate-400 font-medium text-[9px]">Messages & Status</div>
                             <div className="text-slate-800 dark:text-slate-200 font-mono text-[10px]">
-                                UI: {messages.length} | DB: {dbMessages.length}
-                            </div>
-                            <div className="text-slate-600 dark:text-slate-400 text-[9px] font-mono">
-                                Offset: {offset} | More: {hasMoreMessages ? 'Yes' : 'No'}
+                                Messages: {messages.length}
                             </div>
                             <div className="text-slate-600 dark:text-slate-400 text-[9px] font-mono">
                                 {isWaitingForStream ? '⏳ Waiting' : ''} {isStreaming ? '🔄 Streaming' : ''} {isPromptLocked ? '🔒 Locked' : '🔓 Unlocked'}
@@ -678,21 +625,6 @@ export function AgentChat({
                     </div>
                 ) : hasMessages ? (
                     <div className="px-6 py-6 space-y-2">
-                        {/* Load More Button */}
-                        {hasMoreMessages && (
-                            <div className="flex justify-center py-2">
-                                <Button
-                                    variant="outline"
-                                    size="sm"
-                                    onClick={handleLoadMore}
-                                    disabled={isLoadingMoreMessages}
-                                    className="text-xs"
-                                >
-                                    {isLoadingMoreMessages ? 'Loading...' : 'Load More Messages'}
-                                </Button>
-                            </div>
-                        )}
-                        
                         {messages.map((m) => (
                             <div key={m.id} className="space-y-1">
                                 <div className={m.role === 'assistant' ? 'flex gap-2 items-start' : 'flex justify-end'}>
@@ -742,25 +674,6 @@ export function AgentChat({
                                     </div>
                                 </div>
                                 
-                                {/* Show loader message below user messages only while waiting for stream */}
-                                {m.role === 'user' && loaderMessages.has(m.id) && isWaitingForStream && (
-                                    <div className="flex gap-2 items-start">
-                                        <div className="mt-0.5 text-muted-foreground">
-                                            <Brain className="h-4 w-4" />
-                                        </div>
-                                        <div className="rounded-md bg-accent px-2.5 py-1.5 text-xs max-w-[220px]">
-                                            <div className="flex items-center gap-1">
-                                                <span className="text-xs text-muted-foreground">&nbsp;</span>
-                                                <div className="flex gap-0.5">
-                                                    <div className="w-1 h-1 bg-muted-foreground rounded-full animate-pulse" style={{ animationDelay: '0ms' }}></div>
-                                                    <div className="w-1 h-1 bg-muted-foreground rounded-full animate-pulse" style={{ animationDelay: '150ms' }}></div>
-                                                    <div className="w-1 h-1 bg-muted-foreground rounded-full animate-pulse" style={{ animationDelay: '300ms' }}></div>
-                                                </div>
-                                                <span className="text-xs text-muted-foreground">&nbsp;</span>
-                                            </div>
-                                        </div>
-                                    </div>
-                                )}
                             </div>
                         ))}
                         
@@ -769,40 +682,9 @@ export function AgentChat({
                     </div>
                 ) : shouldShowPlaceholder ? (
                     <div className="flex items-center justify-center min-h-full">
-                        <ConversationPlaceholder onSendMessage={async (message) => {
-                            if (!currentConversationId) return
-                            
-                            try {
-                                // Create user message
-                                const userMessage = await createMessage({
-                                    role: 'user',
-                                    content: message,
-                                    userId: user?.$id || '',
-                                })
-
-                                // Add loader message for this user message
-                                if (userMessage) {
-                                    setLoaderMessages(prev => new Set(prev).add(userMessage.$id))
-                                }
-
-                                // Scroll to show user message
-                                setTimeout(() => {
-                                    scrollToBottom()
-                                    setLastScrollTime(Date.now())
-                                }, 10)
-
-                                // Clear loader messages
-                                setLoaderMessages(new Set())
-
-                                // Scroll to show user message
-                                setTimeout(() => {
-                                    scrollToBottom()
-                                    setLastScrollTime(Date.now())
-                                }, 10)
-                            } catch {
-                                // Failed to send message
-                                setLoaderMessages(new Set())
-                            }
+                        <ConversationPlaceholder onSendMessage={(message) => {
+                            // Send the message directly using the send function
+                            send(message)
                         }} />
                     </div>
                 ) : null}
@@ -878,7 +760,7 @@ export function AgentChat({
                     <Button 
                         size="sm" 
                         className="h-9 px-3" 
-                        onClick={send}
+                        onClick={() => send()}
                         disabled={isPromptLocked || !input.trim()}
                     >
                         <Send className="h-4 w-4" />

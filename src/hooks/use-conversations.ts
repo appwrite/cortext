@@ -133,8 +133,6 @@ export function useMessages(conversationId: string | null, blogId?: string, arti
     }
   }, [hasMoreMessages, messagesQuery.isFetching])
 
-  // Removed duplicate realtime subscription - useMessagesAndNotificationsRealtime handles this
-
   // Create a new message
   const createMessageMutation = useMutation({
     mutationFn: async (data: { 
@@ -157,18 +155,11 @@ export function useMessages(conversationId: string | null, blogId?: string, arti
         generationTimeMs: null, // Will be updated by the agent
       }, data.userId)
 
-
-      // Update conversation's last message time and count
-      await db.conversations.update(conversationId, {
-        lastMessageAt: new Date().toISOString(),
-        messageCount: (messagesQuery.data?.total || 0) + 1,
-      })
-
       return message
     },
     onSuccess: (message) => {
-      queryClient.invalidateQueries({ queryKey: ['messages', conversationId] }).then(() => {
-      })
+      // Don't invalidate messages query since we're using realtime
+      // Only invalidate conversations to update the list
       queryClient.invalidateQueries({ queryKey: ['conversations'] }).then(() => {
       })
     },
@@ -234,91 +225,53 @@ export function useMessagesWithNotifications(
   enabled: boolean = true
 ) {
   const queryClient = useQueryClient()
-  const [offset, setOffset] = useState(0)
   const [allMessages, setAllMessages] = useState<Messages[]>([])
-  const [hasMoreMessages, setHasMoreMessages] = useState(true)
   const [isSwitchingConversation, setIsSwitchingConversation] = useState(false)
   
   // Cache messages per conversation to prevent state loss when switching
-  const [conversationCache, setConversationCache] = useState<Map<string, {
-    messages: Messages[]
-    offset: number
-    hasMore: boolean
-  }>>(new Map())
+  const [conversationCache, setConversationCache] = useState<Map<string, Messages[]>>(new Map())
 
-  // Get all messages for a conversation - use a stable query key without offset
-  const queryKey = ['messages', conversationId]
-  
+  // Get last 200 messages for a conversation
   const messagesQuery = useQuery({
-    queryKey,
+    queryKey: ['messages', conversationId],
     queryFn: () => {
-      console.log('🔍 useMessagesWithNotifications: Fetching messages for conversation:', conversationId, 'offset:', offset)
+      console.log('🔍 useMessagesWithNotifications: Fetching last 200 messages for conversation:', conversationId)
       return db.messages.list([
         Query.equal('conversationId', conversationId!),
         Query.orderDesc('$createdAt'),
-        Query.limit(25),
-        Query.offset(offset)
+        Query.limit(200)
       ])
     },
     enabled: !!conversationId,
-    refetchInterval: false, // Disable polling since we're using realtime
+    refetchInterval: false,
   })
 
-  // Handle pagination logic
+  // Handle messages data - simplified approach
   const handleMessagesData = useCallback(() => {
-    if (messagesQuery.data?.documents && conversationId) {
-      const newMessages = messagesQuery.data.documents
-      const total = messagesQuery.data.total || 0
-      
-      console.log('📨 useMessagesWithNotifications: Received messages data:', {
-        conversationId,
-        newMessagesCount: newMessages.length,
-        total,
-        offset,
-        isFirstLoad: offset === 0
-      })
-      
-      let updatedMessages: Messages[]
-      
-      if (offset === 0) {
-        // First load - replace all messages
-        updatedMessages = newMessages
-      } else {
-        // Load more - append older messages to the beginning and sort the entire list
-        updatedMessages = [...newMessages, ...allMessages]
-        // Sort by createdAt in descending order (newest first) since API returns newest first
-        updatedMessages = updatedMessages.sort((a, b) => new Date(b.$createdAt).getTime() - new Date(a.$createdAt).getTime())
-      }
-      
-      // Check if there are more messages to load
-      const currentTotal = offset + newMessages.length
-      const hasMore = currentTotal < total
-      
-      // Update state
-      setAllMessages(updatedMessages)
-      setHasMoreMessages(hasMore)
-      
-      // Cache the data for this conversation
-      setConversationCache(prev => {
-        const newCache = new Map(prev)
-        newCache.set(conversationId, {
-          messages: updatedMessages,
-          offset,
-          hasMore
-        })
-        console.log('💾 Cached data for conversation:', conversationId, 'Messages:', updatedMessages.length)
-        return newCache
-      })
-      
-      // Reset switching state when data is loaded
-      setIsSwitchingConversation(false)
-    } else if (conversationId && !messagesQuery.isLoading && !messagesQuery.isFetching) {
-      // If we have a conversation but no data and query is not loading, clear messages
-      // This handles the case where we switch to a conversation with no messages
-      setAllMessages([])
-      setIsSwitchingConversation(false)
+    if (!messagesQuery.data?.documents || !conversationId) {
+      return
     }
-  }, [messagesQuery.data, messagesQuery.isLoading, messagesQuery.isFetching, offset, conversationId, allMessages])
+
+    const newMessages = messagesQuery.data.documents
+
+    console.log('📨 Processing messages data:', {
+      conversationId,
+      newMessagesCount: newMessages.length,
+      currentMessagesCount: allMessages.length
+    })
+
+    // Replace all messages with the latest batch
+    setAllMessages(newMessages)
+    
+    // Cache the data
+    setConversationCache(prev => {
+      const newCache = new Map(prev)
+      newCache.set(conversationId, newMessages)
+      return newCache
+    })
+    
+    setIsSwitchingConversation(false)
+  }, [messagesQuery.data, conversationId, allMessages])
 
   // Update messages when data changes
   useEffect(() => {
@@ -334,15 +287,10 @@ export function useMessagesWithNotifications(
       const cached = conversationCache.get(conversationId)
       if (cached) {
         console.log('📦 Loading from cache for conversation:', conversationId)
-        setAllMessages(cached.messages)
-        setOffset(cached.offset)
-        setHasMoreMessages(cached.hasMore)
+        setAllMessages(cached)
         setIsSwitchingConversation(false)
       } else {
         console.log('🔄 No cache found, resetting for conversation:', conversationId)
-        // Don't clear messages immediately - let the loading state handle it
-        setOffset(0)
-        setHasMoreMessages(true)
         setIsSwitchingConversation(true)
         // Force refetch when switching conversations
         queryClient.invalidateQueries({ queryKey: ['messages', conversationId] })
@@ -351,20 +299,10 @@ export function useMessagesWithNotifications(
       // No conversation selected, reset everything
       setIsSwitchingConversation(false)
       setAllMessages([])
-      setOffset(0)
-      setHasMoreMessages(true)
     }
   }, [conversationId, queryClient, conversationCache])
 
-  // Load more messages function
-  const loadMoreMessages = useCallback(() => {
-    if (hasMoreMessages && !messagesQuery.isFetching) {
-      setOffset(prev => prev + 25)
-    }
-  }, [hasMoreMessages, messagesQuery.isFetching])
-
   // Set up consolidated realtime subscription for both messages and notifications
-  
   useMessagesAndNotificationsRealtime(
     userId || '', 
     blogId, 
@@ -372,6 +310,7 @@ export function useMessagesWithNotifications(
     conversationId || undefined, 
     !!conversationId && !!userId && enabled
   )
+
 
   // Create a new message
   const createMessageMutation = useMutation({
@@ -395,7 +334,6 @@ export function useMessagesWithNotifications(
         generationTimeMs: null, // Will be updated by the agent
       }, data.userId)
 
-
       // Update conversation's last message time and count
       await db.conversations.update(conversationId, {
         lastMessageAt: new Date().toISOString(),
@@ -405,8 +343,8 @@ export function useMessagesWithNotifications(
       return message
     },
     onSuccess: (message) => {
-      queryClient.invalidateQueries({ queryKey: ['messages', conversationId] }).then(() => {
-      })
+      // Don't invalidate messages query since we're using realtime
+      // Only invalidate conversations to update the list
       queryClient.invalidateQueries({ queryKey: ['conversations'] }).then(() => {
       })
     },
@@ -417,11 +355,7 @@ export function useMessagesWithNotifications(
   return {
     messages: allMessages,
     isLoadingMessages: messagesQuery.isLoading || isSwitchingConversation,
-    isLoadingMoreMessages: messagesQuery.isFetching && offset > 0,
-    hasMoreMessages,
-    loadMoreMessages,
     createMessage: createMessageMutation.mutateAsync,
     isCreatingMessage: createMessageMutation.isPending,
-    offset,
   }
 }
