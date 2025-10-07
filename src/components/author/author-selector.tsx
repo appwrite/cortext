@@ -266,7 +266,7 @@ export function AuthorSelector({ selectedAuthorIds, onAuthorsChange, userId }: A
     
     return (
       <div className="flex flex-wrap min-h-[2rem]">
-        <div className="inline-flex items-center px-2 py-1 bg-white text-black rounded-md text-sm mr-2 mb-2 border border-dashed border-black/20">
+        <div className="inline-flex items-center px-2 py-1 bg-muted text-muted-foreground rounded-md text-sm mr-2 mb-2 border border-dashed border-muted-foreground/20">
           <span>None selected</span>
         </div>
       </div>

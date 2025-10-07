@@ -517,23 +517,9 @@ export function AgentChat({
         const next = makeSEOTitle(title)
         onSetTitle(next)
         
-        if (!currentConversationId) return
-
-        try {
-            await createMessage({
-                role: 'assistant',
-                content: `Updated title to: "${next}"`,
-                userId: user?.$id || '',
-            })
-            
-            // Scroll to show the new message
-            setTimeout(() => {
-                scrollToBottom()
-                setLastScrollTime(Date.now())
-            }, 10)
-        } catch {
-            // Failed to create message
-        }
+        // Send a message about the title update
+        const message = `Update the title to: "${next}"`
+        send(message)
     }
 
     const generateMetaDescription = async () => {
@@ -541,31 +527,17 @@ export function AgentChat({
         const next = `Learn about ${base.toLowerCase()} with practical insights, best practices, and actionable tips. Discover how to implement and optimize for better results.`
         onSetSubtitle(next)
         
-        if (!currentConversationId) return
-
-        try {
-            await createMessage({
-                role: 'assistant',
-                content: 'Drafted a new meta description. Feel free to tweak it.',
-                userId: user?.$id || '',
-            })
-            
-            // Scroll to show the new message
-            setTimeout(() => {
-                scrollToBottom()
-                setLastScrollTime(Date.now())
-            }, 10)
-        } catch {
-            // Failed to create message
-        }
+        // Send a message about the meta description update
+        const message = `Generate a meta description for this article`
+        send(message)
     }
 
     const chatContent = (
         <>
             <ScrollArea ref={scrollAreaRef} className="flex-1">
-                {/* Debug panel - sticky to top (toggleable with .) */}
+                {/* Debug panel - sticky to top (toggleable with Cmd+. or Ctrl+.) */}
                 {showDebugPanel && (
-                    <div className="sticky top-0 z-10 p-2 bg-slate-100 dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700">
+                    <div className="sticky top-0 z-10 p-2 bg-slate-100/80 dark:bg-slate-800/80 backdrop-blur-sm border-b border-slate-200 dark:border-slate-700">
                     <div className="flex items-center gap-1 mb-1">
                         <div className={`w-1.5 h-1.5 rounded-full ${isLoadingConversations ? 'bg-yellow-500' : 'bg-green-500'}`}></div>
                         <span className="text-[10px] font-semibold text-slate-700 dark:text-slate-300">Debug</span>
