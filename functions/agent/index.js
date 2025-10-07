@@ -22,7 +22,7 @@ const serverDatabases = new ServerDatabases(serverClient);
 
 // Initialize OpenAI model
 const openaiModel = new OpenAICompatibleModel({
-  id: 'openai/gpt-4o-mini',
+  id: 'openai/gpt-5',
   apiKey: process.env.OPENAI_API_KEY,
 });
 
@@ -32,8 +32,15 @@ const mastra = new Mastra({
 });
 
 // Optimized system prompt for token caching and cost reduction
-const SYSTEM_PROMPT = `You are Cortext, an AI writing assistant specialized in helping users create, edit, and improve blog content. You excel at:
+const SYSTEM_PROMPT = `You are Cortext, an AI writing assistant specialized in helping users create, edit, and improve blog content.
 
+CRITICAL INSTRUCTION: When users ask you to change or update anything, you MUST respond with the exact format [EDIT:article:field:action:value] followed by a brief explanation. This is not optional - it's required for the system to work.
+
+Examples of correct responses:
+- User: "Change the title to X" → You: "[EDIT:article:title:update:X]\n\nI've updated the title to X."
+- User: "Update the subtitle" → You: "[EDIT:article:subtitle:update:New Subtitle]\n\nI've updated the subtitle."
+
+You excel at:
 - Content creation and editing
 - SEO optimization
 - Writing style improvements
@@ -169,7 +176,9 @@ When the user asks you to change something, respond with the [EDIT:...] format i
 User: "Change the title to 'My New Title'"
 You: "[EDIT:article:title:update:My New Title]
 
-I've updated the title to 'My New Title' as requested."`;
+I've updated the title to 'My New Title' as requested."
+
+REMEMBER: You MUST use the [EDIT:...] format for ALL changes. Do not just describe what you're changing - use the exact format above.`;
     }
     
     return basePrompt + `
@@ -197,7 +206,9 @@ Available article fields:
 - authors: Author IDs (comma-separated)
 - categories: Category IDs (comma-separated)
 
-When the user asks you to change something, respond with the [EDIT:...] format immediately, followed by a brief explanation.`;
+When the user asks you to change something, respond with the [EDIT:...] format immediately, followed by a brief explanation.
+
+REMEMBER: You MUST use the [EDIT:...] format for ALL changes. Do not just describe what you're changing - use the exact format above.`;
 }
 
 // Set up the client with environment variables
@@ -281,6 +292,16 @@ export default async function ({ req, res, log, error }) {
 
     log('Request body fields: ' + JSON.stringify({ conversationId, agentId, blogId, articleId, metadata }));
 
+    // Get database ID from environment
+    const databaseId = process.env.APPWRITE_DATABASE_ID;
+    
+    if (!databaseId) {
+      return res.json({
+        success: false,
+        error: 'APPWRITE_DATABASE_ID environment variable is required'
+      }, 500);
+    }
+
     // Use userId from JWT token if available, otherwise from request body
     const messageUserId = userId || body.userId;
 
@@ -327,16 +348,6 @@ export default async function ({ req, res, log, error }) {
         success: false,
         error: 'User authentication required. Please ensure you are logged in.'
       }, 401);
-    }
-
-    // Get database ID from environment
-    const databaseId = process.env.APPWRITE_DATABASE_ID;
-    
-    if (!databaseId) {
-      return res.json({
-        success: false,
-        error: 'APPWRITE_DATABASE_ID environment variable is required'
-      }, 500);
     }
 
     // Function to generate streaming LLM response and update database in real-time
@@ -421,7 +432,7 @@ export default async function ({ req, res, log, error }) {
             agentId: agentId || 'cortext-agent',
             blogId,
             metadata: createMetadata({
-              model: 'gpt-4o-mini',
+              model: 'gpt-5',
               temperature: 0.7,
               generatedAt: new Date().toISOString(),
               streaming: true,
@@ -461,7 +472,7 @@ export default async function ({ req, res, log, error }) {
         
         // Create a new model instance with the verified API key
         const dynamicOpenaiModel = new OpenAICompatibleModel({
-          id: 'openai/gpt-4o-mini',
+          id: 'openai/gpt-5',
           apiKey: apiKey,
         });
 
@@ -543,7 +554,7 @@ export default async function ({ req, res, log, error }) {
                     {
                       content: fullContent,
                       metadata: createMetadata({
-                        model: 'gpt-4o-mini',
+                        model: 'gpt-5',
                         temperature: 0.7,
                         generatedAt: new Date().toISOString(),
                         streaming: true,
@@ -580,7 +591,7 @@ export default async function ({ req, res, log, error }) {
                     {
                       content: fullContent,
                       metadata: createMetadata({
-                        model: 'gpt-4o-mini',
+                        model: 'gpt-5',
                         temperature: 0.7,
                         generatedAt: new Date().toISOString(),
                         streaming: true,
@@ -617,7 +628,7 @@ export default async function ({ req, res, log, error }) {
                     {
                       content: fullContent,
                       metadata: createMetadata({
-                        model: 'gpt-4o-mini',
+                        model: 'gpt-5',
                         temperature: 0.7,
                         generatedAt: new Date().toISOString(),
                         streaming: true,
@@ -677,7 +688,7 @@ export default async function ({ req, res, log, error }) {
             content: fullContent,
             generationTimeMs: generationTimeMs,
             metadata: createMetadata({
-              model: 'gpt-4o-mini',
+              model: 'gpt-5',
               temperature: 0.7,
               generatedAt: new Date().toISOString(),
               streaming: false,
@@ -725,7 +736,7 @@ export default async function ({ req, res, log, error }) {
             blogId,
             generationTimeMs: generationTimeMs,
             metadata: createMetadata({
-              model: 'gpt-4o-mini',
+              model: 'gpt-5',
               temperature: 0.7,
               generatedAt: new Date().toISOString(),
               streaming: false,
