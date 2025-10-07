@@ -50,6 +50,125 @@ Key guidelines:
 
 Context: You're assisting with blog content creation and editing.`;
 
+// Token-cache friendly article context builder
+function buildArticleContext(article, maxTokens = 2000) {
+    if (!article) return '';
+    
+    const context = {
+        title: article.title || 'Untitled',
+        trailer: article.trailer || '',
+        subtitle: article.subtitle || '',
+        status: article.status || 'unpublished',
+        live: article.live || false,
+        pinned: article.pinned || false,
+        published: article.published || false,
+        redirect: article.redirect || '',
+        slug: article.slug || '',
+        publishedAt: article.publishedAt || '',
+        authors: article.authors || [],
+        categories: article.categories || [],
+        images: article.images || [],
+        sections: []
+    };
+    
+    // Parse and summarize sections for token efficiency
+    if (article.body) {
+        try {
+            const sections = JSON.parse(article.body);
+            context.sections = sections.map(section => ({
+                type: section.type,
+                content: section.content ? section.content.substring(0, 200) : '', // Truncate for token efficiency
+                id: section.id
+            }));
+        } catch (e) {
+            // If parsing fails, treat as plain text
+            context.sections = [{
+                type: 'text',
+                content: article.body.substring(0, 200),
+                id: 'legacy'
+            }];
+        }
+    }
+    
+    // Build compact context string
+    let contextStr = `Article: "${context.title}"\n`;
+    if (context.trailer) contextStr += `Trailer: "${context.trailer}"\n`;
+    if (context.subtitle) contextStr += `Subtitle: "${context.subtitle}"\n`;
+    contextStr += `Status: ${context.status} | Live: ${context.live} | Published: ${context.published}\n`;
+    if (context.slug) contextStr += `Slug: ${context.slug}\n`;
+    if (context.redirect) contextStr += `Redirect: ${context.redirect}\n`;
+    if (context.authors.length > 0) contextStr += `Authors: ${context.authors.join(', ')}\n`;
+    if (context.categories.length > 0) contextStr += `Categories: ${context.categories.join(', ')}\n`;
+    if (context.images.length > 0) contextStr += `Images: ${context.images.length} image(s)\n`;
+    
+    if (context.sections.length > 0) {
+        contextStr += `Sections:\n`;
+        context.sections.forEach((section, i) => {
+            contextStr += `${i + 1}. ${section.type}: ${section.content}\n`;
+        });
+    }
+    
+    // Truncate if too long
+    if (contextStr.length > maxTokens) {
+        contextStr = contextStr.substring(0, maxTokens - 50) + '...';
+    }
+    
+    return contextStr;
+}
+
+// Enhanced system prompt with article context
+function buildSystemPrompt(articleContext) {
+    const basePrompt = SYSTEM_PROMPT;
+    
+    if (articleContext) {
+        return `${basePrompt}
+
+Current Article Context:
+${articleContext}
+
+You can help edit this article by providing specific instructions. When you want to make changes, use this format:
+
+For article metadata:
+[EDIT:article:field:action:value]
+
+For sections:
+[EDIT:section_type:section_id:action:content]
+
+Available article fields:
+- title: Article title (string)
+- trailer: Article trailer/teaser (string)
+- subtitle: Article subtitle/description (string)
+- status: Article status (draft, unpublished, published)
+- live: Live status (true/false)
+- pinned: Pinned status (true/false)
+- published: Published status (true/false)
+- redirect: Redirect URL (string)
+- slug: Article slug (string)
+- authors: Author IDs (comma-separated)
+- categories: Category IDs (comma-separated)
+
+Available section actions:
+- update: Update existing content
+- create: Create new section
+- delete: Delete section
+- move: Move section to different position
+
+Examples:
+[EDIT:article:title:update:New Article Title]
+[EDIT:article:subtitle:update:Updated subtitle text]
+[EDIT:article:status:update:published]
+[EDIT:article:authors:update:author1,author2]
+[EDIT:text:section1:update:New paragraph content]
+[EDIT:title:new:create:New Section Title]
+[EDIT:quote:section2:delete:]
+[EDIT:code:section3:update:console.log('Hello World');]
+
+Always provide helpful suggestions and explain your reasoning.`;
+    }
+    
+    return basePrompt;
+}
+
 // Set up the client with environment variables
 const endpoint = process.env.APPWRITE_ENDPOINT;
 const projectId = process.env.APPWRITE_PROJECT_ID;
@@ -127,7 +246,7 @@ export default async function ({ req, res, log, error }) {
       }, 400);
     }
 
-    const { conversationId, agentId, blogId, metadata } = body;
+    const { conversationId, agentId, blogId, metadata, articleId } = body;
 
     // Use userId from JWT token if available, otherwise from request body
     const messageUserId = userId || body.userId;
@@ -144,6 +263,20 @@ export default async function ({ req, res, log, error }) {
         success: false,
         error: 'blogId is required'
       }, 400);
+    }
+
+    // Load article context if articleId is provided
+    let articleContext = '';
+    if (articleId) {
+      try {
+        log('Loading article context for articleId: ' + articleId);
+        const article = await serverDatabases.getDocument(databaseId, 'articles', articleId);
+        articleContext = buildArticleContext(article);
+        log('Article context loaded: ' + (articleContext ? 'Yes' : 'No'));
+      } catch (error) {
+        log('Failed to load article context: ' + error.message);
+        // Continue without article context
+      }
     }
 
     // If using JWT authentication, userId should be available from the token
@@ -165,7 +298,7 @@ export default async function ({ req, res, log, error }) {
     }
 
     // Function to generate streaming LLM response and update database in real-time
-    async function generateStreamingLLMResponse(messages, agentId, blogId, messageUserId) {
+    async function generateStreamingLLMResponse(messages, agentId, blogId, messageUserId, articleContext) {
       // Track generation start time
       const generationStartTime = Date.now();
       
@@ -223,8 +356,9 @@ export default async function ({ req, res, log, error }) {
         }
 
         // Add system prompt at the beginning for context
+        const systemPrompt = buildSystemPrompt(articleContext);
         const messagesWithSystem = [
-          { role: 'system', content: [{ type: 'text', text: SYSTEM_PROMPT }] },
+          { role: 'system', content: [{ type: 'text', text: systemPrompt }] },
           ...limitedConversationMessages
         ];
 
@@ -589,7 +723,8 @@ export default async function ({ req, res, log, error }) {
       conversationMessages.documents, 
       agentId, 
       blogId, 
-      messageUserId
+      messageUserId,
+      articleContext
     );
     
     log(`Streaming completed. Message ID: ${streamingResult.messageId}, Content length: ${streamingResult.content.length}, Chunks: ${streamingResult.chunkCount}`);
