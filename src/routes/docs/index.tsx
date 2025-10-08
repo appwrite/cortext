@@ -1,6 +1,8 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { Brain, Sparkles, Code2, Users, Zap, ArrowRight, CheckCircle, Type as TypeIcon, Image as ImageIcon, Video as VideoIcon, Map as MapIcon, Quote as QuoteIcon, Code2 as CodeIcon, FileEdit, MessageSquare, History } from "lucide-react";
 import { useThemeContext } from "@/contexts/theme-context";
+import { useTableOfContents } from "@/contexts/table-of-contents-context";
+import { useEffect } from "react";
 
 export const Route = createFileRoute("/docs/")({
     component: DocsIndex,
@@ -8,6 +10,22 @@ export const Route = createFileRoute("/docs/")({
 
 function DocsIndex() {
     const { effectiveTheme } = useThemeContext();
+    const { setItems } = useTableOfContents();
+
+    // Table of contents for this page
+    const tableOfContents = [
+        { id: 'welcome', title: 'Welcome to Cortext', level: 1 },
+        { id: 'get-started', title: 'Get Started', level: 1 },
+        { id: 'core-features', title: 'Core Features', level: 1 },
+        { id: 'api-overview', title: 'API Overview', level: 1 },
+        { id: 'ready-to-start', title: 'Ready to get started?', level: 1 },
+    ];
+
+    // Set table of contents when component mounts
+    useEffect(() => {
+        setItems(tableOfContents);
+        return () => setItems([]);
+    }, [setItems]);
 
     // Icon mapping for the block list
     const blocks: { label: string; Icon: React.ComponentType<{ className?: string; "aria-hidden"?: boolean }> }[] = [
@@ -71,7 +89,7 @@ function DocsIndex() {
     return (
         <div className="space-y-6">
             {/* Hero */}
-            <div className="py-4">
+            <div id="welcome" className="py-4">
                 <div className="inline-flex items-center gap-2 rounded-full border px-2 py-0.5 text-xs font-medium text-foreground/70 mb-3">
                     Documentation
                 </div>
@@ -83,8 +101,9 @@ function DocsIndex() {
                 </p>
             </div>
 
+
             {/* Quick Links */}
-            <section>
+            <section id="get-started">
                 <h2 className="text-lg font-semibold mb-3">Get Started</h2>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                     <div className="p-3 rounded-lg border hover:border-foreground/20 transition-colors">
@@ -115,7 +134,7 @@ function DocsIndex() {
             </section>
 
             {/* Features Overview */}
-            <section>
+            <section id="core-features">
                 <h2 className="text-lg font-semibold mb-3">Core Features</h2>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     {features.map((feature, index) => (
@@ -144,7 +163,7 @@ function DocsIndex() {
 
 
             {/* API Overview */}
-            <section>
+            <section id="api-overview">
                 <h2 className="text-lg font-semibold mb-3">API Overview</h2>
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
                     <div className="p-3 rounded border">
@@ -204,7 +223,7 @@ function DocsIndex() {
             </section>
 
             {/* Next Steps */}
-            <section className="py-3 bg-foreground/5 rounded-lg text-center">
+            <section id="ready-to-start" className="py-3 bg-foreground/5 rounded-lg text-center">
                 <h2 className="text-sm font-semibold mb-2">Ready to get started?</h2>
                 <p className="text-foreground/70 text-xs mb-3 max-w-2xl mx-auto">
                     Explore our comprehensive guides and start building your content management system today.

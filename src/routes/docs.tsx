@@ -1,6 +1,8 @@
 import { createFileRoute, Outlet, Link, useLocation } from "@tanstack/react-router";
 import { Brain, BookOpen, Code2, Zap, Users, Settings, ChevronRight, Github } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
+import { TableOfContents } from "@/components/docs/table-of-contents";
+import { TableOfContentsProvider, useTableOfContents } from "@/contexts/table-of-contents-context";
 
 export const Route = createFileRoute("/docs")({
     component: DocsLayout,
@@ -83,16 +85,17 @@ function Nav() {
     );
 }
 
-function DocsLayout() {
+function DocsLayoutContent() {
     const { user, isLoading } = useAuth();
     const location = useLocation();
+    const { items } = useTableOfContents();
 
     return (
         <div className="min-h-screen flex flex-col">
             <Nav />
 
             <div className="flex-1 mx-auto w-full max-w-7xl px-6 py-6">
-                <div className="flex gap-8">
+                <div className="flex gap-16">
                     {/* Sidebar */}
                     <aside className="hidden lg:block w-64 flex-shrink-0">
                         <nav className="sticky top-24 space-y-5">
@@ -131,6 +134,13 @@ function DocsLayout() {
                             <Outlet />
                         </div>
                     </main>
+
+                    {/* Table of Contents - Right Sidebar */}
+                    <aside className="hidden xl:block w-64 flex-shrink-0">
+                        <div className="sticky top-24 mt-8">
+                            {items.length > 0 && <TableOfContents items={items} />}
+                        </div>
+                    </aside>
                 </div>
             </div>
 
@@ -150,5 +160,13 @@ function DocsLayout() {
                 </div>
             </footer>
         </div>
+    );
+}
+
+function DocsLayout() {
+    return (
+        <TableOfContentsProvider>
+            <DocsLayoutContent />
+        </TableOfContentsProvider>
     );
 }
