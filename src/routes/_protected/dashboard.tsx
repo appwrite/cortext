@@ -3101,7 +3101,26 @@ function VideoEditor({ section, onLocalChange, disabled = false }: { section: an
 }
 
 function MapEditor({ section, onLocalChange, disabled = false }: { section: any; onLocalChange: (data: Partial<any>) => void; disabled?: boolean }) {
-    const initial = parseLatLng(section.data)
+    // Parse the section data - it could be JSON string or comma-separated string
+    const parseSectionData = (data: any) => {
+        if (!data) return null
+        
+        // Try to parse as JSON first
+        if (typeof data === 'string' && data.startsWith('{')) {
+            try {
+                const parsed = JSON.parse(data)
+                return { lat: parsed.lat, lng: parsed.lng }
+            } catch (e) {
+                // If JSON parsing fails, try the old comma-separated format
+                return parseLatLng(data)
+            }
+        }
+        
+        // Try the old comma-separated format
+        return parseLatLng(data)
+    }
+    
+    const initial = parseSectionData(section.data)
     const [lat, setLat] = useState<string | number>(initial?.lat ?? '')
     const [lng, setLng] = useState<string | number>(initial?.lng ?? '')
     const nlat = typeof lat === 'number' ? lat : parseFloat(lat)
