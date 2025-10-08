@@ -89,15 +89,28 @@ export function useRevisionHistory(articleId: string) {
   const { revisions, isLoading, error } = useRevisions(articleId)
 
   const revisionHistory = revisions.map(revision => {
-    const data = JSON.parse(revision.data)
-    return {
-      ...revision,
-      parsedData: data,
-      isInitial: data.initial || false,
-      isPublished: revision.status === 'published',
-      changedAttributes: data.changedAttributes || {},
-      sectionChanges: data.changedAttributes?.sections || [],
-      timestamp: data.timestamp || revision.$createdAt,
+    try {
+      const data = JSON.parse(revision.data)
+      return {
+        ...revision,
+        parsedData: data,
+        isInitial: data.initial || false,
+        isPublished: revision.status === 'published',
+        changedAttributes: data.changedAttributes || {},
+        sectionChanges: data.changedAttributes?.sections || [],
+        timestamp: data.timestamp || revision.$createdAt,
+      }
+    } catch (error) {
+      console.error('Error parsing revision data:', error, revision)
+      return {
+        ...revision,
+        parsedData: null,
+        isInitial: false,
+        isPublished: revision.status === 'published',
+        changedAttributes: {},
+        sectionChanges: [],
+        timestamp: revision.$createdAt,
+      }
     }
   })
 

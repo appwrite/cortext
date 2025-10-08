@@ -42,14 +42,16 @@ interface AuthorSelectorProps {
   selectedAuthorIds: string[]
   onAuthorsChange: (authorIds: string[]) => void
   userId: string
+  disabled?: boolean
 }
 
 interface SortableAuthorItemProps {
   author: Authors
   onRemove: (authorId: string) => void
+  disabled?: boolean
 }
 
-function SortableAuthorItem({ author, onRemove }: SortableAuthorItemProps) {
+function SortableAuthorItem({ author, onRemove, disabled = false }: SortableAuthorItemProps) {
   const {
     attributes,
     listeners,
@@ -76,9 +78,9 @@ function SortableAuthorItem({ author, onRemove }: SortableAuthorItemProps) {
       )}
     >
       <div
-        className="cursor-grab active:cursor-grabbing flex items-center gap-1"
-        {...attributes}
-        {...listeners}
+        className={`flex items-center gap-1 ${disabled ? 'cursor-not-allowed opacity-50' : 'cursor-grab active:cursor-grabbing'}`}
+        {...(disabled ? {} : attributes)}
+        {...(disabled ? {} : listeners)}
       >
         <GripVertical className="h-3 w-3" />
         <span>{author.firstname} {author.lastname}</span>
@@ -89,8 +91,9 @@ function SortableAuthorItem({ author, onRemove }: SortableAuthorItemProps) {
         className="h-4 w-4 p-0 hover:bg-muted-foreground/20"
         onClick={(e) => {
           e.stopPropagation()
-          onRemove(author.$id)
+          if (!disabled) onRemove(author.$id)
         }}
+        disabled={disabled}
       >
         <X className="h-3 w-3" />
       </Button>
@@ -98,7 +101,7 @@ function SortableAuthorItem({ author, onRemove }: SortableAuthorItemProps) {
   )
 }
 
-export function AuthorSelector({ selectedAuthorIds, onAuthorsChange, userId }: AuthorSelectorProps) {
+export function AuthorSelector({ selectedAuthorIds, onAuthorsChange, userId, disabled = false }: AuthorSelectorProps) {
   const [open, setOpen] = useState(false)
   const [searchValue, setSearchValue] = useState('')
   const [showNewAuthorModal, setShowNewAuthorModal] = useState(false)
@@ -175,6 +178,7 @@ export function AuthorSelector({ selectedAuthorIds, onAuthorsChange, userId }: A
 
 
   const handleAuthorSelect = (authorId: string) => {
+    if (disabled) return
     if (selectedAuthorIds.includes(authorId)) {
       onAuthorsChange(selectedAuthorIds.filter(id => id !== authorId))
     } else {
@@ -183,10 +187,12 @@ export function AuthorSelector({ selectedAuthorIds, onAuthorsChange, userId }: A
   }
 
   const handleAuthorRemove = (authorId: string) => {
+    if (disabled) return
     onAuthorsChange(selectedAuthorIds.filter(id => id !== authorId))
   }
 
   const handleDragEnd = (event: DragEndEvent) => {
+    if (disabled) return
     const { active, over } = event
 
     if (over && active.id !== over.id) {
@@ -256,6 +262,7 @@ export function AuthorSelector({ selectedAuthorIds, onAuthorsChange, userId }: A
                   key={author.$id}
                   author={author}
                   onRemove={handleAuthorRemove}
+                  disabled={disabled}
                 />
               ))}
             </div>
@@ -308,7 +315,7 @@ export function AuthorSelector({ selectedAuthorIds, onAuthorsChange, userId }: A
                 role="combobox"
                 aria-expanded={open}
                 className="w-full justify-between"
-                disabled={isPending}
+                disabled={isPending || disabled}
               >
               {isPending ? (
                 <div className="flex items-center gap-2">

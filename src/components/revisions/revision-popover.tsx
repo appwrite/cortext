@@ -13,6 +13,7 @@ interface RevisionPopoverProps {
   currentRevisionId?: string | null
   onSelectRevision?: (revisionId: string) => void
   onDeleteRevision?: (revisionId: string) => void
+  onRevertToRevision?: (revisionId: string) => void
   className?: string
   currentRevisionVersion?: number
 }
@@ -22,6 +23,7 @@ export function RevisionPopover({
   currentRevisionId,
   onSelectRevision,
   onDeleteRevision,
+  onRevertToRevision,
   className,
   currentRevisionVersion
 }: RevisionPopoverProps) {
@@ -93,7 +95,7 @@ export function RevisionPopover({
             )}
           </Button>
         </PopoverTrigger>
-        <PopoverContent className="w-96 p-0" align="start">
+        <PopoverContent className="w-[28rem] p-0" align="start">
           {/* Arrow pointing down to button - matching other popovers */}
           <div className="absolute left-3 bottom-0 w-0 h-0 border-l-[6px] border-r-[6px] border-t-[6px] border-l-transparent border-r-transparent border-t-border translate-y-full" />
           
@@ -125,9 +127,11 @@ export function RevisionPopover({
                   >
                     {/* Revision info */}
                     <div
-                      className="flex-1 min-w-0 cursor-pointer"
+                      className="flex-1 min-w-0 cursor-pointer pr-2"
                       onClick={() => {
-                        if (onSelectRevision) {
+                        if (onRevertToRevision && revision.$id !== currentRevisionId) {
+                          onRevertToRevision(revision.$id)
+                        } else if (onSelectRevision) {
                           onSelectRevision(revision.$id)
                         }
                         setIsOpen(false)
@@ -142,13 +146,8 @@ export function RevisionPopover({
                             {getRevisionTitle(revision)}
                           </div>
                           {revision.$id === currentRevisionId && (
-                            <span className="text-xs text-blue-600">
-                              Latest
-                            </span>
-                          )}
-                          {revision.isPublished && (
                             <span className="text-xs text-green-600">
-                              Published
+                              Current
                             </span>
                           )}
                         </div>
@@ -168,7 +167,7 @@ export function RevisionPopover({
                     </div>
                     
                     {/* Action buttons */}
-                    <div className="flex items-center gap-1 flex-shrink-0 opacity-0 group-hover:opacity-100 transition-opacity">
+                    <div className="flex items-center gap-1 flex-shrink-0 opacity-60 group-hover:opacity-100 transition-opacity">
                       {onDeleteRevision && 
                        !revision.isInitial && 
                        revision.$id !== currentRevisionId && 
@@ -176,13 +175,13 @@ export function RevisionPopover({
                         <Button
                           variant="ghost"
                           size="sm"
-                          className="h-6 w-6 p-0 text-muted-foreground hover:text-destructive"
+                          className="h-7 w-7 p-0 text-muted-foreground hover:bg-gray-100 dark:hover:bg-gray-800"
                           onClick={(e) => {
                             e.stopPropagation()
                             handleDeleteRevision(revision.$id)
                           }}
                         >
-                          <Trash2 className="h-3 w-3" />
+                          <Trash2 className="h-3.5 w-3.5" />
                         </Button>
                       )}
                     </div>

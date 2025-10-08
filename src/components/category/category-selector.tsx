@@ -42,14 +42,16 @@ interface CategorySelectorProps {
   selectedCategoryIds: string[]
   onCategoriesChange: (categoryIds: string[]) => void
   userId: string
+  disabled?: boolean
 }
 
 interface SortableCategoryItemProps {
   category: Categories
   onRemove: (categoryId: string) => void
+  disabled?: boolean
 }
 
-function SortableCategoryItem({ category, onRemove }: SortableCategoryItemProps) {
+function SortableCategoryItem({ category, onRemove, disabled = false }: SortableCategoryItemProps) {
   const {
     attributes,
     listeners,
@@ -76,9 +78,9 @@ function SortableCategoryItem({ category, onRemove }: SortableCategoryItemProps)
       )}
     >
       <div
-        className="cursor-grab active:cursor-grabbing flex items-center gap-1"
-        {...attributes}
-        {...listeners}
+        className={`flex items-center gap-1 ${disabled ? 'cursor-not-allowed opacity-50' : 'cursor-grab active:cursor-grabbing'}`}
+        {...(disabled ? {} : attributes)}
+        {...(disabled ? {} : listeners)}
       >
         <GripVertical className="h-3 w-3" />
         <span>{category.name}</span>
@@ -89,8 +91,9 @@ function SortableCategoryItem({ category, onRemove }: SortableCategoryItemProps)
         className="h-4 w-4 p-0 hover:bg-muted-foreground/20"
         onClick={(e) => {
           e.stopPropagation()
-          onRemove(category.$id)
+          if (!disabled) onRemove(category.$id)
         }}
+        disabled={disabled}
       >
         <X className="h-3 w-3" />
       </Button>
@@ -98,7 +101,7 @@ function SortableCategoryItem({ category, onRemove }: SortableCategoryItemProps)
   )
 }
 
-export function CategorySelector({ selectedCategoryIds, onCategoriesChange, userId }: CategorySelectorProps) {
+export function CategorySelector({ selectedCategoryIds, onCategoriesChange, userId, disabled = false }: CategorySelectorProps) {
   const [open, setOpen] = useState(false)
   const [searchValue, setSearchValue] = useState('')
   const [showNewCategoryModal, setShowNewCategoryModal] = useState(false)
@@ -174,6 +177,7 @@ export function CategorySelector({ selectedCategoryIds, onCategoriesChange, user
   }, [])
 
   const handleCategorySelect = (categoryId: string) => {
+    if (disabled) return
     if (selectedCategoryIds.includes(categoryId)) {
       onCategoriesChange(selectedCategoryIds.filter(id => id !== categoryId))
     } else {
@@ -182,10 +186,12 @@ export function CategorySelector({ selectedCategoryIds, onCategoriesChange, user
   }
 
   const handleCategoryRemove = (categoryId: string) => {
+    if (disabled) return
     onCategoriesChange(selectedCategoryIds.filter(id => id !== categoryId))
   }
 
   const handleDragEnd = (event: DragEndEvent) => {
+    if (disabled) return
     const { active, over } = event
 
     if (over && active.id !== over.id) {
@@ -294,6 +300,7 @@ export function CategorySelector({ selectedCategoryIds, onCategoriesChange, user
                     key={category.$id}
                     category={category}
                     onRemove={handleCategoryRemove}
+                    disabled={disabled}
                   />
                 ))
               ) : (
@@ -314,6 +321,7 @@ export function CategorySelector({ selectedCategoryIds, onCategoriesChange, user
               role="combobox"
               aria-expanded={open}
               className="w-full justify-between"
+              disabled={disabled}
             >
               {selectedCategoryIds.length > 0
                 ? `${selectedCategoryIds.length} categor${selectedCategoryIds.length === 1 ? 'y' : 'ies'} selected`

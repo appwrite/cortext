@@ -2,7 +2,7 @@ import { createFileRoute, Link, useNavigate, useSearch } from '@tanstack/react-r
 import { useAuth } from '@/hooks/use-auth'
 import { useEffect, useMemo, useRef, useState, useCallback, memo } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { db, createInitialRevision, createUpdateRevision } from '@/lib/appwrite/db'
+import { db, createInitialRevision, createUpdateRevision, createRevertRevision } from '@/lib/appwrite/db'
 import { useLatestRevision } from '@/hooks/use-latest-revision'
 import { useAutoSave } from '@/hooks/use-auto-save'
 import { files } from '@/lib/appwrite/storage'
@@ -27,7 +27,7 @@ import { CategorySelector } from '@/components/category'
 import { ImageGallery } from '@/components/image'
 import { NotificationBell } from '@/components/notification'
 import { TeamBlogSelector } from '@/components/team-blog'
-import { RevisionPopover, UnpublishedChangesBanner } from '@/components/revisions'
+import { RevisionPopover, UnpublishedChangesBanner, RevertConfirmationBanner } from '@/components/revisions'
 import { CodeEditor } from '@/components/ui/code-editor'
 import { UserAvatar } from '@/components/user-avatar'
 import { useTeamBlog } from '@/hooks/use-team-blog'
@@ -873,8 +873,17 @@ function ArticleEditor({ articleId, userId, onBack }: { articleId: string; userI
             
             return updatedArticle
         },
-        onSuccess: () => {
-            qc.invalidateQueries({ queryKey: ['article', articleId] })
+        onSuccess: (updatedArticle) => {
+            // Update the article cache directly to prevent race conditions
+            qc.setQueryData(['article', articleId], (oldData: any) => {
+                if (!oldData) return oldData
+                return {
+                    ...oldData,
+                    ...updatedArticle,
+                    $updatedAt: new Date().toISOString()
+                }
+            })
+            // Only invalidate the articles list for the list view
             qc.invalidateQueries({ queryKey: ['articles', userId, currentBlog?.$id] })
         },
         onError: () => toast({ title: 'Failed to save article' }),
@@ -1007,7 +1016,15 @@ function ArticleEditor({ articleId, userId, onBack }: { articleId: string; userI
     useEffect(() => {
         const target = focusTargetRef.current
         if (!target) return
-        const inputId = firstInputIdFor(target.type)
+        
+        // For title sections, use the section-specific ID pattern
+        let inputId: string
+        if (target.type === 'title' && target.id) {
+            inputId = `title-${target.id}`
+        } else {
+            inputId = firstInputIdFor(target.type)
+        }
+        
         // try immediately and on next frame for safety
         const tryFocus = () => {
             const el = document.getElementById(inputId) as HTMLInputElement | HTMLTextAreaElement | null
@@ -1033,6 +1050,14 @@ function ArticleEditor({ articleId, userId, onBack }: { articleId: string; userI
     const dragIdRef = useRef<string | null>(null)
     const [draggingId, setDraggingId] = useState<string | null>(null)
     const [overInfo, setOverInfo] = useState<{ id: string | null; where: 'above' | 'below' }>({ id: null, where: 'below' })
+    
+    // Revert state
+    const [selectedRevisionId, setSelectedRevisionId] = useState<string | null>(null)
+    const [showRevertConfirmation, setShowRevertConfirmation] = useState(false)
+    const [isReverting, setIsReverting] = useState(false)
+    const [revertFormData, setRevertFormData] = useState<any>(null)
+    const [isInRevertMode, setIsInRevertMode] = useState(false)
+    const isRevertingRef = useRef(false)
 
     const onDragStart = (id: string, e: React.DragEvent) => {
         dragIdRef.current = id
@@ -1113,13 +1138,16 @@ function ArticleEditor({ articleId, userId, onBack }: { articleId: string; userI
     const [isDataLoaded, setIsDataLoaded] = useState(false)
     const [isFullyLoaded, setIsFullyLoaded] = useState(false)
     const [initialSections, setInitialSections] = useState<any[]>([])
-    const [autoSaveEvents, setAutoSaveEvents] = useState<Array<{
-        id: string
-        timestamp: Date
-        trigger: string
-        reason: string
-        data?: any
-    }>>([])
+
+    // Auto-save functionality with optimized debounce for faster response
+    const { isAutoSaving, lastSaved, hasUnsavedChanges, showSaved, triggerAutoSave, trackInteraction, queueLength } = useAutoSave({
+        articleId,
+        article,
+        teamId: currentTeam?.$id,
+        userId,
+        debounceMs: 1000, // Reduced to 1 second for faster auto-save
+        interactionDelayMs: 3000 // 3 second delay while user is actively interacting
+    })
 
     // Section management functions
     const createSection = (type: string) => {
@@ -1137,6 +1165,8 @@ function ArticleEditor({ articleId, userId, onBack }: { articleId: string; userI
         if (isFullyLoaded) {
             console.log('Section added, setting hasUserInteracted to true')
             setHasUserInteracted(true)
+            // Track this as a user interaction to delay auto-save
+            trackInteraction()
         } else {
             console.log('Section added during initial load, not setting hasUserInteracted')
         }
@@ -1151,8 +1181,10 @@ function ArticleEditor({ articleId, userId, onBack }: { articleId: string; userI
         // Only set hasUserInteracted if we're not in initial load
         if (isFullyLoaded) {
             setHasUserInteracted(true)
+            // Track this as a user interaction to delay auto-save
+            trackInteraction()
         }
-    }, [isFullyLoaded])
+    }, [isFullyLoaded, trackInteraction])
 
     // Create onLocalChange handler that doesn't depend on localSections
     const createOnLocalChangeHandler = useCallback((sectionId: string) => {
@@ -1165,6 +1197,13 @@ function ArticleEditor({ articleId, userId, onBack }: { articleId: string; userI
         // Only set hasUserInteracted if we're not in initial load
         if (isFullyLoaded) {
             setHasUserInteracted(true)
+            // Track this as a user interaction to delay auto-save
+            trackInteraction()
+            // Clear any pending auto-save timeout to prevent stale data from being saved
+            if (autoSaveTimeoutRef.current) {
+                clearTimeout(autoSaveTimeoutRef.current)
+                autoSaveTimeoutRef.current = null
+            }
         }
     }
 
@@ -1174,18 +1213,16 @@ function ArticleEditor({ articleId, userId, onBack }: { articleId: string; userI
         // Only set hasUserInteracted if we're not in initial load
         if (isFullyLoaded) {
             setHasUserInteracted(true)
+            // Track this as a user interaction to delay auto-save
+            trackInteraction()
+            // Clear any pending auto-save timeout to prevent stale data from being saved
+            if (autoSaveTimeoutRef.current) {
+                clearTimeout(autoSaveTimeoutRef.current)
+                autoSaveTimeoutRef.current = null
+            }
         }
     }
 
-    // Auto-save functionality with optimized debounce for faster response
-    const { isAutoSaving, lastSaved, hasUnsavedChanges, showSaved, triggerAutoSave } = useAutoSave({
-        articleId,
-        article,
-        teamId: currentTeam?.$id,
-        userId,
-        debounceMs: 1000 // Reduced to 1 second for faster auto-save
-    })
-    
     // Use ref to avoid dependency issues
     const triggerAutoSaveRef = useRef(triggerAutoSave)
     triggerAutoSaveRef.current = triggerAutoSave
@@ -1199,17 +1236,6 @@ function ArticleEditor({ articleId, userId, onBack }: { articleId: string; userI
     // Ref for auto-save debounce timeout
     const autoSaveTimeoutRef = useRef<NodeJS.Timeout | null>(null)
 
-    // Function to log auto-save events
-    const logAutoSaveEvent = (trigger: string, reason: string, data?: any) => {
-        const event = {
-            id: Math.random().toString(36).substr(2, 9),
-            timestamp: new Date(),
-            trigger,
-            reason,
-            data
-        }
-        setAutoSaveEvents(prev => [event, ...prev].slice(0, 50)) // Keep last 50 events
-    }
 
     const handleStatusChange = useCallback((newStatus: string) => {
         setStatus(newStatus)
@@ -1256,18 +1282,20 @@ function ArticleEditor({ articleId, userId, onBack }: { articleId: string; userI
     const memoizedAuthorSelector = useMemo(() => (
         <AuthorSelector 
             selectedAuthorIds={authors}
-            onAuthorsChange={handleAuthorsChange}
+            onAuthorsChange={isInRevertMode ? () => {} : handleAuthorsChange}
             userId={userId}
+            disabled={isInRevertMode}
         />
-    ), [authors, handleAuthorsChange, userId])
+    ), [authors, handleAuthorsChange, userId, isInRevertMode])
 
     const memoizedCategorySelector = useMemo(() => (
         <CategorySelector 
             selectedCategoryIds={categories}
-            onCategoriesChange={handleCategoriesChange}
+            onCategoriesChange={isInRevertMode ? () => {} : handleCategoriesChange}
             userId={userId}
+            disabled={isInRevertMode}
         />
-    ), [categories, handleCategoriesChange, userId])
+    ), [categories, handleCategoriesChange, userId, isInRevertMode])
 
     // Track when banner becomes visible to prevent hiding during save
     useEffect(() => {
@@ -1280,6 +1308,9 @@ function ArticleEditor({ articleId, userId, onBack }: { articleId: string; userI
 
     useEffect(() => {
         if (latestFormData) {
+            // Set flag to prevent auto-save during data loading
+            isRevertingRef.current = true
+            
             setTrailer(latestFormData.trailer ?? '')
             setTitle(latestFormData.title ?? '')
             setExcerpt(latestFormData.subtitle ?? '')
@@ -1288,12 +1319,17 @@ function ArticleEditor({ articleId, userId, onBack }: { articleId: string; userI
             setAuthors(latestFormData.authors ?? [])
             setCategories(latestFormData.categories ?? [])
             setStatus(latestFormData.status ?? 'unpublished')
+            
+            // Reset flag after a short delay to allow form state to settle
+            setTimeout(() => {
+                isRevertingRef.current = false
+            }, 100)
         }
     }, [latestFormData?.$id, latestFormData?.$updatedAt]) // Only update when the data actually changes
 
     // Auto-save when form data changes (only after user interaction and fully loaded)
     useEffect(() => {
-        if (hasUserInteracted && article && isFullyLoaded && !isInitialLoadRef.current) {
+        if (hasUserInteracted && article && isFullyLoaded && !isInitialLoadRef.current && !isRevertingRef.current) {
             // Check if sections have actually changed from initial state
             const sectionsChanged = JSON.stringify(localSections) !== JSON.stringify(initialSections)
             
@@ -1445,6 +1481,187 @@ function ArticleEditor({ articleId, userId, onBack }: { articleId: string; userI
         } finally {
             setSaving(false)
         }
+    }
+
+    // Handle reverting to a specific revision
+    const handleRevertToRevision = async (revisionId: string) => {
+        console.log('handleRevertToRevision called with:', revisionId)
+        try {
+            setIsReverting(true)
+            isRevertingRef.current = true
+            console.log('Starting revert process...')
+            
+            // Get the revision data
+            const revision = await db.revisions.get(revisionId)
+            if (!revision) {
+                throw new Error('Revision not found')
+            }
+            console.log('Revision fetched:', revision)
+            
+            const revisionData = JSON.parse(revision.data)
+            const revisionAttributes = revisionData.attributes || revisionData
+            console.log('Revision attributes:', revisionAttributes)
+            
+            // Create a new revision with the reverted data
+            const revertedFormData = {
+                ...article,
+                title: revisionAttributes.title ?? article?.title,
+                subtitle: revisionAttributes.subtitle ?? article?.subtitle,
+                trailer: revisionAttributes.trailer ?? article?.trailer,
+                status: revisionAttributes.status ?? article?.status,
+                live: revisionAttributes.live ?? article?.live,
+                pinned: revisionAttributes.pinned ?? article?.pinned,
+                redirect: revisionAttributes.redirect ?? article?.redirect,
+                slug: revisionAttributes.slug ?? article?.slug,
+                authors: revisionAttributes.authors ?? article?.authors,
+                categories: revisionAttributes.categories ?? article?.categories,
+                images: revisionAttributes.images ?? article?.images,
+                blogId: revisionAttributes.blogId ?? article?.blogId,
+                body: revisionAttributes.sections ? JSON.stringify(revisionAttributes.sections) : article?.body,
+            }
+            
+            // Create a new revision with the reverted data
+            console.log('Creating new revision...')
+            const newRevision = await createRevertRevision(
+                articleId,
+                article!,
+                revertedFormData as Articles,
+                currentTeam?.$id,
+                `Reverted to version ${revision.version}`
+            )
+            console.log('New revision created:', newRevision)
+            
+            if (newRevision) {
+                // Don't update the article's activeRevisionId - that only happens on deploy
+                // The form will show the reverted data, but the article stays pointing to the published version
+                console.log('Revert revision created successfully')
+                
+                // Update form state with reverted data
+                setTitle(revisionAttributes.title ?? article?.title ?? '')
+                setExcerpt(revisionAttributes.subtitle ?? article?.subtitle ?? '')
+                setTrailer(revisionAttributes.trailer ?? article?.trailer ?? '')
+                setLive(revisionAttributes.live ?? article?.live ?? false)
+                setRedirect(revisionAttributes.redirect ?? article?.redirect ?? '')
+                setAuthors(revisionAttributes.authors ?? article?.authors ?? [])
+                setCategories(revisionAttributes.categories ?? article?.categories ?? [])
+                
+                // Update sections
+                if (revisionAttributes.sections) {
+                    setLocalSections(revisionAttributes.sections)
+                }
+                
+                // Clear revert state
+                console.log('Clearing revert state...')
+                setSelectedRevisionId(null)
+                setShowRevertConfirmation(false)
+                setRevertFormData(null)
+                setIsInRevertMode(false)
+                
+                // Invalidate only the revisions query to refresh the revision list
+                qc.invalidateQueries({ queryKey: ['revisions', articleId] })
+                
+                console.log('Revert completed successfully')
+                toast({ title: `Reverted to version ${revision.version}` })
+            } else {
+                console.error('Failed to create new revision')
+            }
+        } catch (error) {
+            console.error('Revert error:', error)
+            toast({
+                title: 'Failed to revert revision',
+                description: error instanceof Error ? error.message : 'Unknown error',
+                variant: 'destructive'
+            })
+        } finally {
+            console.log('Revert process finished, resetting state')
+            setIsReverting(false)
+            isRevertingRef.current = false
+        }
+    }
+
+    // Handle selecting a revision for revert
+    const handleSelectRevisionForRevert = async (revisionId: string) => {
+        try {
+            const revision = await db.revisions.get(revisionId)
+            if (!revision) {
+                console.log('Revision not found:', revisionId)
+                return
+            }
+            
+            const revisionData = JSON.parse(revision.data)
+            const revisionAttributes = revisionData.attributes || revisionData
+            
+            // Set the selected revision and show confirmation
+            setSelectedRevisionId(revisionId)
+            const revertData = {
+                title: revisionAttributes.title ?? article?.title,
+                subtitle: revisionAttributes.subtitle ?? article?.subtitle,
+                version: revision.version,
+                timestamp: revision.$createdAt
+            }
+            setRevertFormData(revertData)
+            setShowRevertConfirmation(true)
+            
+            // Load revision data into form and enable read-only mode
+            setTitle(revisionAttributes.title ?? article?.title ?? '')
+            setExcerpt(revisionAttributes.subtitle ?? article?.subtitle ?? '')
+            setTrailer(revisionAttributes.trailer ?? article?.trailer ?? '')
+            setLive(revisionAttributes.live ?? article?.live ?? false)
+            setRedirect(revisionAttributes.redirect ?? article?.redirect ?? '')
+            setAuthors(revisionAttributes.authors ?? article?.authors ?? [])
+            setCategories(revisionAttributes.categories ?? article?.categories ?? [])
+            
+            // Update sections
+            if (revisionAttributes.sections) {
+                setLocalSections(revisionAttributes.sections)
+            }
+            
+            // Disable auto-save by setting the revert flag
+            isRevertingRef.current = true
+            setIsInRevertMode(true)
+            
+        } catch (error) {
+            console.error('Error loading revision:', error)
+            toast({
+                title: 'Failed to load revision',
+                description: error instanceof Error ? error.message : 'Unknown error',
+                variant: 'destructive'
+            })
+        }
+    }
+
+    // Handle canceling revert
+    const handleCancelRevert = () => {
+        // Restore original form data
+        if (latestFormData) {
+            setTitle(latestFormData.title ?? '')
+            setExcerpt(latestFormData.subtitle ?? '')
+            setTrailer(latestFormData.trailer ?? '')
+            setLive(latestFormData.live ?? false)
+            setRedirect(latestFormData.redirect ?? '')
+            setAuthors(latestFormData.authors ?? [])
+            setCategories(latestFormData.categories ?? [])
+            
+            // Restore sections
+            if (latestFormData.body) {
+                try {
+                    const sections = JSON.parse(latestFormData.body)
+                    const parsedSections = Array.isArray(sections) ? sections : []
+                    setLocalSections(parsedSections)
+                } catch (error) {
+                    console.error('Error parsing sections:', error)
+                }
+            }
+        }
+        
+        // Clear revert state
+        setSelectedRevisionId(null)
+        setShowRevertConfirmation(false)
+        setRevertFormData(null)
+        setIsInRevertMode(false)
+        
+        // Re-enable auto-save
+        isRevertingRef.current = false
     }
 
     if (isPending || !article) {
@@ -1673,40 +1890,79 @@ function ArticleEditor({ articleId, userId, onBack }: { articleId: string; userI
                                 </div>
                             </div>
                             <div>
-                                <strong>Auto-Save Events:</strong>
+                                <strong>Revert Mode State:</strong>
                                 <div className="ml-2 text-gray-600 dark:text-gray-400">
-                                    <div className="max-h-40 overflow-y-auto border rounded p-2 bg-white dark:bg-gray-900">
-                                        {autoSaveEvents.length === 0 ? (
-                                            <div className="text-gray-500 dark:text-gray-400 italic">No auto-save events yet</div>
-                                        ) : (
-                                            <div className="space-y-2">
-                                                {autoSaveEvents.map((event) => (
-                                                    <div key={event.id} className="text-xs border-b border-gray-200 dark:border-gray-700 pb-2 last:border-b-0">
-                                                        <div className="flex items-center justify-between">
-                                                            <span className="font-medium text-blue-600 dark:text-blue-400">
-                                                                {event.trigger}
+                                    <div className="space-y-2 p-2 bg-white dark:bg-gray-900 rounded border">
+                                        <div className="text-xs">
+                                            <span className="font-medium">Selected Revision ID:</span>
+                                            <span className="ml-2 text-blue-600 dark:text-blue-400">
+                                                {selectedRevisionId || 'None'}
                                                             </span>
-                                                            <span className="text-gray-500 dark:text-gray-400">
-                                                                {event.timestamp.toLocaleTimeString()}
+                                        </div>
+                                        <div className="text-xs">
+                                            <span className="font-medium">Show Revert Confirmation:</span>
+                                            <span className={`ml-2 px-2 py-1 rounded text-xs ${
+                                                showRevertConfirmation 
+                                                    ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200' 
+                                                    : 'bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-200'
+                                            }`}>
+                                                {showRevertConfirmation ? 'Yes' : 'No'}
                                                             </span>
                                                         </div>
-                                                        <div className="text-gray-600 dark:text-gray-400 mt-1">
-                                                            {event.reason}
+                                        <div className="text-xs">
+                                            <span className="font-medium">Is Reverting:</span>
+                                            <span className={`ml-2 px-2 py-1 rounded text-xs ${
+                                                isReverting 
+                                                    ? 'bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-200' 
+                                                    : 'bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-200'
+                                            }`}>
+                                                {isReverting ? 'Yes' : 'No'}
+                                            </span>
                                                         </div>
-                                                        {event.data && (
-                                                            <div className="mt-1 text-gray-500 dark:text-gray-400">
-                                                                <details className="cursor-pointer">
-                                                                    <summary className="hover:text-gray-700 dark:hover:text-gray-300">
-                                                                        Details
-                                                                    </summary>
-                                                                    <pre className="mt-1 text-xs bg-gray-50 dark:bg-gray-800 p-2 rounded overflow-x-auto">
-                                                                        {JSON.stringify(event.data, null, 2)}
-                                                                    </pre>
-                                                                </details>
+                                        <div className="text-xs">
+                                            <span className="font-medium">Revert Form Data:</span>
+                                            <span className="ml-2 text-blue-600 dark:text-blue-400">
+                                                {revertFormData ? 'Available' : 'None'}
+                                            </span>
                                                             </div>
-                                                        )}
+                                        <div className="text-xs">
+                                            <span className="font-medium">Is Reverting Ref:</span>
+                                            <span className={`ml-2 px-2 py-1 rounded text-xs ${
+                                                isRevertingRef.current 
+                                                    ? 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200' 
+                                                    : 'bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-200'
+                                            }`}>
+                                                {isRevertingRef.current ? 'True' : 'False'}
+                                            </span>
                                                     </div>
-                                                ))}
+                                        <div className="text-xs">
+                                            <span className="font-medium">Is In Revert Mode:</span>
+                                            <span className={`ml-2 px-2 py-1 rounded text-xs ${
+                                                isInRevertMode 
+                                                    ? 'bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200' 
+                                                    : 'bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-200'
+                                            }`}>
+                                                {isInRevertMode ? 'Yes' : 'No'}
+                                            </span>
+                                        </div>
+                                        <div className="text-xs">
+                                            <span className="font-medium">Auto-save Queue Length:</span>
+                                            <span className={`ml-2 px-2 py-1 rounded text-xs ${
+                                                queueLength > 0 
+                                                    ? 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200' 
+                                                    : 'bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-200'
+                                            }`}>
+                                                {queueLength}
+                                            </span>
+                                        </div>
+                                        {revertFormData && (
+                                            <div className="text-xs mt-2">
+                                                <span className="font-medium">Revision Details:</span>
+                                                <div className="mt-1 text-gray-500 dark:text-gray-400">
+                                                    <div>Version: {revertFormData.version}</div>
+                                                    <div>Title: {revertFormData.title}</div>
+                                                    <div>Timestamp: {new Date(revertFormData.timestamp).toLocaleString()}</div>
+                                                </div>
                                             </div>
                                         )}
                                     </div>
@@ -1728,12 +1984,34 @@ function ArticleEditor({ articleId, userId, onBack }: { articleId: string; userI
                     />
                 </div>
 
+                {/* Revert confirmation banner */}
+                {showRevertConfirmation && revertFormData && (
+                    <div className="mb-6 transition-all duration-500 ease-out">
+                        <RevertConfirmationBanner
+                            revisionTitle={`Version ${revertFormData.version} - ${revertFormData.title}`}
+                            revisionDate={revertFormData.timestamp}
+                            onConfirm={() => {
+                                console.log('Revert button clicked, selectedRevisionId:', selectedRevisionId)
+                                if (selectedRevisionId) {
+                                    console.log('Calling handleRevertToRevision with:', selectedRevisionId)
+                                    handleRevertToRevision(selectedRevisionId)
+                                } else {
+                                    console.error('No selectedRevisionId when clicking revert')
+                                }
+                            }}
+                            onCancel={handleCancelRevert}
+                            isReverting={isReverting}
+                        />
+                    </div>
+                )}
+
+
                 {/* Article meta form */}
                 <section className="space-y-4">
                     <div>
                         <Label htmlFor="trailer">Trailer</Label>
-                        {hideComments ? (
-                            <Input id="trailer" value={trailer} onChange={handleTrailerChange} placeholder="Breaking news, Exclusive..." />
+                        {hideComments || isInRevertMode ? (
+                            <Input id="trailer" value={trailer} onChange={handleTrailerChange} placeholder="Breaking news, Exclusive..." disabled={isInRevertMode} />
                         ) : (
                             <CommentableInput
                                 articleId={articleId}
@@ -1742,20 +2020,21 @@ function ArticleEditor({ articleId, userId, onBack }: { articleId: string; userI
                                 commentCount={getCommentCount('trailer').count}
                                 hasNewComments={getCommentCount('trailer').hasNewComments}
                             >
-                                <Input id="trailer" value={trailer} onChange={handleTrailerChange} placeholder="Breaking news, Exclusive..." />
+                                <Input id="trailer" value={trailer} onChange={handleTrailerChange} placeholder="Breaking news, Exclusive..." disabled={isInRevertMode} />
                             </CommentableInput>
                         )}
                     </div>
                     <div className="md:col-span-2">
                         <Label htmlFor="title">Title</Label>
                         <div className="relative">
-                            {hideComments ? (
+                            {hideComments || isInRevertMode ? (
                                 <Input 
                                     id="title" 
                                     value={title} 
                                     onChange={handleTitleChange} 
                                     placeholder="Article title" 
                                     className="pr-20" 
+                                    disabled={isInRevertMode}
                                 />
                             ) : (
                                 <CommentableInput
@@ -1771,19 +2050,20 @@ function ArticleEditor({ articleId, userId, onBack }: { articleId: string; userI
                                         onChange={handleTitleChange} 
                                         placeholder="Article title" 
                                         className="pr-20" 
+                                        disabled={isInRevertMode}
                                     />
                                 </CommentableInput>
                             )}
                             <div className="absolute right-3 mr-2 top-1/2 -translate-y-1/2 flex items-center space-x-2">
-                                <Checkbox id="live" checked={live} onCheckedChange={(checked) => handleLiveChange(checked === true)} />
+                                <Checkbox id="live" checked={live} onCheckedChange={(checked) => handleLiveChange(checked === true)} disabled={isInRevertMode} />
                                 <Label htmlFor="live" className="text-xs text-muted-foreground inline-label">Live</Label>
                             </div>
                         </div>
                     </div>
                     <div>
                         <Label htmlFor="subtitle">Subtitle</Label>
-                        {hideComments ? (
-                            <Input id="subtitle" value={subtitle} onChange={handleSubtitleChange} placeholder="Short summary (optional)" />
+                        {hideComments || isInRevertMode ? (
+                            <Input id="subtitle" value={subtitle} onChange={handleSubtitleChange} placeholder="Short summary (optional)" disabled={isInRevertMode} />
                         ) : (
                             <CommentableInput
                                 articleId={articleId}
@@ -1792,13 +2072,13 @@ function ArticleEditor({ articleId, userId, onBack }: { articleId: string; userI
                                 commentCount={getCommentCount('subtitle').count}
                                 hasNewComments={getCommentCount('subtitle').hasNewComments}
                             >
-                                <Input id="subtitle" value={subtitle} onChange={handleSubtitleChange} placeholder="Short summary (optional)" />
+                                <Input id="subtitle" value={subtitle} onChange={handleSubtitleChange} placeholder="Short summary (optional)" disabled={isInRevertMode} />
                             </CommentableInput>
                         )}
                     </div>
                     <div>
                         <Label htmlFor="status">Status</Label>
-                        <Select value={status} onValueChange={handleStatusChange}>
+                        <Select value={status} onValueChange={handleStatusChange} disabled={isInRevertMode}>
                             <SelectTrigger>
                                 <div className="flex items-center gap-2">
                                     <div className={`w-3 h-3 rounded-full ${
@@ -1858,13 +2138,13 @@ function ArticleEditor({ articleId, userId, onBack }: { articleId: string; userI
                     <div>
                         <h2 className="text-base font-medium mb-3">Sections</h2>
                         <div className="flex flex-wrap gap-2">
-                            <Button size="sm" variant="outline" onClick={() => createSection('title')} className="h-7 px-2 text-xs"><Heading1 className="h-3.5 w-3.5 mr-1" /> Title</Button>
-                            <Button size="sm" variant="outline" onClick={() => createSection('text')} className="h-7 px-2 text-xs"><TypeIcon className="h-3.5 w-3.5 mr-1" /> Text</Button>
-                            <Button size="sm" variant="outline" onClick={() => createSection('quote')} className="h-7 px-2 text-xs"><Quote className="h-3.5 w-3.5 mr-1" /> Quote</Button>
-                            <Button size="sm" variant="outline" onClick={() => createSection('image')} className="h-7 px-2 text-xs"><ImageIcon className="h-3.5 w-3.5 mr-1" /> Image</Button>
-                            <Button size="sm" variant="outline" onClick={() => createSection('code')} className="h-7 px-2 text-xs"><Code className="h-3.5 w-3.5 mr-1" /> Code</Button>
-                            <Button size="sm" variant="outline" onClick={() => createSection('video')} className="h-7 px-2 text-xs"><Video className="h-3.5 w-3.5 mr-1" /> Video</Button>
-                            <Button size="sm" variant="outline" onClick={() => createSection('map')} className="h-7 px-2 text-xs"><MapPin className="h-3.5 w-3.5 mr-1" /> Map</Button>
+                            <Button size="sm" variant="outline" onClick={() => createSection('title')} className="h-7 px-2 text-xs" disabled={isInRevertMode}><Heading1 className="h-3.5 w-3.5 mr-1" /> Title</Button>
+                            <Button size="sm" variant="outline" onClick={() => createSection('text')} className="h-7 px-2 text-xs" disabled={isInRevertMode}><TypeIcon className="h-3.5 w-3.5 mr-1" /> Text</Button>
+                            <Button size="sm" variant="outline" onClick={() => createSection('quote')} className="h-7 px-2 text-xs" disabled={isInRevertMode}><Quote className="h-3.5 w-3.5 mr-1" /> Quote</Button>
+                            <Button size="sm" variant="outline" onClick={() => createSection('image')} className="h-7 px-2 text-xs" disabled={isInRevertMode}><ImageIcon className="h-3.5 w-3.5 mr-1" /> Image</Button>
+                            <Button size="sm" variant="outline" onClick={() => createSection('code')} className="h-7 px-2 text-xs" disabled={isInRevertMode}><Code className="h-3.5 w-3.5 mr-1" /> Code</Button>
+                            <Button size="sm" variant="outline" onClick={() => createSection('video')} className="h-7 px-2 text-xs" disabled={isInRevertMode}><Video className="h-3.5 w-3.5 mr-1" /> Video</Button>
+                            <Button size="sm" variant="outline" onClick={() => createSection('map')} className="h-7 px-2 text-xs" disabled={isInRevertMode}><MapPin className="h-3.5 w-3.5 mr-1" /> Map</Button>
                         </div>
                     </div>
 
@@ -1875,16 +2155,16 @@ function ArticleEditor({ articleId, userId, onBack }: { articleId: string; userI
                                 Add content sections to build your article.
                             </p>
                             <div className="flex flex-wrap gap-2 justify-center">
-                                <Button size="sm" variant="outline" onClick={() => createSection('title')} className="h-8 px-3 text-xs">
+                                <Button size="sm" variant="outline" onClick={() => createSection('title')} className="h-8 px-3 text-xs" disabled={isInRevertMode}>
                                     <Heading1 className="h-3.5 w-3.5 mr-1" /> Start with Title
                                 </Button>
-                                <Button size="sm" variant="outline" onClick={() => createSection('text')} className="h-8 px-3 text-xs">
+                                <Button size="sm" variant="outline" onClick={() => createSection('text')} className="h-8 px-3 text-xs" disabled={isInRevertMode}>
                                     <TypeIcon className="h-3.5 w-3.5 mr-1" /> Add Text
                                 </Button>
-                                <Button size="sm" variant="outline" onClick={() => createSection('image')} className="h-8 px-3 text-xs">
+                                <Button size="sm" variant="outline" onClick={() => createSection('image')} className="h-8 px-3 text-xs" disabled={isInRevertMode}>
                                     <ImageIcon className="h-3.5 w-3.5 mr-1" /> Add Image
                                 </Button>
-                                <Button size="sm" variant="outline" onClick={() => createSection('code')} className="h-8 px-3 text-xs">
+                                <Button size="sm" variant="outline" onClick={() => createSection('code')} className="h-8 px-3 text-xs" disabled={isInRevertMode}>
                                     <Code className="h-3.5 w-3.5 mr-1" /> Add Code
                                 </Button>
                             </div>
@@ -1923,11 +2203,12 @@ function ArticleEditor({ articleId, userId, onBack }: { articleId: string; userI
                                                     <TableCell>
                                                         <button
                                                             aria-label="Drag to reorder"
-                                                            draggable
+                                                            draggable={!isInRevertMode}
                                                             onDragStart={(e) => onDragStart(s.id, e)}
                                                             onDragEnd={() => { setDraggingId(null); setOverInfo({ id: null, where: 'below' }) }}
-                                                            className={`p-1 rounded hover:bg-accent text-muted-foreground cursor-grab active:cursor-grabbing ${draggingId === s.id ? 'opacity-60 ring-2 ring-primary/40' : ''}`}
-                                                            title="Drag to reorder"
+                                                            className={`p-1 rounded hover:bg-accent text-muted-foreground ${isInRevertMode ? 'cursor-not-allowed opacity-50' : 'cursor-grab active:cursor-grabbing'} ${draggingId === s.id ? 'opacity-60 ring-2 ring-primary/40' : ''}`}
+                                                            title={isInRevertMode ? "Disabled in revert mode" : "Drag to reorder"}
+                                                            disabled={isInRevertMode}
                                                         >
                                                             <GripVertical className="h-4 w-4" />
                                                         </button>
@@ -1941,14 +2222,15 @@ function ArticleEditor({ articleId, userId, onBack }: { articleId: string; userI
                                                         <div className="w-full min-w-0">
                                                             <SectionEditor
                                                                 section={s}
-                                                                onLocalChange={createOnLocalChangeHandler(s.id)}
+                                                                onLocalChange={isInRevertMode ? () => {} : createOnLocalChangeHandler(s.id)}
                                                                 isDragging={!!draggingId}
                                                                 userId={userId}
+                                                                disabled={isInRevertMode}
                                                             />
                                                         </div>
                                                     </TableCell>
                                                     <TableCell className="text-right w-[50px] min-w-[50px]">
-                                                        <Button variant="ghost" size="icon" onClick={() => deleteSection(s.id)} className="h-8 w-8">
+                                                        <Button variant="ghost" size="icon" onClick={() => deleteSection(s.id)} className="h-8 w-8" disabled={isInRevertMode}>
                                                             <Trash2 className="h-4 w-4" />
                                                         </Button>
                                                     </TableCell>
@@ -1977,7 +2259,7 @@ function ArticleEditor({ articleId, userId, onBack }: { articleId: string; userI
                             </div>
                             
                             {/* Comment buttons positioned outside the table but relative to rows */}
-                            {!hideComments && localSections?.map((s) => {
+                            {!hideComments && !isInRevertMode && localSections?.map((s) => {
                                 const position = rowPositions[s.id]
                                 if (!position) return null // Don't render until position is measured
                                 
@@ -2021,8 +2303,8 @@ function ArticleEditor({ articleId, userId, onBack }: { articleId: string; userI
                 <section className="space-y-4">
                     <div>
                         <Label htmlFor="redirect">Redirect URL</Label>
-                        {hideComments ? (
-                            <Input id="redirect" value={redirect} onChange={handleRedirectChange} placeholder="Redirect URL (optional)" />
+                        {hideComments || isInRevertMode ? (
+                            <Input id="redirect" value={redirect} onChange={handleRedirectChange} placeholder="Redirect URL (optional)" disabled={isInRevertMode} />
                         ) : (
                             <CommentableInput
                                 articleId={articleId}
@@ -2031,7 +2313,7 @@ function ArticleEditor({ articleId, userId, onBack }: { articleId: string; userI
                                 commentCount={getCommentCount('redirect').count}
                                 hasNewComments={getCommentCount('redirect').hasNewComments}
                             >
-                                <Input id="redirect" value={redirect} onChange={handleRedirectChange} placeholder="Redirect URL (optional)" />
+                                <Input id="redirect" value={redirect} onChange={handleRedirectChange} placeholder="Redirect URL (optional)" disabled={isInRevertMode} />
                             </CommentableInput>
                         )}
                     </div>
@@ -2046,13 +2328,33 @@ function ArticleEditor({ articleId, userId, onBack }: { articleId: string; userI
                                 articleId={articleId}
                                 currentRevisionId={latestFormData?.activeRevisionId}
                                 currentRevisionVersion={latestRevision?.version}
+                                onRevertToRevision={handleSelectRevisionForRevert}
                                 onDeleteRevision={async (revisionId) => {
                                     try {
+                                        // Disable auto-save temporarily during deletion
+                                        isRevertingRef.current = true
+                                        
                                         await db.revisions.delete(revisionId)
-                                        qc.invalidateQueries({ queryKey: ['revisions', articleId] })
-                                        qc.invalidateQueries({ queryKey: ['latest-revision', articleId] })
+                                        
+                                        // Update revisions cache directly to prevent race conditions
+                                        qc.setQueryData(['revisions', articleId], (oldData: any) => {
+                                            if (!oldData) return oldData
+                                            return {
+                                                ...oldData,
+                                                documents: (oldData.documents || []).filter((rev: any) => rev.$id !== revisionId)
+                                            }
+                                        })
+                                        
+                                        // Re-enable auto-save after a short delay
+                                        setTimeout(() => {
+                                            isRevertingRef.current = false
+                                        }, 1000)
+                                        
                                         toast({ title: 'Revision deleted' })
                                     } catch (error) {
+                                        // Re-enable auto-save on error
+                                        isRevertingRef.current = false
+                                        
                                         toast({ 
                                             title: 'Failed to delete revision', 
                                             description: error instanceof Error ? error.message : 'Unknown error',
@@ -2139,32 +2441,32 @@ function ArticleEditor({ articleId, userId, onBack }: { articleId: string; userI
     )
 }
 
-function SectionEditor({ section, onLocalChange, isDragging = false, userId }: { section: any; onLocalChange: (data: Partial<any>) => void; isDragging?: boolean; userId: string }) {
+function SectionEditor({ section, onLocalChange, isDragging = false, userId, disabled = false }: { section: any; onLocalChange: (data: Partial<any>) => void; isDragging?: boolean; userId: string; disabled?: boolean }) {
     if (section.type === 'title') {
-        return <TitleEditor section={section} onLocalChange={onLocalChange} />
+        return <TitleEditor section={section} onLocalChange={onLocalChange} disabled={disabled} />
     }
     if (section.type === 'quote') {
-        return <QuoteEditor section={section} onLocalChange={onLocalChange} />
+        return <QuoteEditor section={section} onLocalChange={onLocalChange} disabled={disabled} />
     }
     if (section.type === 'text' || section.type === 'paragraph') {
-        return <TextEditor section={section} onLocalChange={onLocalChange} />
+        return <TextEditor section={section} onLocalChange={onLocalChange} disabled={disabled} />
     }
     if (section.type === 'image') {
-        return <ImageEditor section={section} onLocalChange={onLocalChange} userId={userId} />
+        return <ImageEditor section={section} onLocalChange={onLocalChange} userId={userId} disabled={disabled} />
     }
     if (section.type === 'video') {
-        return <VideoEditor section={section} onLocalChange={onLocalChange} />
+        return <VideoEditor section={section} onLocalChange={onLocalChange} disabled={disabled} />
     }
     if (section.type === 'map') {
-        return <MapEditor section={section} onLocalChange={onLocalChange} />
+        return <MapEditor section={section} onLocalChange={onLocalChange} disabled={disabled} />
     }
     if (section.type === 'code') {
-        return <CodeSectionEditor section={section} onLocalChange={onLocalChange} isDragging={isDragging} />
+        return <CodeSectionEditor section={section} onLocalChange={onLocalChange} isDragging={isDragging} disabled={disabled} />
     }
     return <span className="text-sm text-muted-foreground">Unsupported section</span>
 }
 
-const TitleEditor = memo(({ section, onLocalChange }: { section: any; onLocalChange: (data: Partial<any>) => void }) => {
+const TitleEditor = memo(({ section, onLocalChange, disabled = false }: { section: any; onLocalChange: (data: Partial<any>) => void; disabled?: boolean }) => {
     const [value, setValue] = useState(section.content ?? '')
     const onLocalChangeRef = useRef(onLocalChange)
     onLocalChangeRef.current = onLocalChange
@@ -2185,12 +2487,13 @@ const TitleEditor = memo(({ section, onLocalChange }: { section: any; onLocalCha
                 value={value}
                 onChange={handleChange}
                 placeholder="Section title"
+                disabled={disabled}
             />
         </div>
     )
 })
 
-const QuoteEditor = memo(({ section, onLocalChange }: { section: any; onLocalChange: (data: Partial<any>) => void }) => {
+const QuoteEditor = memo(({ section, onLocalChange, disabled = false }: { section: any; onLocalChange: (data: Partial<any>) => void; disabled?: boolean }) => {
     const [quote, setQuote] = useState(section.content ?? '')
     const [speaker, setSpeaker] = useState(section.speaker ?? '')
     const onLocalChangeRef = useRef(onLocalChange)
@@ -2220,6 +2523,7 @@ const QuoteEditor = memo(({ section, onLocalChange }: { section: any; onLocalCha
                     rows={2}
                     className="w-full min-w-0"
                     style={{ width: '100%', maxWidth: '100%' }}
+                    disabled={disabled}
                 />
             </div>
             <div className="space-y-1">
@@ -2231,13 +2535,14 @@ const QuoteEditor = memo(({ section, onLocalChange }: { section: any; onLocalCha
                     placeholder="Who said it?"
                     className="w-full min-w-0"
                     style={{ width: '100%', maxWidth: '100%' }}
+                    disabled={disabled}
                 />
             </div>
         </div>
     )
 })
 
-const TextEditor = memo(({ section, onLocalChange }: { section: any; onLocalChange: (data: Partial<any>) => void }) => {
+const TextEditor = memo(({ section, onLocalChange, disabled = false }: { section: any; onLocalChange: (data: Partial<any>) => void; disabled?: boolean }) => {
     const [value, setValue] = useState(section.content ?? '')
     const ref = useRef<HTMLTextAreaElement | null>(null)
     const onLocalChangeRef = useRef(onLocalChange)
@@ -2269,12 +2574,13 @@ const TextEditor = memo(({ section, onLocalChange }: { section: any; onLocalChan
                 rows={1}
                 className="min-h-[40px] text-sm w-full min-w-0"
                 style={{ overflow: 'hidden', resize: 'none', width: '100%', maxWidth: '100%' }}
+                disabled={disabled}
             />
         </div>
     )
 })
 
-function ImageEditor({ section, onLocalChange, userId }: { section: any; onLocalChange: (data: Partial<any>) => void; userId: string }) {
+function ImageEditor({ section, onLocalChange, userId, disabled = false }: { section: any; onLocalChange: (data: Partial<any>) => void; userId: string; disabled?: boolean }) {
     // Convert mediaId to array format for ImageGallery, also check for imageIds
     const selectedImageIds = section.imageIds || (section.mediaId ? [section.mediaId] : [])
     
@@ -2301,13 +2607,14 @@ function ImageEditor({ section, onLocalChange, userId }: { section: any; onLocal
                     value={section.caption ?? ''} 
                     onChange={(e) => onLocalChange({ caption: e.target.value })} 
                     placeholder="Caption (optional)" 
+                    disabled={disabled}
                 />
             </div>
         </div>
     )
 }
 
-function VideoEditor({ section, onLocalChange }: { section: any; onLocalChange: (data: Partial<any>) => void }) {
+function VideoEditor({ section, onLocalChange, disabled = false }: { section: any; onLocalChange: (data: Partial<any>) => void; disabled?: boolean }) {
     const [url, setUrl] = useState(section.embedUrl ?? '')
     const embed = toYouTubeEmbed(url)
 
@@ -2319,7 +2626,7 @@ function VideoEditor({ section, onLocalChange }: { section: any; onLocalChange: 
         <div className="space-y-2">
             <div className="space-y-1">
                 <Label htmlFor={`video-url-${section.id}`}>Video URL</Label>
-                <Input id={`video-url-${section.id}`} value={url} onChange={(e) => setUrl(e.target.value)} placeholder="Paste YouTube URL" />
+                <Input id={`video-url-${section.id}`} value={url} onChange={(e) => setUrl(e.target.value)} placeholder="Paste YouTube URL" disabled={disabled} />
             </div>
             {embed && (
                 <div className="aspect-video w-full">
@@ -2328,13 +2635,13 @@ function VideoEditor({ section, onLocalChange }: { section: any; onLocalChange: 
             )}
             <div className="space-y-1">
                 <Label htmlFor={`caption-${section.id}`}>Caption</Label>
-                <Input id={`caption-${section.id}`} value={section.caption ?? ''} onChange={(e) => onLocalChange({ caption: e.target.value })} placeholder="Caption (optional)" />
+                <Input id={`caption-${section.id}`} value={section.caption ?? ''} onChange={(e) => onLocalChange({ caption: e.target.value })} placeholder="Caption (optional)" disabled={disabled} />
             </div>
         </div>
     )
 }
 
-function MapEditor({ section, onLocalChange }: { section: any; onLocalChange: (data: Partial<any>) => void }) {
+function MapEditor({ section, onLocalChange, disabled = false }: { section: any; onLocalChange: (data: Partial<any>) => void; disabled?: boolean }) {
     const initial = parseLatLng(section.data)
     const [lat, setLat] = useState<string | number>(initial?.lat ?? '')
     const [lng, setLng] = useState<string | number>(initial?.lng ?? '')
@@ -2353,11 +2660,11 @@ function MapEditor({ section, onLocalChange }: { section: any; onLocalChange: (d
             <div className="grid grid-cols-2 gap-2 items-start">
                 <div className="space-y-1">
                     <Label htmlFor={`lat-${section.id}`}>Latitude</Label>
-                    <Input id={`lat-${section.id}`} placeholder="e.g. 37.7749" value={lat as any} onChange={(e) => setLat(e.target.value as any)} />
+                    <Input id={`lat-${section.id}`} placeholder="e.g. 37.7749" value={lat as any} onChange={(e) => setLat(e.target.value as any)} disabled={disabled} />
                 </div>
                 <div className="space-y-1">
                     <Label htmlFor={`lng-${section.id}`}>Longitude</Label>
-                    <Input id={`lng-${section.id}`} placeholder="e.g. -122.4194" value={lng as any} onChange={(e) => setLng(e.target.value as any)} />
+                    <Input id={`lng-${section.id}`} placeholder="e.g. -122.4194" value={lng as any} onChange={(e) => setLng(e.target.value as any)} disabled={disabled} />
                 </div>
             </div>
             {nlat && nlng ? (
@@ -2371,7 +2678,7 @@ function MapEditor({ section, onLocalChange }: { section: any; onLocalChange: (d
     )
 }
 
-const CodeSectionEditor = memo(({ section, onLocalChange, isDragging = false }: { section: any; onLocalChange: (data: Partial<any>) => void; isDragging?: boolean }) => {
+const CodeSectionEditor = memo(({ section, onLocalChange, isDragging = false, disabled = false }: { section: any; onLocalChange: (data: Partial<any>) => void; isDragging?: boolean; disabled?: boolean }) => {
     const [code, setCode] = useState(section.content ?? '')
     const [language, setLanguage] = useState('javascript')
     const onLocalChangeRef = useRef(onLocalChange)
@@ -2409,9 +2716,9 @@ const CodeSectionEditor = memo(({ section, onLocalChange, isDragging = false }: 
         <div className="space-y-2">
             <CodeEditor
                 value={code}
-                onChange={handleCodeChange}
+                onChange={disabled ? () => {} : handleCodeChange}
                 language={language}
-                onLanguageChange={handleLanguageChange}
+                onLanguageChange={disabled ? () => {} : handleLanguageChange}
                 isDragging={isDragging}
             />
         </div>

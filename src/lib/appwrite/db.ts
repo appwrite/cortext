@@ -425,4 +425,58 @@ export const createUpdateRevision = async (
   return db.revisions.create(revisionData, teamId);
 };
 
+// Helper function to create a revision for reverting (always creates a revision)
+export const createRevertRevision = async (
+  articleId: string, 
+  oldArticle: Articles, 
+  newArticle: Articles, 
+  teamId?: string,
+  messageId?: string
+) => {
+  // Get the current revision to determine the next version
+  const currentRevisions = await db.revisions.list([
+    Query.equal('articleId', articleId),
+    Query.orderDesc('version'),
+    Query.limit(1)
+  ]);
+  
+  const nextVersion = currentRevisions.documents.length > 0 
+    ? currentRevisions.documents[0].version + 1 
+    : 1;
+
+  // Store the complete article state in the revision
+  const revisionData: Omit<Revisions, keyof Models.Document> = {
+    articleId: articleId,
+    version: nextVersion,
+    status: 'draft',
+    createdBy: newArticle.createdBy,
+    messageId: messageId || null,
+    data: JSON.stringify({
+      initial: false,
+      // Store the complete article state
+      title: newArticle.title,
+      subtitle: newArticle.subtitle,
+      trailer: newArticle.trailer,
+      status: newArticle.status,
+      live: newArticle.live,
+      pinned: newArticle.pinned,
+      redirect: newArticle.redirect,
+      slug: newArticle.slug,
+      authors: newArticle.authors,
+      categories: newArticle.categories,
+      images: newArticle.images,
+      blogId: newArticle.blogId,
+      // Store sections separately
+      sections: newArticle.body ? JSON.parse(newArticle.body) : [],
+      // Mark this as a revert
+      isRevert: true,
+      timestamp: new Date().toISOString()
+    }),
+    changes: [`Reverted to previous version`],
+    parentRevisionId: currentRevisions.documents[0]?.$id || null,
+  };
+
+  return db.revisions.create(revisionData, teamId);
+};
+
 export { client, databases };

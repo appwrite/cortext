@@ -1,0 +1,57 @@
+import { Button } from '@/components/ui/button'
+import { History } from 'lucide-react'
+import { formatDateRelative } from '@/lib/date-utils'
+
+interface RevertConfirmationBannerProps {
+  revisionTitle: string
+  revisionDate: string
+  onConfirm: () => void
+  onCancel: () => void
+  isReverting?: boolean
+}
+
+export function RevertConfirmationBanner({
+  revisionTitle,
+  revisionDate,
+  onConfirm,
+  onCancel,
+  isReverting = false
+}: RevertConfirmationBannerProps) {
+  return (
+    <div className="bg-red-50 dark:bg-red-950/30 rounded-md px-3 py-2">
+      <div className="flex items-start justify-between">
+        <div className="flex items-start gap-2">
+          <History className="h-4 w-4 text-red-600 dark:text-red-400 flex-shrink-0 mt-0.5" />
+          <div className="text-sm">
+            <span className="text-red-800 dark:text-red-200 font-medium">
+              Reverting to revision:
+            </span>
+            <div className="text-red-700 dark:text-red-300 text-xs mt-0.5">
+              {revisionTitle} • {formatDateRelative(revisionDate)}
+            </div>
+          </div>
+        </div>
+        <div className="flex items-center gap-2 self-center">
+          <Button
+            size="sm"
+            variant="ghost"
+            onClick={onCancel}
+            disabled={isReverting}
+            className="h-7 px-3 text-xs text-red-700 hover:bg-red-100 dark:text-red-300 dark:hover:bg-red-900/20"
+          >
+            Cancel
+          </Button>
+          <Button
+            size="sm"
+            variant="ghost"
+            onClick={onConfirm}
+            disabled={isReverting}
+            className="h-7 px-3 text-xs bg-red-600 text-white hover:bg-red-700 dark:bg-red-600 dark:hover:bg-red-700"
+          >
+            {isReverting ? 'Reverting...' : 'Revert'}
+          </Button>
+        </div>
+      </div>
+    </div>
+  )
+}
