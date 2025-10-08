@@ -145,11 +145,11 @@ export function RevisionHistory({ articleId }: RevisionHistoryProps) {
                       Changes:
                     </h4>
                     <div className="space-y-1">
-                      {revision.changes.map((change, index) => (
+                      {revision.changes?.map((change, index) => (
                         <div key={index}>
                           {formatChange(change)}
                         </div>
-                      ))}
+                      )) || <div className="text-muted-foreground text-sm">No changes recorded</div>}
                     </div>
                   </div>
                 </div>

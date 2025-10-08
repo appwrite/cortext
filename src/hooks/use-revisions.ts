@@ -21,7 +21,10 @@ export function useRevisions(articleId: string) {
   // Get a specific revision
   const getRevision = useQuery({
     queryKey: ['revision', articleId],
-    queryFn: (revisionId: string) => db.revisions.get(revisionId),
+    queryFn: ({ queryKey }) => {
+      const [, revisionId] = queryKey
+      return db.revisions.get(revisionId as string)
+    },
     enabled: false, // Only fetch when explicitly called
   })
 
