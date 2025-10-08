@@ -172,10 +172,8 @@ export function CommentPopover({
                 targetType={targetType}
                 targetId={targetId}
                 onCommentAdded={(commentId) => {
-                  // Focus on the newly added comment
-                  if (commentId && commentListRef.current) {
-                    commentListRef.current.focusComment(commentId);
-                  }
+                  // Don't focus on the newly added comment - let the form handle focus
+                  // The comment form will return focus to the textarea after submission
                 }}
               />
             </div>

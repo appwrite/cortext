@@ -64,12 +64,11 @@ export const CommentList = forwardRef<CommentListRef, CommentListProps>(({
   const handleCommentAdded = (commentId?: string) => {
     if (commentId) {
       onCommentAdded?.(commentId);
-      // Focus on the newly added comment
-      focusComment(commentId);
+      // Don't focus on the newly added comment - let the form handle focus
     }
     refetch();
     
-    // Also scroll to bottom as fallback
+    // Scroll to bottom to show the new comment
     setTimeout(() => {
       if (commentsContainerRef.current) {
         commentsContainerRef.current.scrollTop = commentsContainerRef.current.scrollHeight;

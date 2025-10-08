@@ -68,6 +68,13 @@ export const CommentForm = forwardRef<CommentFormRef, CommentFormProps>(({
       
       setContent('');
       onCommentAdded(newComment.$id);
+      
+      // Focus immediately after successful submission
+      setTimeout(() => {
+        if (textareaRef.current) {
+          textareaRef.current.focus();
+        }
+      }, 200);
     } catch (error) {
       console.error('Failed to create comment:', error);
     } finally {
