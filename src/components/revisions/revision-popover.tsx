@@ -198,8 +198,18 @@ export function RevisionPopover({
                   >
                     {/* Revision info */}
                     <div
-                      className="flex-1 min-w-0 cursor-pointer pr-2"
+                      className={cn(
+                        "flex-1 min-w-0 pr-2",
+                        revision.$id === formRevisionId && revision.$id !== currentRevisionId 
+                          ? "cursor-not-allowed opacity-60" 
+                          : "cursor-pointer"
+                      )}
                       onClick={() => {
+                        // Don't allow clicking on revisions marked as "Editing"
+                        if (revision.$id === formRevisionId && revision.$id !== currentRevisionId) {
+                          return
+                        }
+                        
                         if (onRevertToRevision && revision.$id !== formRevisionId) {
                           onRevertToRevision(revision.$id)
                         } else if (onSelectRevision) {
