@@ -3025,8 +3025,9 @@ function ImageEditor({ section, onLocalChange, userId, disabled = false }: { sec
         <div className="space-y-4">
             <ImageGallery 
                 selectedImageIds={selectedImageIds}
-                onImagesChange={handleImagesChange}
+                onImagesChange={disabled ? () => {} : handleImagesChange}
                 userId={userId}
+                disabled={disabled}
             />
             <div className="space-y-1">
                 <Label htmlFor={`caption-${section.id}`}>Caption</Label>
@@ -3246,7 +3247,10 @@ function toYouTubeEmbed(url: string): string | null {
     return videoId ? `https://www.youtube.com/embed/${videoId}` : null
 }
 
-function parseLatLng(input: string) {
+function parseLatLng(input: string | undefined | null) {
+    if (!input || typeof input !== 'string') {
+        return null
+    }
     const match = input.match(/(-?\d+\.?\d*),\s*(-?\d+\.?\d*)/)
     return match ? { lat: parseFloat(match[1]), lng: parseFloat(match[2]) } : null
 }

@@ -40,14 +40,16 @@ interface ImageGalleryProps {
   selectedImageIds: string[]
   onImagesChange: (imageIds: string[]) => void
   userId: string
+  disabled?: boolean
 }
 
 interface SortableImageItemProps {
   image: Images
   onRemove: (imageId: string) => void
+  disabled?: boolean
 }
 
-function SortableImageItem({ image, onRemove }: SortableImageItemProps) {
+function SortableImageItem({ image, onRemove, disabled = false }: SortableImageItemProps) {
   const {
     attributes,
     listeners,
@@ -93,11 +95,12 @@ function SortableImageItem({ image, onRemove }: SortableImageItemProps) {
           </div>
           <div className="absolute top-2 right-2">
             <button
-              className="h-5 w-5 rounded-full bg-background/90 border-2 border-background/90 flex items-center justify-center hover:bg-background transition-colors backdrop-blur-sm cursor-pointer"
+              className="h-5 w-5 rounded-full bg-background/90 border-2 border-background/90 flex items-center justify-center hover:bg-background transition-colors backdrop-blur-sm cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
               onClick={(e) => {
                 e.stopPropagation()
                 onRemove(image.$id)
               }}
+              disabled={disabled}
             >
               <X className="h-3 w-3 text-foreground" />
             </button>
@@ -113,7 +116,7 @@ function SortableImageItem({ image, onRemove }: SortableImageItemProps) {
   )
 }
 
-export function ImageGallery({ selectedImageIds, onImagesChange, userId }: ImageGalleryProps) {
+export function ImageGallery({ selectedImageIds, onImagesChange, userId, disabled = false }: ImageGalleryProps) {
   const [open, setOpen] = useState(false)
   const [searchValue, setSearchValue] = useState('')
   const [showNewImageModal, setShowNewImageModal] = useState(false)
@@ -288,6 +291,7 @@ export function ImageGallery({ selectedImageIds, onImagesChange, userId }: Image
                   key={image.$id}
                   image={image}
                   onRemove={handleImageRemove}
+                  disabled={disabled}
                 />
               ))}
             </div>
@@ -322,7 +326,7 @@ export function ImageGallery({ selectedImageIds, onImagesChange, userId }: Image
             role="combobox"
             aria-expanded={open}
             className="w-full justify-between"
-            disabled={isPending}
+            disabled={isPending || disabled}
           >
             {selectedImages.length > 0 ? (
               `${selectedImages.length} image${selectedImages.length > 1 ? 's' : ''} selected`
