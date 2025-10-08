@@ -232,6 +232,8 @@ export function useAutoSave({
         
         // Remove backup from local storage after successful save
         removeBackup(articleId)
+        
+        console.log('✅ Save completed, backup cleaned up')
       }
     } catch (error) {
       console.error('Auto-save error:', error)
@@ -298,9 +300,6 @@ export function useAutoSave({
     // Track this as a user interaction
     trackInteraction()
     
-    // Save backup immediately on any change - no delays or conditions
-    saveBackup(articleId, formData)
-    
     // Clear existing timeout
     if (timeoutRef.current) {
       clearTimeout(timeoutRef.current)
@@ -321,8 +320,14 @@ export function useAutoSave({
     
     if (lastSavedDataRef.current && currentDataString === lastSavedDataRef.current) {
       setState(prev => ({ ...prev, hasUnsavedChanges: false }))
+      // Clean up backup if no changes detected
+      removeBackup(articleId)
+      console.log('🧹 No changes detected, backup cleaned up')
       return
     }
+
+    // Only save backup if there are actual changes
+    saveBackup(articleId, formData)
 
     // If this is the first save (lastSavedDataRef.current is null), don't set hasUnsavedChanges yet
     if (lastSavedDataRef.current) {
@@ -346,7 +351,7 @@ export function useAutoSave({
     }, totalDelay)
   }, [addToQueue, debounceMs, trackInteraction, isUserInteracting, interactionDelayMs, articleId])
 
-  // Cleanup timeouts on unmount
+  // Cleanup timeouts and backup on unmount
   useEffect(() => {
     return () => {
       if (timeoutRef.current) {
@@ -358,8 +363,10 @@ export function useAutoSave({
       if (interactionTimeoutRef.current) {
         clearTimeout(interactionTimeoutRef.current)
       }
+      // Clean up backup when component unmounts
+      removeBackup(articleId)
     }
-  }, [])
+  }, [articleId])
 
   return {
     ...state,

@@ -1376,7 +1376,8 @@ function ArticleEditor({ articleId, userId, onBack }: { articleId: string; userI
                 sectionsChanged,
                 hasFormChanges,
                 localSectionsCount: localSections.length,
-                initialSectionsCount: initialSections.length
+                initialSectionsCount: initialSections.length,
+                lastSavedFormDataRef: lastSavedFormDataRef.current ? 'exists' : 'null'
             })
             
             // Only auto-save if user has interacted OR if there are significant changes
@@ -1402,6 +1403,15 @@ function ArticleEditor({ articleId, userId, onBack }: { articleId: string; userI
                 
                 // Check if form data has actually changed from last saved
                 const currentFormDataString = JSON.stringify(formData)
+                console.log('🔍 Auto-save condition check:', {
+                    shouldAutoSave,
+                    hasFormChanges,
+                    sectionsChanged,
+                    currentFormDataString: currentFormDataString.substring(0, 100) + '...',
+                    lastSavedFormDataRef: lastSavedFormDataRef.current ? lastSavedFormDataRef.current.substring(0, 100) + '...' : 'null',
+                    areEqual: lastSavedFormDataRef.current === currentFormDataString
+                })
+                
                 if (lastSavedFormDataRef.current !== currentFormDataString) {
                     console.log('🔄 Auto-save triggered:', {
                         hasFormChanges,
@@ -1419,6 +1429,18 @@ function ArticleEditor({ articleId, userId, onBack }: { articleId: string; userI
                     // Set new timeout for debounced auto-save
                     autoSaveTimeoutRef.current = setTimeout(() => {
                         lastSavedFormDataRef.current = currentFormDataString
+                        
+                        // Determine the reason for the save
+                        let reason = 'Auto-save triggered'
+                        if (hasFormChanges && sectionsChanged) {
+                            reason = 'Content and metadata changes detected'
+                        } else if (hasFormChanges) {
+                            reason = 'Metadata changes detected (title, authors, categories, etc.)'
+                        } else if (sectionsChanged) {
+                            reason = 'Content changes detected (sections added, modified, or deleted)'
+                        }
+                        
+                        // Trigger auto-save directly
                         triggerAutoSaveRef.current(formData)
                     }, 300) // 300ms debounce for very fast response
                 } else {
@@ -1439,33 +1461,75 @@ function ArticleEditor({ articleId, userId, onBack }: { articleId: string; userI
                 // Mark initial load as complete to enable auto-save
                 isInitialLoadRef.current = false
                 
-                // Initialize the last saved form data ref with current data
+                // Initialize the last saved form data ref with the latest revision data
                 // This prevents auto-save from triggering during initial load
                 const initialFormData = {
-                    trailer,
-                    title,
-                    slug: title ? slugify(title) : '',
-                    subtitle,
-                    live,
-                    redirect,
-                    authors,
-                    categories,
-                    body: JSON.stringify(localSections),
-                    status,
-                    pinned: article?.pinned || false,
-                    images: article?.images || null,
-                    blogId: article?.blogId || null,
-                    createdBy: article?.createdBy || userId,
+                    trailer: latestFormData.trailer ?? '',
+                    title: latestFormData.title ?? '',
+                    slug: latestFormData.slug ?? '',
+                    subtitle: latestFormData.subtitle ?? '',
+                    live: latestFormData.live ?? false,
+                    redirect: latestFormData.redirect ?? '',
+                    authors: latestFormData.authors ?? [],
+                    categories: latestFormData.categories ?? [],
+                    body: latestFormData.body ?? '[]',
+                    status: latestFormData.status ?? 'unpublished',
+                    pinned: latestFormData.pinned ?? false,
+                    images: latestFormData.images ?? null,
+                    blogId: latestFormData.blogId ?? null,
+                    createdBy: latestFormData.createdBy ?? userId,
                 }
                 lastSavedFormDataRef.current = JSON.stringify(initialFormData)
-                console.log('🚀 Initialized lastSavedFormDataRef with initial data')
+                console.log('🚀 Initialized lastSavedFormDataRef with latest revision data:', {
+                    initialFormDataString: JSON.stringify(initialFormData).substring(0, 100) + '...',
+                    hasUserInteracted: false,
+                    latestFormDataTitle: latestFormData.title,
+                    latestFormDataSubtitle: latestFormData.subtitle
+                })
                 
                 // Mark as user interacted after initialization to enable auto-save for future changes
-                setHasUserInteracted(true)
+                // Use setTimeout to ensure lastSavedFormDataRef is set before the effect runs
+                setTimeout(() => {
+                    console.log('🔄 Setting hasUserInteracted to true after initialization')
+                    setHasUserInteracted(true)
+                }, 50)
             }, 200) // Reduced delay for faster auto-save activation
             return () => clearTimeout(timer)
         }
     }, [isDataLoaded, latestFormData]) // Removed dependencies to prevent re-initialization
+
+    // Separate effect to re-initialize lastSavedFormDataRef when latestFormData changes
+    useEffect(() => {
+        if (isFullyLoaded && !isInitialLoadRef.current && lastSavedFormDataRef.current && latestFormData) {
+            // Re-initialize with latest revision data to prevent false positives
+            const currentFormData = {
+                trailer: latestFormData.trailer ?? '',
+                title: latestFormData.title ?? '',
+                slug: latestFormData.slug ?? '',
+                subtitle: latestFormData.subtitle ?? '',
+                live: latestFormData.live ?? false,
+                redirect: latestFormData.redirect ?? '',
+                authors: latestFormData.authors ?? [],
+                categories: latestFormData.categories ?? [],
+                body: latestFormData.body ?? '[]',
+                status: latestFormData.status ?? 'unpublished',
+                pinned: latestFormData.pinned ?? false,
+                images: latestFormData.images ?? null,
+                blogId: latestFormData.blogId ?? null,
+                createdBy: latestFormData.createdBy ?? userId,
+            }
+            
+            const currentFormDataString = JSON.stringify(currentFormData)
+            if (lastSavedFormDataRef.current !== currentFormDataString) {
+                console.log('🔄 Re-initializing lastSavedFormDataRef due to latestFormData changes:', {
+                    oldData: lastSavedFormDataRef.current.substring(0, 100) + '...',
+                    newData: currentFormDataString.substring(0, 100) + '...',
+                    latestFormDataTitle: latestFormData.title
+                })
+                lastSavedFormDataRef.current = currentFormDataString
+            }
+        }
+    }, [latestFormData, isFullyLoaded, userId])
 
     // Check for backup data immediately on component mount - before any server data loads
     useEffect(() => {
@@ -1557,12 +1621,17 @@ function ArticleEditor({ articleId, userId, onBack }: { articleId: string; userI
                     blogId: article?.blogId || null,
                     createdBy: article?.createdBy || userId,
                 }
+                
+                // Trigger auto-save for backup recovery
                 triggerAutoSaveRef.current(formData)
             }, 500) // Small delay to ensure all state is updated
         } else {
             console.log('ℹ️ No backup data found')
         }
-    }, [recoverFromBackup, triggerBackupRestored]) // Only depend on recoverFromBackup, not on article or isFullyLoaded
+    }, [recoverFromBackup, triggerBackupRestored, article, userId]) // Only depend on recoverFromBackup, not on article or isFullyLoaded
+
+
+
 
     // Set document title based on article title
     useDocumentTitle(title || 'Editor')
@@ -2786,6 +2855,8 @@ function ArticleEditor({ articleId, userId, onBack }: { articleId: string; userI
                     </AlertDialogFooter>
                 </AlertDialogContent>
             </AlertDialog>
+
+
         </>
     )
 }
