@@ -154,8 +154,8 @@ export function ImageGallery({ selectedImageIds, onImagesChange, userId }: Image
 
   const allImages = allImagesData?.documents || []
   
-  // Debug logging
-  console.log('Images query result:', { isPending, error, allImagesData, allImages })
+  // Debug logging (commented out to reduce console noise)
+  // console.log('Images query result:', { isPending, error, allImagesData, allImages })
 
   // Memoize selected images to prevent unnecessary re-renders
   const selectedImages = useMemo(() => {
@@ -176,7 +176,17 @@ export function ImageGallery({ selectedImageIds, onImagesChange, userId }: Image
     })
   }, [allImages, debouncedSearchValue])
 
-  // No more skeleton - just show empty state during loading
+  // Memoize loading skeleton to prevent unnecessary re-renders
+  const ImageGallerySkeleton = useMemo(() => {
+    return (
+      <div className="w-full h-20 border border-dashed border-muted-foreground/25 rounded-lg flex items-center justify-center text-muted-foreground min-h-[92px]">
+        <div className="flex items-center gap-2">
+          <Loader2 className="h-4 w-4 animate-spin" />
+          <span className="text-sm">Loading images...</span>
+        </div>
+      </div>
+    )
+  }, [])
 
   const handleImageSelect = (imageId: string) => {
     if (selectedImageIds.includes(imageId)) {
@@ -201,7 +211,7 @@ export function ImageGallery({ selectedImageIds, onImagesChange, userId }: Image
     }
   }
 
-  // Memoize the image list items
+  // Memoize the image list items to prevent unnecessary re-renders
   const imageListItems = useMemo(() => {
     return filteredImages.map(image => {
       // Use high resolution for crisp quality: 160x120 for 4:3 ratio (80x60 display size)
@@ -256,10 +266,14 @@ export function ImageGallery({ selectedImageIds, onImagesChange, userId }: Image
         </CommandItem>
       )
     })
-  }, [filteredImages, selectedImageIds, handleImageSelect])
+  }, [filteredImages, selectedImageIds])
 
-  // Memoize the selected images display
+  // Memoize the selected images display to prevent re-renders during search
   const selectedImagesDisplay = useMemo(() => {
+    if (isPending) {
+      return ImageGallerySkeleton
+    }
+    
     if (selectedImages.length > 0) {
       return (
         <DndContext
@@ -285,13 +299,11 @@ export function ImageGallery({ selectedImageIds, onImagesChange, userId }: Image
     return (
       <div className="w-full">
         <div className="w-full h-20 border border-dashed border-muted-foreground/25 rounded-lg flex items-center justify-center text-muted-foreground min-h-[92px]">
-          <p className="text-sm">
-            {isPending ? 'Loading images...' : 'No images selected'}
-          </p>
+          <p className="text-sm">No images selected</p>
         </div>
       </div>
     )
-  }, [isPending, selectedImages, selectedImageIds, sensors, handleImageRemove, handleDragEnd])
+  }, [isPending, selectedImages, ImageGallerySkeleton, selectedImageIds, sensors, handleImageRemove, handleDragEnd])
 
   return (
     <div className="space-y-4">

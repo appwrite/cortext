@@ -1353,14 +1353,28 @@ function ArticleEditor({ articleId, userId, onBack }: { articleId: string; userI
 
     // Auto-save when form data changes (only after user interaction and fully loaded)
     useEffect(() => {
-        if (hasUserInteracted && article && isFullyLoaded && !isInitialLoadRef.current && !isRevertingRef.current) {
+        if (article && isFullyLoaded && !isInitialLoadRef.current && !isRevertingRef.current) {
             // Check if sections have actually changed from initial state
             const sectionsChanged = JSON.stringify(localSections) !== JSON.stringify(initialSections)
             
             // Only trigger auto-save if there are actual changes
             const hasFormChanges = (title || trailer || subtitle || live || redirect || authors.length > 0 || categories.length > 0)
             
-            if (hasFormChanges || sectionsChanged) {
+            console.log('🔍 Auto-save check:', {
+                hasUserInteracted,
+                isFullyLoaded,
+                isInitialLoad: isInitialLoadRef.current,
+                isReverting: isRevertingRef.current,
+                sectionsChanged,
+                hasFormChanges,
+                localSectionsCount: localSections.length,
+                initialSectionsCount: initialSections.length
+            })
+            
+            // Only auto-save if user has interacted OR if there are significant changes
+            const shouldAutoSave = hasUserInteracted || (sectionsChanged && localSections.length > 0)
+            
+            if (shouldAutoSave && (hasFormChanges || sectionsChanged)) {
                 const formData = {
                     trailer,
                     title,
@@ -1381,6 +1395,14 @@ function ArticleEditor({ articleId, userId, onBack }: { articleId: string; userI
                 // Check if form data has actually changed from last saved
                 const currentFormDataString = JSON.stringify(formData)
                 if (lastSavedFormDataRef.current !== currentFormDataString) {
+                    console.log('🔄 Auto-save triggered:', {
+                        hasFormChanges,
+                        sectionsChanged,
+                        shouldAutoSave,
+                        currentFormDataString: currentFormDataString.substring(0, 100) + '...',
+                        lastSaved: lastSavedFormDataRef.current ? lastSavedFormDataRef.current.substring(0, 100) + '...' : 'null'
+                    })
+                    
                     // Clear existing timeout
                     if (autoSaveTimeoutRef.current) {
                         clearTimeout(autoSaveTimeoutRef.current)
@@ -1391,7 +1413,11 @@ function ArticleEditor({ articleId, userId, onBack }: { articleId: string; userI
                         lastSavedFormDataRef.current = currentFormDataString
                         triggerAutoSaveRef.current(formData)
                     }, 300) // 300ms debounce for very fast response
+                } else {
+                    console.log('⏭️ Auto-save skipped - no changes detected')
                 }
+            } else {
+                console.log('⏭️ Auto-save skipped - no user interaction or no significant changes')
             }
         }
     }, [hasUserInteracted, trailer, title, subtitle, live, redirect, authors, categories, status, article, userId, isFullyLoaded, localSections, initialSections])
@@ -1404,10 +1430,34 @@ function ArticleEditor({ articleId, userId, onBack }: { articleId: string; userI
                 setIsFullyLoaded(true)
                 // Mark initial load as complete to enable auto-save
                 isInitialLoadRef.current = false
+                
+                // Initialize the last saved form data ref with current data
+                // This prevents auto-save from triggering during initial load
+                const initialFormData = {
+                    trailer,
+                    title,
+                    slug: title ? slugify(title) : '',
+                    subtitle,
+                    live,
+                    redirect,
+                    authors,
+                    categories,
+                    body: JSON.stringify(localSections),
+                    status,
+                    pinned: article?.pinned || false,
+                    images: article?.images || null,
+                    blogId: article?.blogId || null,
+                    createdBy: article?.createdBy || userId,
+                }
+                lastSavedFormDataRef.current = JSON.stringify(initialFormData)
+                console.log('🚀 Initialized lastSavedFormDataRef with initial data')
+                
+                // Mark as user interacted after initialization to enable auto-save for future changes
+                setHasUserInteracted(true)
             }, 200) // Reduced delay for faster auto-save activation
             return () => clearTimeout(timer)
         }
-    }, [isDataLoaded, latestFormData])
+    }, [isDataLoaded, latestFormData]) // Removed dependencies to prevent re-initialization
 
     // Check for backup data immediately on component mount - before any server data loads
     useEffect(() => {
@@ -1455,8 +1505,52 @@ function ArticleEditor({ articleId, userId, onBack }: { articleId: string; userI
             setHasRecoveredFromBackup(true)
             // Mark data as loaded since we've restored from backup
             setIsDataLoaded(true)
+            
+            // Update lastSavedFormDataRef to reflect the restored data
+            // This prevents auto-save from thinking there are no changes
+            const restoredFormData = {
+                trailer: backupData.trailer || '',
+                title: backupData.title || '',
+                slug: backupData.title ? slugify(backupData.title) : '',
+                subtitle: backupData.subtitle || '',
+                live: backupData.live || false,
+                redirect: backupData.redirect || '',
+                authors: backupData.authors || [],
+                categories: backupData.categories || [],
+                body: backupData.body || '[]',
+                status: backupData.status || 'unpublished',
+                pinned: article?.pinned || false,
+                images: article?.images || null,
+                blogId: article?.blogId || null,
+                createdBy: article?.createdBy || userId,
+            }
+            lastSavedFormDataRef.current = JSON.stringify(restoredFormData)
+            console.log('🔄 Updated lastSavedFormDataRef with restored data')
+            
             // Show backup restored indicator
             triggerBackupRestored()
+            
+            // Trigger auto-save after a short delay to ensure all state is updated
+            setTimeout(() => {
+                console.log('🔄 Triggering auto-save after backup restoration')
+                const formData = {
+                    trailer: backupData.trailer || '',
+                    title: backupData.title || '',
+                    slug: backupData.title ? slugify(backupData.title) : '',
+                    subtitle: backupData.subtitle || '',
+                    live: backupData.live || false,
+                    redirect: backupData.redirect || '',
+                    authors: backupData.authors || [],
+                    categories: backupData.categories || [],
+                    body: backupData.body || '[]',
+                    status: backupData.status || 'unpublished',
+                    pinned: article?.pinned || false,
+                    images: article?.images || null,
+                    blogId: article?.blogId || null,
+                    createdBy: article?.createdBy || userId,
+                }
+                triggerAutoSaveRef.current(formData)
+            }, 500) // Small delay to ensure all state is updated
         } else {
             console.log('ℹ️ No backup data found')
         }
@@ -2630,8 +2724,8 @@ function ArticleEditor({ articleId, userId, onBack }: { articleId: string; userI
                         <div className="flex items-center gap-2">
                             <Button
                                 variant="default"
-                                size="lg"
-                                className="whitespace-nowrap cursor-pointer bg-black hover:bg-gray-800 text-white font-semibold px-6 py-2.5 shadow-lg hover:shadow-xl transition-all duration-200 dark:bg-white dark:text-black dark:hover:bg-gray-200"
+                                size="default"
+                                className="whitespace-nowrap cursor-pointer bg-black hover:bg-gray-800 text-white font-semibold px-4 py-2 shadow-lg hover:shadow-xl transition-all duration-200 dark:bg-white dark:text-black dark:hover:bg-gray-200"
                                 onClick={handleDeploy}
                                 disabled={saving}
                             >
