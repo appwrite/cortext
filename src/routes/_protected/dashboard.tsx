@@ -2433,7 +2433,7 @@ function ArticleEditor({ articleId, userId, onBack }: { articleId: string; userI
                                     }`} />
                                     <span className="text-sm">
                                         {status === 'unpublished' ? 'Unpublished' :
-                                         status === 'published' ? 'Deployed' :
+                                         status === 'published' ? 'Published' :
                                          status === 'draft' ? 'Draft' :
                                          status === 'archived' ? 'Archived' :
                                          'Select status'}

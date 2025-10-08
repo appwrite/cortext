@@ -188,9 +188,16 @@ export function useAutoSave({
           }
           await updateArticle.mutateAsync(updatedArticleData)
           
-          // Don't update the article cache directly to prevent race conditions with local state
-          // The form state is already up-to-date and should be the source of truth
-          // Cache updates can cause deleted sections to reappear briefly
+          // Update the article cache to reflect the new activeRevisionId
+          // This prevents the "unpublished changes" banner from showing incorrectly
+          queryClient.setQueryData(['article', articleId], (oldData: any) => {
+            if (!oldData) return oldData
+            return {
+              ...oldData,
+              activeRevisionId: revision.$id,
+              $updatedAt: new Date().toISOString()
+            }
+          })
         }
 
         // Update the revisions cache directly instead of invalidating to prevent race conditions
