@@ -103,7 +103,7 @@ export function TeamBlogDropdown({ userId, onClose, onCreateTeam, onCreateBlog, 
       const selectedTeamElement = teamsScrollRef.current.querySelector(`[data-team-id="${currentTeam.$id}"]`)
       if (selectedTeamElement) {
         selectedTeamElement.scrollIntoView({ 
-          behavior: 'smooth', 
+          behavior: 'instant', 
           block: 'center' 
         })
         hasScrolledOnOpen.current = true
@@ -117,7 +117,7 @@ export function TeamBlogDropdown({ userId, onClose, onCreateTeam, onCreateBlog, 
       const selectedBlogElement = blogsScrollRef.current.querySelector(`[data-blog-id="${currentBlog.$id}"]`)
       if (selectedBlogElement) {
         selectedBlogElement.scrollIntoView({ 
-          behavior: 'smooth', 
+          behavior: 'instant', 
           block: 'center' 
         })
         hasScrolledOnOpen.current = true
