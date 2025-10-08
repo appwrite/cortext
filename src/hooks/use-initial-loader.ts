@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { useRouter, useLocation } from "@tanstack/react-router";
 
 export function useInitialLoader() {
-  const [isLoading, setIsLoading] = useState(false); // Start as false
+  const [isLoading, setIsLoading] = useState(false);
   const [isInitialLoad, setIsInitialLoad] = useState(true);
   const router = useRouter();
   const location = useLocation();
@@ -12,7 +12,7 @@ export function useInitialLoader() {
     const isProtectedRoute = location.pathname.startsWith('/dashboard');
     
     if (isProtectedRoute) {
-      // Show loader for dashboard pages
+      // Show loader for dashboard pages on every navigation
       const minLoadTime = 800; // 800ms minimum
       const startTime = Date.now();
       
@@ -25,8 +25,10 @@ export function useInitialLoader() {
         
         setTimeout(() => {
           setIsLoading(false);
-          // Mark initial load as complete after a short delay
-          setTimeout(() => setIsInitialLoad(false), 300);
+          // Mark initial load as complete after a short delay (only on first load)
+          if (isInitialLoad) {
+            setTimeout(() => setIsInitialLoad(false), 300);
+          }
         }, remainingTime);
       };
 
@@ -42,12 +44,15 @@ export function useInitialLoader() {
     } else {
       // Not a protected route, don't show loader
       setIsLoading(false);
-      setIsInitialLoad(false);
+      // Only set initial load to false on first load
+      if (isInitialLoad) {
+        setTimeout(() => setIsInitialLoad(false), 300);
+      }
     }
-  }, [router, location.pathname]);
+  }, [router, location.pathname, isInitialLoad]);
 
   return {
-    isLoading: isLoading && isInitialLoad,
+    isLoading: isLoading, // Show loader on every navigation to protected routes
     isInitialLoad,
   };
 }
