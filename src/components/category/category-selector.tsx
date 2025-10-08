@@ -263,8 +263,8 @@ export function CategorySelector({ selectedCategoryIds, onCategoriesChange, user
 
   return (
     <Collapsible open={!isCollapsed} onOpenChange={(open) => setIsCollapsed(!open)}>
-      <div className="flex items-center">
-        <CollapsibleTrigger asChild>
+      <CollapsibleTrigger asChild>
+        <div className="flex items-center cursor-pointer">
           <Button
             variant="ghost"
             size="sm"
@@ -272,14 +272,14 @@ export function CategorySelector({ selectedCategoryIds, onCategoriesChange, user
           >
             <ChevronDown className={cn("h-4 w-4 transition-transform", !isCollapsed && "rotate-180")} />
           </Button>
-        </CollapsibleTrigger>
-        <Label className="inline-label">Categories</Label>
-        {selectedCategories.length > 0 && (
-          <span className="text-sm text-muted-foreground ml-2">
-            ({selectedCategories.length} selected)
-          </span>
-        )}
-      </div>
+          <Label className="inline-label cursor-pointer">Categories</Label>
+          {selectedCategories.length > 0 && (
+            <span className="text-sm text-muted-foreground ml-2">
+              ({selectedCategories.length} selected)
+            </span>
+          )}
+        </div>
+      </CollapsibleTrigger>
       
       <CollapsibleContent className="space-y-2">
         {/* Selected categories with drag and drop */}
