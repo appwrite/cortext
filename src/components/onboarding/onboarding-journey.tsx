@@ -232,7 +232,7 @@ export function OnboardingJourney({
           const Icon = step.icon
           return (
             <div key={step.id} className="relative">
-              <div className="p-4 rounded-lg border border-border bg-card hover:border-primary/50 transition-all duration-200">
+              <div className="p-4 rounded-lg border border-border bg-card dark:bg-transparent hover:border-primary/50 transition-all duration-200">
                 <div className="flex items-start gap-3">
                   <div className={`flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center transition-all duration-200 ${
                     step.completed 

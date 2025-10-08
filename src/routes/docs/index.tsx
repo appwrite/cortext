@@ -1,9 +1,10 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { Brain, Sparkles, Code2, Users, Zap, ArrowRight, CheckCircle, Type as TypeIcon, Image as ImageIcon, Video as VideoIcon, Map as MapIcon, Quote as QuoteIcon, Code2 as CodeIcon, FileEdit, MessageSquare, History } from "lucide-react";
+import { Brain, Code2, Users, Zap, ArrowRight, CheckCircle, Type as TypeIcon, Image as ImageIcon, Video as VideoIcon, Map as MapIcon, Quote as QuoteIcon, Code2 as CodeIcon, FileEdit, MessageSquare, History } from "lucide-react";
 import { useThemeContext } from "@/contexts/theme-context";
 import { useTableOfContents } from "@/contexts/table-of-contents-context";
 import { useEffect } from "react";
 import { Button } from "@/components/ui/button";
+import { PageActions } from "@/components/docs/page-actions";
 
 export const Route = createFileRoute("/docs/")({
     component: DocsIndex,
@@ -38,30 +39,30 @@ function DocsIndex() {
         { label: 'Code', Icon: CodeIcon },
     ];
 
-    const features = [
+    const features: { icon: string | React.ComponentType<{ className?: string; "aria-hidden"?: boolean }>; title: string; description: string }[] = [
         {
-            icon: Sparkles,
-            title: "AI Co-author",
+            icon: effectiveTheme === 'dark' ? "/icons/claude-icon-dark.svg" : "/icons/claude-icon-light.svg",
+            title: "AI co-author",
             description: "Generate drafts, refine content, and optimize for your audience."
         },
         {
             icon: CodeIcon,
-            title: "Flexible Blocks",
+            title: "Flexible blocks",
             description: "Drag, sort, and edit content blocks with confidence."
         },
         {
             icon: Brain,
-            title: "SEO Built-in",
+            title: "SEO built-in",
             description: "Real-time suggestions and optimization as you write."
         },
         {
             icon: FileEdit,
-            title: "Drafts & Reviews",
+            title: "Drafts & reviews",
             description: "Stage changes, collect feedback, and roll back when needed."
         },
         {
             icon: MessageSquare,
-            title: "Team Ready",
+            title: "Team ready",
             description: "Multi-user editing with permissions and real-time collaboration."
         }
     ];
@@ -91,8 +92,13 @@ function DocsIndex() {
         <div className="space-y-6">
             {/* Hero */}
             <div id="welcome" className="py-4">
-                <div className="inline-flex items-center gap-2 rounded-full border px-2 py-0.5 text-xs font-medium text-foreground/70 mb-3">
-                    Documentation
+                <div className="flex items-center justify-between mb-3">
+                    <div className="inline-flex items-center gap-2 rounded-full border px-2 py-0.5 text-xs font-medium text-foreground/70">
+                        Documentation
+                    </div>
+                    <div className="mt-1">
+                        <PageActions />
+                    </div>
                 </div>
                 <h1 className="text-2xl font-bold tracking-tight mb-2">
                     Welcome to Cortext
@@ -105,37 +111,43 @@ function DocsIndex() {
 
             {/* Quick Links */}
             <section id="get-started">
-                <h2 className="text-lg font-semibold mb-3">Get Started</h2>
+                <h2 className="text-lg font-semibold mb-3">Get started</h2>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div className="p-4 rounded-lg border border-border bg-card hover:border-primary/50 transition-all duration-200">
+                    <div className="p-4 rounded-lg border border-border bg-card dark:bg-transparent hover:border-primary/50 transition-all duration-200">
                         <div className="flex items-start gap-3">
                             <div className="flex-shrink-0 w-8 h-8 rounded-full bg-muted text-muted-foreground flex items-center justify-center">
                                 <Zap className="w-4 h-4" />
                             </div>
                             <div className="flex-1 min-w-0">
-                                <h3 className="font-medium text-sm text-foreground mb-1">Quick Start</h3>
+                                <h3 className="font-medium text-sm text-foreground mb-1">Quick start</h3>
                                 <p className="text-xs text-muted-foreground mb-2">Get up and running with Cortext in under 5 minutes.</p>
-                                <Button asChild variant="link" size="sm" className="h-auto p-0 text-xs font-medium text-primary hover:text-primary/70">
-                                    <Link to="/docs/quick-start">
-                                        Start building →
-                                    </Link>
-                                </Button>
+                                <div className="mt-3 h-7 flex items-center">
+                                    <Button asChild size="sm" variant="outline" className="h-7 text-xs">
+                                        <Link to="/docs/quick-start">
+                                            Start building
+                                            <ArrowRight className="w-3 h-3 ml-1" />
+                                        </Link>
+                                    </Button>
+                                </div>
                             </div>
                         </div>
                     </div>
-                    <div className="p-4 rounded-lg border border-border bg-card hover:border-primary/50 transition-all duration-200">
+                    <div className="p-4 rounded-lg border border-border bg-card dark:bg-transparent hover:border-primary/50 transition-all duration-200">
                         <div className="flex items-start gap-3">
                             <div className="flex-shrink-0 w-8 h-8 rounded-full bg-muted text-muted-foreground flex items-center justify-center">
                                 <Code2 className="w-4 h-4" />
                             </div>
                             <div className="flex-1 min-w-0">
-                                <h3 className="font-medium text-sm text-foreground mb-1">API Reference</h3>
+                                <h3 className="font-medium text-sm text-foreground mb-1">API reference</h3>
                                 <p className="text-xs text-muted-foreground mb-2">Complete API documentation with examples and guides.</p>
-                                <Button asChild variant="link" size="sm" className="h-auto p-0 text-xs font-medium text-primary hover:text-primary/70">
-                                    <Link to="/docs/api">
-                                        View API docs →
-                                    </Link>
-                                </Button>
+                                <div className="mt-3 h-7 flex items-center">
+                                    <Button asChild size="sm" variant="outline" className="h-7 text-xs">
+                                        <Link to="/docs/api">
+                                            View API docs
+                                            <ArrowRight className="w-3 h-3 ml-1" />
+                                        </Link>
+                                    </Button>
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -144,27 +156,21 @@ function DocsIndex() {
 
             {/* Features Overview */}
             <section id="core-features">
-                <h2 className="text-lg font-semibold mb-3">Core Features</h2>
+                <h2 className="text-lg font-semibold mb-3">Core features</h2>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     {features.map((feature, index) => (
-                        <div key={index} className="p-4 rounded-lg border border-border bg-card hover:border-primary/50 transition-all duration-200">
+                        <div key={index} className="p-4 rounded-lg border border-border bg-card dark:bg-transparent hover:border-primary/50 transition-all duration-200">
                             <div className="flex items-start gap-3">
                                 <div className="flex-shrink-0 w-8 h-8 rounded-full bg-muted text-muted-foreground flex items-center justify-center">
-                                    <feature.icon className="w-4 h-4" />
+                                    {typeof feature.icon === 'string' ? (
+                                        <img src={feature.icon} alt={feature.title} className="w-4 h-4" />
+                                    ) : (
+                                        <feature.icon className="w-4 h-4" />
+                                    )}
                                 </div>
                                 <div className="flex-1 min-w-0">
                                     <h3 className="font-medium text-sm text-foreground mb-1">{feature.title}</h3>
                                     <p className="text-xs text-muted-foreground mb-2">{feature.description}</p>
-                                    {feature.title === "Flexible Blocks" && (
-                                        <div className="flex flex-wrap gap-1">
-                                            {blocks.map(({ label, Icon }) => (
-                                                <span key={label} className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs bg-muted text-muted-foreground">
-                                                    <Icon className="w-3 h-3" />
-                                                    {label}
-                                                </span>
-                                            ))}
-                                        </div>
-                                    )}
                                 </div>
                             </div>
                         </div>
@@ -175,10 +181,10 @@ function DocsIndex() {
 
             {/* API Overview */}
             <section id="api-overview">
-                <h2 className="text-lg font-semibold mb-3">API Overview</h2>
+                <h2 className="text-lg font-semibold mb-3">API overview</h2>
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-                    <div className="p-4 rounded-lg border border-border bg-card hover:border-primary/50 transition-all duration-200">
-                        <h3 className="font-medium text-sm text-foreground mb-1">RESTful Design</h3>
+                    <div className="p-4 rounded-lg border border-border bg-card dark:bg-transparent hover:border-primary/50 transition-all duration-200">
+                        <h3 className="font-medium text-sm text-foreground mb-1">RESTful design</h3>
                         <p className="text-muted-foreground text-xs mb-3">
                             Clean, predictable endpoints that follow REST conventions for easy integration.
                         </p>
@@ -197,7 +203,7 @@ function DocsIndex() {
                             </div>
                         </div>
                     </div>
-                    <div className="p-4 rounded-lg border border-border bg-card hover:border-primary/50 transition-all duration-200">
+                    <div className="p-4 rounded-lg border border-border bg-card dark:bg-transparent hover:border-primary/50 transition-all duration-200">
                         <h3 className="font-medium text-sm text-foreground mb-1">Endpoints</h3>
                         <div className="space-y-2">
                             <div className="flex items-center gap-2">

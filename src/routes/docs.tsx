@@ -4,6 +4,7 @@ import { useAuth } from "@/hooks/use-auth";
 import { TableOfContents } from "@/components/docs/table-of-contents";
 import { TableOfContentsProvider, useTableOfContents } from "@/contexts/table-of-contents-context";
 import { UserAvatar } from "@/components/user-avatar";
+import { PageActions } from "@/components/docs/page-actions";
 
 export const Route = createFileRoute("/docs")({
     component: DocsLayout,
@@ -132,12 +133,12 @@ function DocsLayoutContent() {
                         </nav>
                     </aside>
 
-                    {/* Main content */}
-                    <main className="flex-1 min-w-0">
-                        <div className="prose prose-neutral dark:prose-invert max-w-none prose-sm">
-                            <Outlet />
-                        </div>
-                    </main>
+                        {/* Main content */}
+                        <main className="flex-1 min-w-0">
+                            <div className="prose prose-neutral dark:prose-invert max-w-none prose-sm">
+                                <Outlet />
+                            </div>
+                        </main>
 
                     {/* Table of Contents - Right Sidebar */}
                     <aside className="hidden xl:block w-40 flex-shrink-0">

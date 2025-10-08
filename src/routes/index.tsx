@@ -142,7 +142,7 @@ function Index() {
 
                 {/* Dashboard screenshot that merges with the next separator */}
                 <div className="relative mx-auto mt-10 md:mt-12 w-full max-w-6xl -mb-px">
-                    <div className="rounded-t-xl border border-b-0 border-foreground/5 bg-card overflow-hidden">
+                    <div className="rounded-t-xl border border-b-0 border-foreground/5 bg-card dark:bg-transparent overflow-hidden">
                         <div className="aspect-[16/9] w-full relative dashboard-screenshot">
                             <OptimizedImage
                                 src={dashboardImageSrc}

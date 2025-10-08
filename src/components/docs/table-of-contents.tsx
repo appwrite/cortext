@@ -1,5 +1,4 @@
 import { useEffect, useState } from "react";
-import { ExternalLink } from "lucide-react";
 
 interface TableOfContentsItem {
     id: string;
@@ -52,15 +51,14 @@ export function TableOfContents({ items }: TableOfContentsProps) {
                     <button
                         key={item.id}
                         onClick={() => scrollToSection(item.id)}
-                        className={`group flex items-center gap-1.5 w-full text-left py-1 text-xs transition-colors ${
+                        className={`w-full text-left py-1 text-xs transition-colors ${
                             activeSection === item.id
                                 ? 'text-foreground font-semibold'
                                 : 'text-foreground/70 hover:text-foreground'
                         }`}
                         style={{ paddingLeft: `${(item.level - 1) * 12}px` }}
                     >
-                        <span>{item.title}</span>
-                        <ExternalLink className="w-3 h-3 opacity-0 group-hover:opacity-100 transition-opacity" />
+                        {item.title}
                     </button>
                 ))}
             </nav>
