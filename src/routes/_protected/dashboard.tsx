@@ -2795,7 +2795,7 @@ function ArticleEditor({ articleId, userId, user, onBack }: { articleId: string;
                                 ) : hasUnsavedChanges ? (
                                     <div className="flex items-center gap-1.5 animate-in fade-in duration-300">
                                         <div className="w-1.5 h-1.5 bg-amber-400 rounded-full animate-pulse" />
-                                        <span className="text-xs text-muted-foreground">Unsaved changes</span>
+                                        <span className="text-xs text-muted-foreground">...</span>
                                     </div>
                                 ) : showBackupRestored ? (
                                     <div className="flex items-center gap-1.5 animate-in fade-in duration-500">
@@ -3044,21 +3044,51 @@ function ImageEditor({ section, onLocalChange, userId, disabled = false }: { sec
 
 function VideoEditor({ section, onLocalChange, disabled = false }: { section: any; onLocalChange: (data: Partial<any>) => void; disabled?: boolean }) {
     const [url, setUrl] = useState(section.embedUrl ?? '')
+    const [isValid, setIsValid] = useState(true)
+    const [hasUserTyped, setHasUserTyped] = useState(false)
+    
     const embed = toYouTubeEmbed(url)
+    const isValidUrl = isValidYouTubeUrl(url)
+    const showError = hasUserTyped && url.length > 0 && !isValidUrl
 
     useEffect(() => {
         onLocalChange({ embedUrl: url })
     }, [url])
 
+    const handleUrlChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const newUrl = e.target.value
+        setUrl(newUrl)
+        setHasUserTyped(true)
+        setIsValid(isValidYouTubeUrl(newUrl))
+    }
+
     return (
         <div className="space-y-2">
             <div className="space-y-1">
                 <Label htmlFor={`video-url-${section.id}`}>Video URL</Label>
-                <Input id={`video-url-${section.id}`} value={url} onChange={(e) => setUrl(e.target.value)} placeholder="Paste YouTube URL" disabled={disabled} />
+                <Input 
+                    id={`video-url-${section.id}`} 
+                    value={url} 
+                    onChange={handleUrlChange} 
+                    placeholder="Paste YouTube URL" 
+                    disabled={disabled}
+                    className={showError ? "border-red-500 focus:border-red-500" : ""}
+                />
+                {showError && (
+                    <p className="text-sm text-red-500">
+                        Please enter a valid YouTube URL (e.g., https://www.youtube.com/watch?v=VIDEO_ID)
+                    </p>
+                )}
             </div>
-            {embed && (
+            {embed && isValidUrl && (
                 <div className="aspect-video w-full">
-                    <iframe className="w-full h-full rounded-lg border" src={embed} allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowFullScreen title="YouTube preview" />
+                    <iframe 
+                        className="w-full h-full rounded-lg border" 
+                        src={embed} 
+                        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" 
+                        allowFullScreen 
+                        title="YouTube preview" 
+                    />
                 </div>
             )}
             <div className="space-y-1">
@@ -3184,9 +3214,36 @@ function firstInputIdFor(type: string) {
     }
 }
 
-function toYouTubeEmbed(url: string) {
-    const videoId = url.match(/(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/embed\/)([^&\n?#]+)/)?.[1]
-    return videoId ? `https://www.youtube.com/embed/${videoId}` : url
+function isValidYouTubeUrl(url: string): boolean {
+    if (!url || typeof url !== 'string') return false
+    
+    // Trim whitespace
+    url = url.trim()
+    
+    // Check if it's a valid URL format
+    try {
+        new URL(url)
+    } catch {
+        return false
+    }
+    
+    // YouTube URL patterns
+    const youtubePatterns = [
+        /^https?:\/\/(www\.)?youtube\.com\/watch\?v=[\w-]+/,
+        /^https?:\/\/(www\.)?youtu\.be\/[\w-]+/,
+        /^https?:\/\/(www\.)?youtube\.com\/embed\/[\w-]+/,
+        /^https?:\/\/(www\.)?youtube\.com\/v\/[\w-]+/,
+        /^https?:\/\/(www\.)?youtube\.com\/shorts\/[\w-]+/
+    ]
+    
+    return youtubePatterns.some(pattern => pattern.test(url))
+}
+
+function toYouTubeEmbed(url: string): string | null {
+    if (!isValidYouTubeUrl(url)) return null
+    
+    const videoId = url.match(/(?:youtube\.com\/(?:watch\?v=|embed\/|v\/|shorts\/)|youtu\.be\/)([^&\n?#]+)/)?.[1]
+    return videoId ? `https://www.youtube.com/embed/${videoId}` : null
 }
 
 function parseLatLng(input: string) {
