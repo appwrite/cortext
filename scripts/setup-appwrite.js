@@ -332,6 +332,9 @@ const COLLECTIONS = {
       { key: 'version', type: 'integer', required: true, array: false, default: null },
       { key: 'status', type: 'string', size: 50, required: false, array: false, default: 'draft' },
       { key: 'createdBy', type: 'string', size: 255, required: false, array: false, default: null },
+      { key: 'userId', type: 'string', size: 255, required: false, array: false, default: null }, // User ID who created the revision
+      { key: 'userName', type: 'string', size: 255, required: false, array: false, default: null }, // User name who created the revision
+      { key: 'userEmail', type: 'string', size: 255, required: false, array: false, default: null }, // User email who created the revision
       { key: 'messageId', type: 'string', size: 255, required: false, array: false, default: null },
       { key: 'data', type: 'string', size: 200000, required: true, array: false, default: null }, // JSON string for full article snapshot
       { key: 'changes', type: 'string', size: 1000, required: false, array: true, default: null }, // Array of change descriptions
@@ -343,8 +346,12 @@ const COLLECTIONS = {
       { key: 'articleId_status', type: 'key', attributes: ['articleId', 'status'] },
       { key: 'messageId', type: 'key', attributes: ['messageId'] },
       { key: 'createdBy', type: 'key', attributes: ['createdBy'] },
+      { key: 'userId', type: 'key', attributes: ['userId'] },
+      { key: 'userEmail', type: 'key', attributes: ['userEmail'] },
       { key: 'parentRevisionId', type: 'key', attributes: ['parentRevisionId'] },
       { key: 'createdAt', type: 'key', attributes: ['$createdAt'] },
+      { key: 'articleId_userId', type: 'key', attributes: ['articleId', 'userId'] },
+      { key: 'userId_createdAt', type: 'key', attributes: ['userId', '$createdAt'] },
     ],
   },
 };
