@@ -97,7 +97,7 @@ export function RevisionPopover({
             )}
           </Button>
         </PopoverTrigger>
-        <PopoverContent className="w-[28rem] p-0" align="start">
+        <PopoverContent className="w-[28rem] p-0 bg-background border rounded-lg shadow-lg" align="start">
           {/* Arrow pointing down to button - matching other popovers */}
           <div className="absolute left-3 bottom-0 w-0 h-0 border-l-[6px] border-r-[6px] border-t-[6px] border-l-transparent border-r-transparent border-t-border translate-y-full" />
           

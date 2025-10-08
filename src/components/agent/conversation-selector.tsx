@@ -96,7 +96,7 @@ export function ConversationSelector({
             <ChevronDown className="h-4 w-4 flex-shrink-0 ml-1" />
           </Button>
         </PopoverTrigger>
-        <PopoverContent className="w-80 p-0" align="end">
+        <PopoverContent className="w-80 p-0 bg-background border rounded-lg shadow-lg" align="end">
           {/* Arrow pointing to the conversation selector */}
           <div className="absolute right-3 top-0 w-0 h-0 border-l-[6px] border-r-[6px] border-b-[6px] border-l-transparent border-r-transparent border-b-border -translate-y-full" />
           <div className="p-3 border-b">
