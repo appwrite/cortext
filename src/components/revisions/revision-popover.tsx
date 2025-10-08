@@ -235,16 +235,10 @@ export function RevisionPopover({
                                 Active
                               </span>
                             )}
-                            {revision.$id === formRevisionId && revision.$id !== currentRevisionId && (
+                            {revision.$id === formRevisionId && (
                               <span className="inline-flex items-center gap-1 text-xs text-blue-600 font-medium">
                                 <div className="w-1.5 h-1.5 bg-blue-600 rounded-full"></div>
                                 Editing
-                              </span>
-                            )}
-                            {revision.$id === formRevisionId && revision.$id === currentRevisionId && (
-                              <span className="inline-flex items-center gap-1 text-xs text-green-600 font-medium">
-                                <div className="w-1.5 h-1.5 bg-green-600 rounded-full"></div>
-                                Active & Editing
                               </span>
                             )}
                           </div>
