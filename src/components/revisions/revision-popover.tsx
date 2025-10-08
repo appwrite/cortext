@@ -14,6 +14,7 @@ interface RevisionPopoverProps {
   onSelectRevision?: (revisionId: string) => void
   onDeleteRevision?: (revisionId: string) => void
   onRevertToRevision?: (revisionId: string) => void
+  onScrollToTop?: () => void
   className?: string
   currentRevisionVersion?: number
 }
@@ -24,6 +25,7 @@ export function RevisionPopover({
   onSelectRevision,
   onDeleteRevision,
   onRevertToRevision,
+  onScrollToTop,
   className,
   currentRevisionVersion
 }: RevisionPopoverProps) {
@@ -135,6 +137,8 @@ export function RevisionPopover({
                           onSelectRevision(revision.$id)
                         }
                         setIsOpen(false)
+                        // Scroll to top when revision is selected
+                        onScrollToTop?.()
                       }}
                     >
                       <div className="flex-1 min-w-0">

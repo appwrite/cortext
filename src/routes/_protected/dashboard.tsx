@@ -668,7 +668,15 @@ function CreateArticleView({ userId, onDone, onCancel }: { userId: string; onDon
 }
 
 function ArticleEditor({ articleId, userId, onBack }: { articleId: string; userId: string; onBack: () => void }) {
+    const scrollContainerRef = useRef<HTMLDivElement>(null)
     const qc = useQueryClient()
+    
+    const scrollToTop = () => {
+        const container = document.querySelector('.h-dvh.overflow-y-auto')
+        if (container) {
+            container.scrollTo({ top: 0, behavior: 'smooth' })
+        }
+    }
     const navigate = useNavigate()
     const { currentBlog, currentTeam } = useTeamBlogContext()
     const [isMenuOpen, setIsMenuOpen] = useState(false)
@@ -1733,6 +1741,9 @@ function ArticleEditor({ articleId, userId, onBack }: { articleId: string; userI
                 
                 console.log('Revert completed successfully')
                 toast({ title: `Reverted to version ${revision.version}` })
+                
+                // Scroll to top after successful revert
+                scrollToTop()
             } else {
                 console.error('Failed to create new revision')
             }
@@ -1849,7 +1860,7 @@ function ArticleEditor({ articleId, userId, onBack }: { articleId: string; userI
                 articleId={articleId}
                 blogId={currentBlog?.$id}
             />
-            <div className="px-6 pt-2 pb-8 ml-0 md:ml-[18rem] lg:ml-[20rem] xl:ml-[24rem]">
+            <div className="px-6 pt-2 pb-2 ml-0 md:ml-[18rem] lg:ml-[20rem] xl:ml-[24rem]">
                 <div className="flex items-center justify-between">
                     <Button variant="ghost" size="sm" onClick={onBack}>
                         <ArrowLeft className="h-4 w-4 mr-1" /> Back to articles
@@ -2661,6 +2672,7 @@ function ArticleEditor({ articleId, userId, onBack }: { articleId: string; userI
                                 currentRevisionId={latestFormData?.activeRevisionId}
                                 currentRevisionVersion={latestRevision?.version}
                                 onRevertToRevision={handleSelectRevisionForRevert}
+                                onScrollToTop={scrollToTop}
                                 onDeleteRevision={async (revisionId) => {
                                     try {
                                         // Disable auto-save temporarily during deletion
