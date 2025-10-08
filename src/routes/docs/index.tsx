@@ -1,8 +1,9 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { Brain, Sparkles, Code2, Users, Zap, ArrowRight, CheckCircle, Type as TypeIcon, Image as ImageIcon, Video as VideoIcon, Map as MapIcon, Quote as QuoteIcon, Code2 as CodeIcon, FileEdit, MessageSquare, History } from "lucide-react";
 import { useThemeContext } from "@/contexts/theme-context";
 import { useTableOfContents } from "@/contexts/table-of-contents-context";
 import { useEffect } from "react";
+import { Button } from "@/components/ui/button";
 
 export const Route = createFileRoute("/docs/")({
     component: DocsIndex,
@@ -105,30 +106,38 @@ function DocsIndex() {
             {/* Quick Links */}
             <section id="get-started">
                 <h2 className="text-lg font-semibold mb-3">Get Started</h2>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                    <div className="p-3 rounded-lg border hover:border-foreground/20 transition-colors">
-                        <div className="flex items-center gap-2 mb-2">
-                            <div className="w-6 h-6 rounded bg-foreground flex items-center justify-center">
-                                <Zap className="w-3 h-3 text-background" />
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="p-4 rounded-lg border border-border bg-card hover:border-primary/50 transition-all duration-200">
+                        <div className="flex items-start gap-3">
+                            <div className="flex-shrink-0 w-8 h-8 rounded-full bg-muted text-muted-foreground flex items-center justify-center">
+                                <Zap className="w-4 h-4" />
                             </div>
-                            <h3 className="text-sm font-semibold">Quick Start</h3>
+                            <div className="flex-1 min-w-0">
+                                <h3 className="font-medium text-sm text-foreground mb-1">Quick Start</h3>
+                                <p className="text-xs text-muted-foreground mb-2">Get up and running with Cortext in under 5 minutes.</p>
+                                <Button asChild variant="link" size="sm" className="h-auto p-0 text-xs font-medium text-primary hover:text-primary/70">
+                                    <Link to="/docs/quick-start">
+                                        Start building →
+                                    </Link>
+                                </Button>
+                            </div>
                         </div>
-                        <p className="text-xs text-foreground/70 mb-2">Get up and running with Cortext in under 5 minutes.</p>
-                        <a href="/docs/quick-start" className="inline-flex items-center gap-1 text-xs font-medium text-foreground hover:text-foreground/70 transition-colors">
-                            Start building →
-                        </a>
                     </div>
-                    <div className="p-3 rounded-lg border hover:border-foreground/20 transition-colors">
-                        <div className="flex items-center gap-2 mb-2">
-                            <div className="w-6 h-6 rounded bg-foreground flex items-center justify-center">
-                                <Code2 className="w-3 h-3 text-background" />
+                    <div className="p-4 rounded-lg border border-border bg-card hover:border-primary/50 transition-all duration-200">
+                        <div className="flex items-start gap-3">
+                            <div className="flex-shrink-0 w-8 h-8 rounded-full bg-muted text-muted-foreground flex items-center justify-center">
+                                <Code2 className="w-4 h-4" />
                             </div>
-                            <h3 className="text-sm font-semibold">API Reference</h3>
+                            <div className="flex-1 min-w-0">
+                                <h3 className="font-medium text-sm text-foreground mb-1">API Reference</h3>
+                                <p className="text-xs text-muted-foreground mb-2">Complete API documentation with examples and guides.</p>
+                                <Button asChild variant="link" size="sm" className="h-auto p-0 text-xs font-medium text-primary hover:text-primary/70">
+                                    <Link to="/docs/api">
+                                        View API docs →
+                                    </Link>
+                                </Button>
+                            </div>
                         </div>
-                        <p className="text-xs text-foreground/70 mb-2">Complete API documentation with examples and guides.</p>
-                        <a href="/docs/api" className="inline-flex items-center gap-1 text-xs font-medium text-foreground hover:text-foreground/70 transition-colors">
-                            View API docs →
-                        </a>
                     </div>
                 </div>
             </section>
@@ -138,23 +147,25 @@ function DocsIndex() {
                 <h2 className="text-lg font-semibold mb-3">Core Features</h2>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     {features.map((feature, index) => (
-                        <div key={index} className="flex items-start gap-2">
-                            <div className="w-6 h-6 rounded bg-foreground flex items-center justify-center flex-shrink-0 mt-0.5">
-                                <feature.icon className="w-3 h-3 text-background" />
-                            </div>
-                            <div>
-                                <h3 className="font-semibold text-sm mb-1">{feature.title}</h3>
-                                <p className="text-xs text-foreground/70 mb-2">{feature.description}</p>
-                                {feature.title === "Flexible Blocks" && (
-                                    <div className="flex flex-wrap gap-1">
-                                        {blocks.map(({ label, Icon }) => (
-                                            <span key={label} className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs bg-foreground/5 text-foreground/60">
-                                                <Icon className="w-3 h-3" />
-                                                {label}
-                                            </span>
-                                        ))}
-                                    </div>
-                                )}
+                        <div key={index} className="p-4 rounded-lg border border-border bg-card hover:border-primary/50 transition-all duration-200">
+                            <div className="flex items-start gap-3">
+                                <div className="flex-shrink-0 w-8 h-8 rounded-full bg-muted text-muted-foreground flex items-center justify-center">
+                                    <feature.icon className="w-4 h-4" />
+                                </div>
+                                <div className="flex-1 min-w-0">
+                                    <h3 className="font-medium text-sm text-foreground mb-1">{feature.title}</h3>
+                                    <p className="text-xs text-muted-foreground mb-2">{feature.description}</p>
+                                    {feature.title === "Flexible Blocks" && (
+                                        <div className="flex flex-wrap gap-1">
+                                            {blocks.map(({ label, Icon }) => (
+                                                <span key={label} className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs bg-muted text-muted-foreground">
+                                                    <Icon className="w-3 h-3" />
+                                                    {label}
+                                                </span>
+                                            ))}
+                                        </div>
+                                    )}
+                                </div>
                             </div>
                         </div>
                     ))}
@@ -165,57 +176,57 @@ function DocsIndex() {
             {/* API Overview */}
             <section id="api-overview">
                 <h2 className="text-lg font-semibold mb-3">API Overview</h2>
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
-                    <div className="p-3 rounded border">
-                        <h3 className="font-semibold text-sm mb-1">RESTful Design</h3>
-                        <p className="text-foreground/70 text-xs mb-2">
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                    <div className="p-4 rounded-lg border border-border bg-card hover:border-primary/50 transition-all duration-200">
+                        <h3 className="font-medium text-sm text-foreground mb-1">RESTful Design</h3>
+                        <p className="text-muted-foreground text-xs mb-3">
                             Clean, predictable endpoints that follow REST conventions for easy integration.
                         </p>
-                        <div className="space-y-0.5 text-xs">
+                        <div className="space-y-1 text-xs">
                             <div className="flex justify-between">
-                                <span className="text-foreground/60">Base URL:</span>
-                                <code className="text-foreground/80">https://api.cortext.com</code>
+                                <span className="text-muted-foreground">Base URL:</span>
+                                <code className="text-foreground font-mono">https://api.cortext.com</code>
                             </div>
                             <div className="flex justify-between">
-                                <span className="text-foreground/60">Auth:</span>
-                                <code className="text-foreground/80">Bearer Token</code>
+                                <span className="text-muted-foreground">Auth:</span>
+                                <code className="text-foreground font-mono">Bearer Token</code>
                             </div>
                             <div className="flex justify-between">
-                                <span className="text-foreground/60">Rate Limit:</span>
-                                <code className="text-foreground/80">1000 req/min</code>
+                                <span className="text-muted-foreground">Rate Limit:</span>
+                                <code className="text-foreground font-mono">1000 req/min</code>
                             </div>
                         </div>
                     </div>
-                    <div className="p-3 rounded border">
-                        <h3 className="font-semibold text-sm mb-1">Endpoints</h3>
-                        <div className="space-y-1">
-                            <div className="flex items-center gap-1.5">
-                                <span className="px-1 py-0.5 rounded text-xs font-mono bg-foreground/10 text-foreground/80">
+                    <div className="p-4 rounded-lg border border-border bg-card hover:border-primary/50 transition-all duration-200">
+                        <h3 className="font-medium text-sm text-foreground mb-1">Endpoints</h3>
+                        <div className="space-y-2">
+                            <div className="flex items-center gap-2">
+                                <span className="px-2 py-1 rounded text-xs font-mono bg-muted text-muted-foreground">
                                     GET
                                 </span>
-                                <code className="text-xs">/articles</code>
-                                <span className="text-foreground/60 text-xs">List</span>
+                                <code className="text-xs text-foreground">/articles</code>
+                                <span className="text-muted-foreground text-xs">List</span>
                             </div>
-                            <div className="flex items-center gap-1.5">
-                                <span className="px-1 py-0.5 rounded text-xs font-mono bg-foreground/10 text-foreground/80">
+                            <div className="flex items-center gap-2">
+                                <span className="px-2 py-1 rounded text-xs font-mono bg-muted text-muted-foreground">
                                     POST
                                 </span>
-                                <code className="text-xs">/articles</code>
-                                <span className="text-foreground/60 text-xs">Create</span>
+                                <code className="text-xs text-foreground">/articles</code>
+                                <span className="text-muted-foreground text-xs">Create</span>
                             </div>
-                            <div className="flex items-center gap-1.5">
-                                <span className="px-1 py-0.5 rounded text-xs font-mono bg-foreground/10 text-foreground/80">
+                            <div className="flex items-center gap-2">
+                                <span className="px-2 py-1 rounded text-xs font-mono bg-muted text-muted-foreground">
                                     PUT
                                 </span>
-                                <code className="text-xs">/articles/:id</code>
-                                <span className="text-foreground/60 text-xs">Update</span>
+                                <code className="text-xs text-foreground">/articles/:id</code>
+                                <span className="text-muted-foreground text-xs">Update</span>
                             </div>
-                            <div className="flex items-center gap-1.5">
-                                <span className="px-1 py-0.5 rounded text-xs font-mono bg-foreground/10 text-foreground/80">
+                            <div className="flex items-center gap-2">
+                                <span className="px-2 py-1 rounded text-xs font-mono bg-muted text-muted-foreground">
                                     DELETE
                                 </span>
-                                <code className="text-xs">/articles/:id</code>
-                                <span className="text-foreground/60 text-xs">Delete</span>
+                                <code className="text-xs text-foreground">/articles/:id</code>
+                                <span className="text-muted-foreground text-xs">Delete</span>
                             </div>
                         </div>
                     </div>
@@ -229,20 +240,18 @@ function DocsIndex() {
                     Explore our comprehensive guides and start building your content management system today.
                 </p>
                 <div className="flex flex-col sm:flex-row gap-2 justify-center">
-                    <a
-                        href="/docs/quick-start"
-                        className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded text-xs font-semibold text-white bg-neutral-900 hover:bg-neutral-800 dark:bg-white dark:text-neutral-900 dark:hover:bg-white/90 transition-colors"
-                    >
-                        Quick Start Guide
-                        <ArrowRight className="w-3 h-3" />
-                    </a>
-                    <a
-                        href="/docs/api"
-                        className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded text-xs font-medium border hover:bg-foreground/5 transition-colors"
-                    >
-                        API Reference
-                        <Code2 className="w-3 h-3" />
-                    </a>
+                    <Button asChild size="sm" className="h-8 px-3 text-xs font-semibold bg-black hover:bg-gray-800 text-white dark:bg-white dark:text-black dark:hover:bg-gray-200">
+                        <Link to="/docs/quick-start">
+                            Quick Start Guide
+                            <ArrowRight className="w-3 h-3 ml-1" />
+                        </Link>
+                    </Button>
+                    <Button asChild variant="outline" size="sm" className="h-8 px-3 text-xs font-medium">
+                        <Link to="/docs/api">
+                            API Reference
+                            <Code2 className="w-3 h-3 ml-1" />
+                        </Link>
+                    </Button>
                 </div>
             </section>
         </div>

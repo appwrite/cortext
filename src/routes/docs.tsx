@@ -3,6 +3,7 @@ import { Brain, BookOpen, Code2, Zap, Users, Settings, ChevronRight, Github } fr
 import { useAuth } from "@/hooks/use-auth";
 import { TableOfContents } from "@/components/docs/table-of-contents";
 import { TableOfContentsProvider, useTableOfContents } from "@/contexts/table-of-contents-context";
+import { UserAvatar } from "@/components/user-avatar";
 
 export const Route = createFileRoute("/docs")({
     component: DocsLayout,
@@ -34,7 +35,7 @@ const docsNavigation = [
 ];
 
 function Nav() {
-    const { user, isLoading } = useAuth();
+    const { user, isLoading, signOut } = useAuth();
 
     return (
         <header className="sticky top-0 z-40 w-full border-b bg-background/80 backdrop-blur supports-[backdrop-filter]:bg-background/60">
@@ -65,7 +66,10 @@ function Nav() {
                     {!isLoading && (
                         <div className="animate-in fade-in duration-300">
                             {user ? (
-                                <Link to="/dashboard" className="px-3 py-2 rounded-md text-sm font-medium border hover:bg-foreground/5 transition-colors">Dashboard</Link>
+                                <div className="flex items-center gap-3">
+                                    <Link to="/dashboard" className="px-3 py-2 rounded-md text-sm font-medium border hover:bg-foreground/5 transition-colors">Dashboard</Link>
+                                    <UserAvatar user={user} onSignOut={() => signOut.mutate()} />
+                                </div>
                             ) : (
                                 <div className="flex items-center gap-3">
                                     <Link to="/sign-in" className="px-3 py-2 rounded-md text-sm font-medium border hover:bg-foreground/5 transition-colors">Sign in</Link>
@@ -136,7 +140,7 @@ function DocsLayoutContent() {
                     </main>
 
                     {/* Table of Contents - Right Sidebar */}
-                    <aside className="hidden xl:block w-64 flex-shrink-0">
+                    <aside className="hidden xl:block w-40 flex-shrink-0">
                         <div className="sticky top-24 mt-8">
                             {items.length > 0 && <TableOfContents items={items} />}
                         </div>

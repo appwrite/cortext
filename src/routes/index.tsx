@@ -4,13 +4,14 @@ import { Brain, Sparkles, Type as TypeIcon, Image as ImageIcon, Video as VideoIc
 import { useEffect, useState } from "react";
 import { useThemeContext } from "@/contexts/theme-context";
 import { OptimizedImage, useImagePreload } from "@/components/ui/optimized-image";
+import { UserAvatar } from "@/components/user-avatar";
 
 export const Route = createFileRoute("/")({
     component: Index,
 });
 
 function Nav() {
-    const { user, isLoading } = useAuth();
+    const { user, isLoading, signOut } = useAuth();
 
     return (
         <header className="sticky top-0 z-40 w-full border-b bg-background/80 backdrop-blur supports-[backdrop-filter]:bg-background/60">
@@ -41,7 +42,10 @@ function Nav() {
                     {!isLoading && (
                         <div className="animate-in fade-in duration-300">
                             {user ? (
-                                <Link to="/dashboard" className="px-3 py-2 rounded-md text-sm font-medium border hover:bg-foreground/5 transition-colors">Dashboard</Link>
+                                <div className="flex items-center gap-3">
+                                    <Link to="/dashboard" className="px-3 py-2 rounded-md text-sm font-medium border hover:bg-foreground/5 transition-colors">Dashboard</Link>
+                                    <UserAvatar user={user} onSignOut={() => signOut.mutate()} />
+                                </div>
                             ) : (
                                 <div className="flex items-center gap-3">
                                     <Link to="/sign-in" className="px-3 py-2 rounded-md text-sm font-medium border hover:bg-foreground/5 transition-colors">Sign in</Link>
@@ -56,8 +60,8 @@ function Nav() {
                         </div>
                     )}
                 </div>
-                </div>
-            </header>
+            </div>
+        </header>
     );
 }
 

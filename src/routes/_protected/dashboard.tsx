@@ -21,7 +21,7 @@ import { Switch } from '@/components/ui/switch'
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog'
 import { Separator } from '@/components/ui/separator'
 import { toast } from '@/hooks/use-toast'
-import { Image as ImageIcon, Plus, Trash2, Save, Video, MapPin, Type as TypeIcon, Upload, ArrowLeft, LogOut, GripVertical, Brain, Loader2, Heading1, Quote, Pin as PinIcon, FileText, Quote as QuoteIcon, Code, ChevronLeft, ChevronRight, MoreHorizontal, Copy, MessageCircle, Eye, EyeOff, Archive } from 'lucide-react'
+import { Image as ImageIcon, Plus, Trash2, Save, Video, MapPin, Type as TypeIcon, Upload, ArrowLeft, LogOut, GripVertical, Brain, Loader2, Heading1, Quote, Pin as PinIcon, FileText, Quote as QuoteIcon, Code, ChevronLeft, ChevronRight, MoreHorizontal, Copy, MessageCircle, Eye, EyeOff, Archive, BookOpen } from 'lucide-react'
 import { AgentChat } from '@/components/agent/agent-chat'
 import { AuthorSelector } from '@/components/author'
 import { CategorySelector } from '@/components/category'
@@ -108,6 +108,13 @@ function Header({ userId, onSignOut, user }: { userId: string; onSignOut: () => 
                 
                 {/* Right side - User actions */}
                 <div className="flex items-center gap-4">
+                    <Link 
+                        to="/docs" 
+                        className="p-2 rounded-md hover:bg-foreground/5 transition-colors"
+                        title="Documentation"
+                    >
+                        <BookOpen className="h-4 w-4 text-foreground/70 hover:text-foreground" />
+                    </Link>
                     <NotificationBell userId={userId} />
                     <UserAvatar user={user} onSignOut={onSignOut} />
                 </div>
