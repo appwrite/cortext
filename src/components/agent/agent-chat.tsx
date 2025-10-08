@@ -433,7 +433,7 @@ export function AgentChat({
             const timeout = setTimeout(() => {
                 setIsWaitingForAI(false)
                 setIsWaitingForStream(false)
-            }, 10000) // 10 second timeout
+            }, 120000) // 120 second timeout
 
             return () => clearTimeout(timeout)
         }
@@ -470,7 +470,7 @@ export function AgentChat({
                 setStreamingContentCheckCount(0)
                 setLastMetadataStatus('None')
                 isStreamingRef.current = false
-            }, 30000) // 30 second safety timeout
+            }, 120000) // 120 second safety timeout
 
             return () => clearTimeout(safetyTimeout)
         }
@@ -617,14 +617,12 @@ export function AgentChat({
                     </div>
                 ) : hasMessages ? (
                     <div className="px-6 py-6 space-y-2">
+                        {/* Debug: Messages count: {messages.length}, hasMessages: {hasMessages.toString()} */}
                         {messages.map((m, index) => (
                             <div 
                                 key={m.id} 
-                                className="space-y-1 opacity-0 animate-in fade-in-0 duration-200"
-                                style={{ 
-                                    animationDelay: `${Math.min(index * 25, 100)}ms`,
-                                    animationFillMode: 'forwards'
-                                }}
+                                className="space-y-1"
+                                style={{ opacity: 1, visibility: 'visible' }}
                             >
                                 <div className={m.role === 'assistant' ? 'flex gap-2 items-start' : 'flex justify-end'}>
                                     {m.role === 'assistant' && (
@@ -639,6 +637,7 @@ export function AgentChat({
                                                 : 'rounded-md bg-primary text-primary-foreground px-2.5 py-1.5 text-xs max-w-[220px]'
                                         }
                                     >
+                                        {/* Debug: Role: {m.role}, Content: {m.content.substring(0, 50)}... */}
                                         {m.role === 'assistant' ? (
                                             <MarkdownRenderer content={m.content} />
                                         ) : (

@@ -2390,16 +2390,18 @@ function ArticleEditor({ articleId, userId, user, onBack }: { articleId: string;
                 )}
 
                 {/* Unpublished changes banner */}
-                <div className={`mb-6 transition-all duration-500 ease-out ${
-                    ((hasUnpublishedChanges && !saving) || (bannerWasVisible && saving)) 
-                        ? 'opacity-100 translate-y-0' 
-                        : 'opacity-0 -translate-y-2 h-0 mb-0 overflow-hidden'
-                }`}>
-                    <UnpublishedChangesBanner 
-                        onSave={handleDeploy}
-                        isSaving={saving}
-                    />
-                </div>
+                {!isInRevertMode && (
+                    <div className={`mb-6 transition-all duration-500 ease-out ${
+                        ((hasUnpublishedChanges && !saving) || (bannerWasVisible && saving)) 
+                            ? 'opacity-100 translate-y-0' 
+                            : 'opacity-0 -translate-y-2 h-0 mb-0 overflow-hidden'
+                    }`}>
+                        <UnpublishedChangesBanner 
+                            onSave={handleDeploy}
+                            isSaving={saving}
+                        />
+                    </div>
+                )}
 
                 {/* Revert confirmation banner */}
                 {showRevertConfirmation && revertFormData && (
@@ -2814,7 +2816,7 @@ function ArticleEditor({ articleId, userId, user, onBack }: { articleId: string;
                                 size="default"
                                 className="whitespace-nowrap cursor-pointer bg-black hover:bg-gray-800 text-white font-semibold px-4 py-2 shadow-lg hover:shadow-xl transition-all duration-200 dark:bg-white dark:text-black dark:hover:bg-gray-200"
                                 onClick={handleDeploy}
-                                disabled={saving}
+                                disabled={saving || isInRevertMode}
                             >
                                 {saving ? 'Deploying...' : 'Deploy'}
                             </Button>

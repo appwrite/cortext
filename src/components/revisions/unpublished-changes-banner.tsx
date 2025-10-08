@@ -22,7 +22,7 @@ export function UnpublishedChangesBanner({ onSave, isSaving = false }: Unpublish
             variant="default"
             onClick={onSave}
             disabled={isSaving}
-            className="ml-3 h-7 px-3 text-xs bg-black text-white hover:bg-gray-800 dark:bg-white dark:text-black dark:hover:bg-gray-200"
+            className="ml-3 h-7 px-3 text-xs bg-blue-600 text-white hover:bg-blue-700 dark:bg-blue-600 dark:text-white dark:hover:bg-blue-700"
           >
             {isSaving ? 'Deploying...' : 'Deploy'}
           </Button>
