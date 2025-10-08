@@ -286,9 +286,9 @@ export function AgentChat({
         }
     }, [conversations, currentConversationId, isLoadingConversations, createInitialConversation])
 
-    // Show messages if they exist, otherwise show placeholder (only when not loading)
+    // Show messages if they exist, otherwise show placeholder (only when not loading and conversations exist)
     const hasMessages = messages.length > 0
-    const shouldShowPlaceholder = !isLoadingMessages && messages.length === 0
+    const shouldShowPlaceholder = !isLoadingMessages && messages.length === 0 && conversations.length > 0
     
 
     // Precisely align with the app header; footer does not occupy the left rail

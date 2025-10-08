@@ -91,7 +91,7 @@ export function ConversationSelector({
             title="Select conversation"
           >
             <span className="text-xs font-medium text-muted-foreground truncate">
-              {currentConversation?.title || 'No conversation'}
+              {currentConversation?.title || ''}
             </span>
             <ChevronDown className="h-4 w-4 flex-shrink-0 ml-1" />
           </Button>
