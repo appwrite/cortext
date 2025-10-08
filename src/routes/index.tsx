@@ -1,4 +1,4 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useAuth } from "@/hooks/use-auth";
 import { Brain, Sparkles, Type as TypeIcon, Image as ImageIcon, Video as VideoIcon, Map as MapIcon, Quote as QuoteIcon, Code2 as CodeIcon, FileEdit, MessageSquare, History, Github } from "lucide-react";
 import { useEffect, useState } from "react";
@@ -63,6 +63,7 @@ function Nav() {
 function Index() {
     const [count, setCount] = useState(0);
     const { effectiveTheme } = useThemeContext();
+    const { user, isLoading } = useAuth();
     
     // Preload the appropriate dashboard image based on theme
     const dashboardImageSrc = effectiveTheme === 'dark' ? "/dashboard-dark.png" : "/dashboard-light.png";
@@ -120,15 +121,14 @@ function Index() {
                         Organize rich content with flexible, sortable blocks. Co-write with an AI assistant trained to boost quality, SEO, and team productivity.
                         </p>
                         <div className="mt-8 flex flex-col sm:flex-row items-center justify-center gap-3 mb-8">
-                        <Link
-                            to="/sign-up"
-                            className="w-full sm:w-auto px-5 py-3 rounded-md text-sm font-semibold text-white bg-neutral-900 hover:bg-neutral-800 dark:bg-white dark:text-neutral-900 dark:hover:bg-white/90 transition-colors text-center"
-                        >
-                            Get started
-                                </Link>
-                        <a href="#coauthor" className="w-full sm:w-auto px-5 py-3 rounded-md text-sm font-medium border hover:bg-foreground/5 transition-colors text-center">
-                            Learn more
-                        </a>
+                        {!isLoading && (
+                            <Link
+                                to={user ? "/dashboard" : "/sign-up"}
+                                className="w-full sm:w-auto px-5 py-3 rounded-md text-sm font-semibold text-white bg-neutral-900 hover:bg-neutral-800 dark:bg-white dark:text-neutral-900 dark:hover:bg-white/90 transition-colors text-center"
+                            >
+                                {user ? "Go to Dashboard" : "Get started"}
+                            </Link>
+                        )}
                     </div>
                     {/* <p className="mt-4 text-xs md:text-sm text-foreground/70">
                         <span className="font-semibold text-foreground">{count.toLocaleString()}</span> teams already trusting Cortext
@@ -430,7 +430,9 @@ function Index() {
                                 </li>
                             ))}
                         </ul>
-                        <Link to="/sign-up" className="mt-6 inline-flex justify-center rounded-md border px-4 py-2 text-sm font-medium hover:bg-foreground/5 transition-colors">Get started</Link>
+                        {!isLoading && (
+                            <Link to={user ? "/dashboard" : "/sign-up"} className="mt-6 inline-flex justify-center rounded-md border px-4 py-2 text-sm font-medium hover:bg-foreground/5 transition-colors">{user ? "Go to Dashboard" : "Get started"}</Link>
+                        )}
                     </div>
 
                     {/* Pro */}
@@ -458,7 +460,9 @@ function Index() {
                                 </li>
                             ))}
                         </ul>
-                        <Link to="/sign-up" className="mt-6 inline-flex justify-center rounded-md px-4 py-2 text-sm font-semibold text-white bg-neutral-900 hover:bg-neutral-800 dark:bg-white dark:text-neutral-900 dark:hover:bg-white/90 transition-colors">Upgrade to Pro</Link>
+                        {!isLoading && (
+                            <Link to={user ? "/dashboard" : "/sign-up"} className="mt-6 inline-flex justify-center rounded-md px-4 py-2 text-sm font-semibold text-white bg-neutral-900 hover:bg-neutral-800 dark:bg-white dark:text-neutral-900 dark:hover:bg-white/90 transition-colors">{user ? "Go to Dashboard" : "Upgrade to Pro"}</Link>
+                        )}
                     </div>
 
                     {/* Enterprise */}
@@ -483,7 +487,9 @@ function Index() {
                                 </li>
                             ))}
                         </ul>
-                        <Link to="/sign-up" className="mt-6 inline-flex justify-center rounded-md border px-4 py-2 text-sm font-medium hover:bg-foreground/5 transition-colors">Contact sales</Link>
+                        {!isLoading && (
+                            <Link to={user ? "/dashboard" : "/sign-up"} className="mt-6 inline-flex justify-center rounded-md border px-4 py-2 text-sm font-medium hover:bg-foreground/5 transition-colors">{user ? "Go to Dashboard" : "Contact sales"}</Link>
+                        )}
                     </div>
                 </div>
             </section>
@@ -494,18 +500,22 @@ function Index() {
                     <h3 className="text-2xl font-semibold tracking-tight">Start building with Cortext</h3>
                     <p className="mt-2 text-foreground/70">A focused, reliable CMS designed for modern content management and team collaboration.</p>
                     <div className="mt-6 flex flex-col sm:flex-row items-center justify-center gap-3">
-                        <Link
-                            to="/sign-up"
-                            className="w-full sm:w-auto px-5 py-3 rounded-md text-sm font-semibold text-white bg-neutral-900 hover:bg-neutral-800 dark:bg-white dark:text-neutral-900 dark:hover:bg-white/90 transition-colors text-center"
-                        >
-                            Get started
-                        </Link>
-                        <Link
-                            to="/sign-in"
-                            className="w-full sm:w-auto px-5 py-3 rounded-md text-sm font-medium border hover:bg-foreground/5 transition-colors text-center"
-                        >
-                            I already have an account
-                        </Link>
+                        {!isLoading && (
+                            <Link
+                                to={user ? "/dashboard" : "/sign-up"}
+                                className="w-full sm:w-auto px-5 py-3 rounded-md text-sm font-semibold text-white bg-neutral-900 hover:bg-neutral-800 dark:bg-white dark:text-neutral-900 dark:hover:bg-white/90 transition-colors text-center"
+                            >
+                                {user ? "Go to Dashboard" : "Get started"}
+                            </Link>
+                        )}
+                        {!isLoading && !user && (
+                            <Link
+                                to="/sign-in"
+                                className="w-full sm:w-auto px-5 py-3 rounded-md text-sm font-medium border hover:bg-foreground/5 transition-colors text-center"
+                            >
+                                I already have an account
+                            </Link>
+                        )}
                         </div>
                     </div>
                 </section>
@@ -517,7 +527,9 @@ function Index() {
                         <a className="text-foreground/60 hover:text-foreground" href="#features">Features</a>
                         <a className="text-foreground/60 hover:text-foreground" href="#api">API</a>
                         <a className="text-foreground/60 hover:text-foreground" href="#pricing">Pricing</a>
-                        <Link className="text-foreground/60 hover:text-foreground" to="/sign-up">Get started</Link>
+                        {!isLoading && (
+                            <Link className="text-foreground/60 hover:text-foreground" to={user ? "/dashboard" : "/sign-up"}>{user ? "Dashboard" : "Get started"}</Link>
+                        )}
                     </div>
                     <span className="text-foreground/60 order-2 sm:order-1">© {new Date().getFullYear()} Cortext</span>
                 </div>
