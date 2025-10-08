@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import { Button } from '@/components/ui/button'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { ScrollArea } from '@/components/ui/scroll-area'
@@ -11,6 +11,7 @@ import { cn } from '@/lib/utils'
 interface RevisionPopoverProps {
   articleId: string
   currentRevisionId?: string | null
+  formRevisionId?: string | null
   onSelectRevision?: (revisionId: string) => void
   onDeleteRevision?: (revisionId: string) => void
   onRevertToRevision?: (revisionId: string) => void
@@ -22,6 +23,7 @@ interface RevisionPopoverProps {
 export function RevisionPopover({
   articleId,
   currentRevisionId,
+  formRevisionId,
   onSelectRevision,
   onDeleteRevision,
   onRevertToRevision,
@@ -31,6 +33,8 @@ export function RevisionPopover({
 }: RevisionPopoverProps) {
   const [isOpen, setIsOpen] = useState(false)
   const [revisionToDelete, setRevisionToDelete] = useState<string | null>(null)
+  const [popoverPosition, setPopoverPosition] = useState<'bottom' | 'top'>('bottom')
+  const containerRef = useRef<HTMLDivElement>(null)
   const { revisionHistory, isLoading } = useRevisionHistory(articleId)
 
   const handleDeleteRevision = (revisionId: string) => {
@@ -43,6 +47,67 @@ export function RevisionPopover({
       setRevisionToDelete(null)
     }
   }
+
+  // Calculate popover position and height
+  const calculatePosition = () => {
+    if (containerRef.current) {
+      const containerRect = containerRef.current.getBoundingClientRect();
+      const viewportHeight = window.innerHeight;
+      const stickyFooterHeight = 80; // Height of sticky footer
+      const headerHeight = 60; // Height of top header
+      const padding = 20; // Some padding for safety
+      const popoverHeight = 400; // Estimated popover height
+      
+      const availableSpaceBelow = viewportHeight - containerRect.bottom - stickyFooterHeight - padding;
+      const availableSpaceAbove = containerRect.top - headerHeight - padding;
+      
+      // Determine if we should open above or below
+      if (availableSpaceBelow < popoverHeight && availableSpaceAbove > availableSpaceBelow) {
+        setPopoverPosition('top');
+      } else {
+        setPopoverPosition('bottom');
+      }
+    }
+  };
+
+  const getMaxPopoverHeight = () => {
+    if (containerRef.current) {
+      const containerRect = containerRef.current.getBoundingClientRect();
+      const viewportHeight = window.innerHeight;
+      const stickyFooterHeight = 80; // Height of sticky footer
+      const headerHeight = 60; // Height of top header
+      const padding = 20; // Some padding for safety
+      
+      const availableSpaceBelow = viewportHeight - containerRect.bottom - stickyFooterHeight - padding;
+      const availableSpaceAbove = containerRect.top - headerHeight - padding;
+      
+      // Use the appropriate space based on position
+      const availableSpace = popoverPosition === 'top' ? availableSpaceAbove : availableSpaceBelow;
+      const maxHeight = Math.max(200, Math.min(400, availableSpace));
+      
+      return maxHeight;
+    }
+    return 300; // Fallback height
+  };
+
+  // Calculate position when opening and on window resize
+  useEffect(() => {
+    if (isOpen) {
+      calculatePosition();
+    }
+  }, [isOpen]);
+
+  // Recalculate position on window resize
+  useEffect(() => {
+    const handleResize = () => {
+      if (isOpen) {
+        calculatePosition();
+      }
+    };
+
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, [isOpen]);
 
   const getRevisionTitle = (revision: any) => {
     const truncate = (text: string, maxLength: number = 50) => {
@@ -77,7 +142,7 @@ export function RevisionPopover({
 
 
   return (
-    <>
+    <div ref={containerRef} className="relative">
       <Popover open={isOpen} onOpenChange={setIsOpen}>
         <PopoverTrigger asChild>
           <Button
@@ -97,8 +162,12 @@ export function RevisionPopover({
             )}
           </Button>
         </PopoverTrigger>
-        <PopoverContent className="w-[28rem] p-0 bg-background border rounded-lg shadow-lg" align="start">
-          {/* Arrow pointing down to button - matching other popovers */}
+        <PopoverContent 
+          className="w-[28rem] p-0 bg-background border rounded-lg shadow-lg" 
+          align="start"
+          side={popoverPosition}
+        >
+          {/* Arrow pointing down to button */}
           <div className="absolute left-3 bottom-0 w-0 h-0 border-l-[6px] border-r-[6px] border-t-[6px] border-l-transparent border-r-transparent border-t-border translate-y-full" />
           
           <div className="px-3 py-2 border-b">
@@ -108,7 +177,7 @@ export function RevisionPopover({
             </p>
           </div>
           
-          <ScrollArea className="h-64">
+          <ScrollArea style={{ height: `${getMaxPopoverHeight()}px` }}>
             {isLoading ? (
               <div className="p-3 text-center text-sm text-muted-foreground">
                 Loading revisions...
@@ -149,11 +218,26 @@ export function RevisionPopover({
                           >
                             {getRevisionTitle(revision)}
                           </div>
-                          {revision.$id === currentRevisionId && (
-                            <span className="text-xs text-green-600">
-                              Current
-                            </span>
-                          )}
+                          <div className="flex items-center gap-1">
+                            {revision.$id === currentRevisionId && (
+                              <span className="inline-flex items-center gap-1 text-xs text-green-600 font-medium">
+                                <div className="w-1.5 h-1.5 bg-green-600 rounded-full"></div>
+                                Active
+                              </span>
+                            )}
+                            {revision.$id === formRevisionId && revision.$id !== currentRevisionId && (
+                              <span className="inline-flex items-center gap-1 text-xs text-blue-600 font-medium">
+                                <div className="w-1.5 h-1.5 bg-blue-600 rounded-full"></div>
+                                Editing
+                              </span>
+                            )}
+                            {revision.$id === formRevisionId && revision.$id === currentRevisionId && (
+                              <span className="inline-flex items-center gap-1 text-xs text-green-600 font-medium">
+                                <div className="w-1.5 h-1.5 bg-green-600 rounded-full"></div>
+                                Active & Editing
+                              </span>
+                            )}
+                          </div>
                         </div>
                         
                         <div className="text-xs text-muted-foreground leading-5">
@@ -217,6 +301,6 @@ export function RevisionPopover({
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-    </>
+    </div>
   )
 }

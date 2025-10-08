@@ -2738,7 +2738,8 @@ function ArticleEditor({ articleId, userId, onBack }: { articleId: string; userI
                         <div className="text-xs text-muted-foreground flex items-center gap-2">
                             <RevisionPopover 
                                 articleId={articleId}
-                                currentRevisionId={latestFormData?.activeRevisionId}
+                                currentRevisionId={article?.activeRevisionId}
+                                formRevisionId={latestRevision?.$id}
                                 currentRevisionVersion={latestRevision?.version}
                                 onRevertToRevision={handleSelectRevisionForRevert}
                                 onScrollToTop={scrollToTop}
