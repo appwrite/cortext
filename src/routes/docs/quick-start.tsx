@@ -105,7 +105,7 @@ const article = await cortext.articles.create({
                 <ul className="space-y-1">
                     {prerequisites.map((item, index) => (
                         <li key={index} className="flex items-center gap-2">
-                            <CheckCircle className="w-4 h-4 text-green-500 flex-shrink-0" />
+                            <div className="w-1.5 h-1.5 rounded-full bg-foreground/40 flex-shrink-0" />
                             <span className="text-sm text-foreground/80">{item}</span>
                         </li>
                     ))}
@@ -148,22 +148,24 @@ const article = await cortext.articles.create({
 
             {/* Verification */}
             <section>
-                <h2 className="text-2xl font-semibold mb-6">Verify Installation</h2>
-                <div className="bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-xl p-6">
+                <h2 className="text-xl font-semibold mb-4">Verify Installation</h2>
+                <div className="bg-foreground/5 border rounded-lg p-4">
                     <div className="flex items-start gap-3">
-                        <CheckCircle className="w-6 h-6 text-green-600 dark:text-green-400 flex-shrink-0 mt-0.5" />
+                        <div className="w-6 h-6 rounded-full bg-foreground flex items-center justify-center flex-shrink-0 mt-0.5">
+                            <CheckCircle className="w-4 h-4 text-background" />
+                        </div>
                         <div>
-                            <h3 className="font-semibold text-green-900 dark:text-green-100 mb-2">
+                            <h3 className="font-semibold text-foreground mb-2">
                                 Success! Your Cortext installation is complete.
                             </h3>
-                            <p className="text-green-700 dark:text-green-300 mb-4">
-                                You should now be able to access your dashboard at <code className="bg-green-100 dark:bg-green-800 px-2 py-1 rounded text-sm">http://localhost:3000</code> and see the welcome screen.
+                            <p className="text-foreground/70 text-sm mb-3">
+                                You should now be able to access your dashboard at <code className="bg-foreground/10 px-2 py-1 rounded text-xs">http://localhost:3000</code> and see the welcome screen.
                             </p>
-                            <div className="space-y-2 text-sm text-green-700 dark:text-green-300">
-                                <p>✅ Development server running</p>
-                                <p>✅ Database connected</p>
-                                <p>✅ API endpoints accessible</p>
-                                <p>✅ Authentication configured</p>
+                            <div className="space-y-1 text-xs text-foreground/70">
+                                <p>• Development server running</p>
+                                <p>• Database connected</p>
+                                <p>• API endpoints accessible</p>
+                                <p>• Authentication configured</p>
                             </div>
                         </div>
                     </div>

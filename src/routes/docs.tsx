@@ -1,4 +1,4 @@
-import { createFileRoute, Outlet, Link } from "@tanstack/react-router";
+import { createFileRoute, Outlet, Link, useLocation } from "@tanstack/react-router";
 import { Brain, BookOpen, Code2, Zap, Users, Settings, ChevronRight, Github } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
 
@@ -85,6 +85,7 @@ function Nav() {
 
 function DocsLayout() {
     const { user, isLoading } = useAuth();
+    const location = useLocation();
 
     return (
         <div className="min-h-screen flex flex-col">
@@ -94,23 +95,30 @@ function DocsLayout() {
                 <div className="flex gap-8">
                     {/* Sidebar */}
                     <aside className="hidden lg:block w-64 flex-shrink-0">
-                        <nav className="space-y-4">
+                        <nav className="sticky top-24 space-y-5">
                             {docsNavigation.map((section) => (
                                 <div key={section.title}>
-                                    <h3 className="text-sm font-semibold text-foreground/90 mb-2">{section.title}</h3>
-                                    <ul className="space-y-1">
-                                        {section.items.map((item) => (
-                                            <li key={item.href}>
-                                                <Link
-                                                    to={item.href}
-                                                    className="group flex items-center gap-2 px-3 py-1.5 text-sm text-foreground/70 hover:text-foreground hover:bg-foreground/5 rounded-md transition-colors"
-                                                >
-                                                    <item.icon className="h-4 w-4" />
-                                                    <span>{item.title}</span>
-                                                    <ChevronRight className="h-3 w-3 ml-auto opacity-0 group-hover:opacity-100 transition-opacity" />
-                                                </Link>
-                                            </li>
-                                        ))}
+                                    <h3 className="text-sm font-semibold text-foreground/90 mb-2.5">{section.title}</h3>
+                                    <ul className="space-y-1.5">
+                                        {section.items.map((item) => {
+                                            const isActive = location.pathname === item.href;
+                                            return (
+                                                <li key={item.href}>
+                                                    <Link
+                                                        to={item.href}
+                                                        className={`group flex items-center gap-2.5 px-3 py-1.5 text-sm rounded-md transition-colors ${
+                                                            isActive
+                                                                ? 'bg-foreground text-background'
+                                                                : 'text-foreground/70 hover:text-foreground hover:bg-foreground/5'
+                                                        }`}
+                                                    >
+                                                        <item.icon className="h-4 w-4" />
+                                                        <span>{item.title}</span>
+                                                        <ChevronRight className="h-3 w-3 ml-auto opacity-0 group-hover:opacity-100 transition-opacity" />
+                                                    </Link>
+                                                </li>
+                                            );
+                                        })}
                                     </ul>
                                 </div>
                             ))}
