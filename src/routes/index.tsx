@@ -23,6 +23,7 @@ function Nav() {
                     <a href="#features" className="text-foreground/70 hover:text-foreground transition-colors">Features</a>
                     <a href="#api" className="text-foreground/70 hover:text-foreground transition-colors">API</a>
                     <a href="#pricing" className="text-foreground/70 hover:text-foreground transition-colors">Pricing</a>
+                    <Link to="/docs" className="text-foreground/70 hover:text-foreground transition-colors">Docs</Link>
                     <a
                         href="https://github.com/appwrite/cortext"
                         target="_blank"
@@ -527,6 +528,7 @@ function Index() {
                         <a className="text-foreground/60 hover:text-foreground" href="#features">Features</a>
                         <a className="text-foreground/60 hover:text-foreground" href="#api">API</a>
                         <a className="text-foreground/60 hover:text-foreground" href="#pricing">Pricing</a>
+                        <Link className="text-foreground/60 hover:text-foreground" to="/docs">Docs</Link>
                         {!isLoading && (
                             <Link className="text-foreground/60 hover:text-foreground" to={user ? "/dashboard" : "/sign-up"}>{user ? "Dashboard" : "Get started"}</Link>
                         )}

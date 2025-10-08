@@ -10,9 +10,17 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as VerifyEmailRouteImport } from './routes/verify-email'
+import { Route as DocsRouteImport } from './routes/docs'
 import { Route as ProtectedRouteImport } from './routes/_protected'
 import { Route as AuthRouteImport } from './routes/_auth'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as DocsIndexRouteImport } from './routes/docs/index'
+import { Route as DocsQuickStartRouteImport } from './routes/docs/quick-start'
+import { Route as DocsInstallationRouteImport } from './routes/docs/installation'
+import { Route as DocsCollaborationRouteImport } from './routes/docs/collaboration'
+import { Route as DocsBlocksRouteImport } from './routes/docs/blocks'
+import { Route as DocsApiRouteImport } from './routes/docs/api'
+import { Route as DocsAiCoauthorRouteImport } from './routes/docs/ai-coauthor'
 import { Route as ProtectedDashboardRouteImport } from './routes/_protected/dashboard'
 import { Route as AuthSignUpRouteImport } from './routes/_auth/sign-up'
 import { Route as AuthSignOutRouteImport } from './routes/_auth/sign-out'
@@ -21,6 +29,11 @@ import { Route as AuthSignInRouteImport } from './routes/_auth/sign-in'
 const VerifyEmailRoute = VerifyEmailRouteImport.update({
   id: '/verify-email',
   path: '/verify-email',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const DocsRoute = DocsRouteImport.update({
+  id: '/docs',
+  path: '/docs',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ProtectedRoute = ProtectedRouteImport.update({
@@ -35,6 +48,41 @@ const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => rootRouteImport,
+} as any)
+const DocsIndexRoute = DocsIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => DocsRoute,
+} as any)
+const DocsQuickStartRoute = DocsQuickStartRouteImport.update({
+  id: '/quick-start',
+  path: '/quick-start',
+  getParentRoute: () => DocsRoute,
+} as any)
+const DocsInstallationRoute = DocsInstallationRouteImport.update({
+  id: '/installation',
+  path: '/installation',
+  getParentRoute: () => DocsRoute,
+} as any)
+const DocsCollaborationRoute = DocsCollaborationRouteImport.update({
+  id: '/collaboration',
+  path: '/collaboration',
+  getParentRoute: () => DocsRoute,
+} as any)
+const DocsBlocksRoute = DocsBlocksRouteImport.update({
+  id: '/blocks',
+  path: '/blocks',
+  getParentRoute: () => DocsRoute,
+} as any)
+const DocsApiRoute = DocsApiRouteImport.update({
+  id: '/api',
+  path: '/api',
+  getParentRoute: () => DocsRoute,
+} as any)
+const DocsAiCoauthorRoute = DocsAiCoauthorRouteImport.update({
+  id: '/ai-coauthor',
+  path: '/ai-coauthor',
+  getParentRoute: () => DocsRoute,
 } as any)
 const ProtectedDashboardRoute = ProtectedDashboardRouteImport.update({
   id: '/dashboard',
@@ -59,11 +107,19 @@ const AuthSignInRoute = AuthSignInRouteImport.update({
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/docs': typeof DocsRouteWithChildren
   '/verify-email': typeof VerifyEmailRoute
   '/sign-in': typeof AuthSignInRoute
   '/sign-out': typeof AuthSignOutRoute
   '/sign-up': typeof AuthSignUpRoute
   '/dashboard': typeof ProtectedDashboardRoute
+  '/docs/ai-coauthor': typeof DocsAiCoauthorRoute
+  '/docs/api': typeof DocsApiRoute
+  '/docs/blocks': typeof DocsBlocksRoute
+  '/docs/collaboration': typeof DocsCollaborationRoute
+  '/docs/installation': typeof DocsInstallationRoute
+  '/docs/quick-start': typeof DocsQuickStartRoute
+  '/docs/': typeof DocsIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -72,27 +128,50 @@ export interface FileRoutesByTo {
   '/sign-out': typeof AuthSignOutRoute
   '/sign-up': typeof AuthSignUpRoute
   '/dashboard': typeof ProtectedDashboardRoute
+  '/docs/ai-coauthor': typeof DocsAiCoauthorRoute
+  '/docs/api': typeof DocsApiRoute
+  '/docs/blocks': typeof DocsBlocksRoute
+  '/docs/collaboration': typeof DocsCollaborationRoute
+  '/docs/installation': typeof DocsInstallationRoute
+  '/docs/quick-start': typeof DocsQuickStartRoute
+  '/docs': typeof DocsIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/_auth': typeof AuthRouteWithChildren
   '/_protected': typeof ProtectedRouteWithChildren
+  '/docs': typeof DocsRouteWithChildren
   '/verify-email': typeof VerifyEmailRoute
   '/_auth/sign-in': typeof AuthSignInRoute
   '/_auth/sign-out': typeof AuthSignOutRoute
   '/_auth/sign-up': typeof AuthSignUpRoute
   '/_protected/dashboard': typeof ProtectedDashboardRoute
+  '/docs/ai-coauthor': typeof DocsAiCoauthorRoute
+  '/docs/api': typeof DocsApiRoute
+  '/docs/blocks': typeof DocsBlocksRoute
+  '/docs/collaboration': typeof DocsCollaborationRoute
+  '/docs/installation': typeof DocsInstallationRoute
+  '/docs/quick-start': typeof DocsQuickStartRoute
+  '/docs/': typeof DocsIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
+    | '/docs'
     | '/verify-email'
     | '/sign-in'
     | '/sign-out'
     | '/sign-up'
     | '/dashboard'
+    | '/docs/ai-coauthor'
+    | '/docs/api'
+    | '/docs/blocks'
+    | '/docs/collaboration'
+    | '/docs/installation'
+    | '/docs/quick-start'
+    | '/docs/'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -101,22 +180,38 @@ export interface FileRouteTypes {
     | '/sign-out'
     | '/sign-up'
     | '/dashboard'
+    | '/docs/ai-coauthor'
+    | '/docs/api'
+    | '/docs/blocks'
+    | '/docs/collaboration'
+    | '/docs/installation'
+    | '/docs/quick-start'
+    | '/docs'
   id:
     | '__root__'
     | '/'
     | '/_auth'
     | '/_protected'
+    | '/docs'
     | '/verify-email'
     | '/_auth/sign-in'
     | '/_auth/sign-out'
     | '/_auth/sign-up'
     | '/_protected/dashboard'
+    | '/docs/ai-coauthor'
+    | '/docs/api'
+    | '/docs/blocks'
+    | '/docs/collaboration'
+    | '/docs/installation'
+    | '/docs/quick-start'
+    | '/docs/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AuthRoute: typeof AuthRouteWithChildren
   ProtectedRoute: typeof ProtectedRouteWithChildren
+  DocsRoute: typeof DocsRouteWithChildren
   VerifyEmailRoute: typeof VerifyEmailRoute
 }
 
@@ -127,6 +222,13 @@ declare module '@tanstack/react-router' {
       path: '/verify-email'
       fullPath: '/verify-email'
       preLoaderRoute: typeof VerifyEmailRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/docs': {
+      id: '/docs'
+      path: '/docs'
+      fullPath: '/docs'
+      preLoaderRoute: typeof DocsRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/_protected': {
@@ -149,6 +251,55 @@ declare module '@tanstack/react-router' {
       fullPath: '/'
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
+    }
+    '/docs/': {
+      id: '/docs/'
+      path: '/'
+      fullPath: '/docs/'
+      preLoaderRoute: typeof DocsIndexRouteImport
+      parentRoute: typeof DocsRoute
+    }
+    '/docs/quick-start': {
+      id: '/docs/quick-start'
+      path: '/quick-start'
+      fullPath: '/docs/quick-start'
+      preLoaderRoute: typeof DocsQuickStartRouteImport
+      parentRoute: typeof DocsRoute
+    }
+    '/docs/installation': {
+      id: '/docs/installation'
+      path: '/installation'
+      fullPath: '/docs/installation'
+      preLoaderRoute: typeof DocsInstallationRouteImport
+      parentRoute: typeof DocsRoute
+    }
+    '/docs/collaboration': {
+      id: '/docs/collaboration'
+      path: '/collaboration'
+      fullPath: '/docs/collaboration'
+      preLoaderRoute: typeof DocsCollaborationRouteImport
+      parentRoute: typeof DocsRoute
+    }
+    '/docs/blocks': {
+      id: '/docs/blocks'
+      path: '/blocks'
+      fullPath: '/docs/blocks'
+      preLoaderRoute: typeof DocsBlocksRouteImport
+      parentRoute: typeof DocsRoute
+    }
+    '/docs/api': {
+      id: '/docs/api'
+      path: '/api'
+      fullPath: '/docs/api'
+      preLoaderRoute: typeof DocsApiRouteImport
+      parentRoute: typeof DocsRoute
+    }
+    '/docs/ai-coauthor': {
+      id: '/docs/ai-coauthor'
+      path: '/ai-coauthor'
+      fullPath: '/docs/ai-coauthor'
+      preLoaderRoute: typeof DocsAiCoauthorRouteImport
+      parentRoute: typeof DocsRoute
     }
     '/_protected/dashboard': {
       id: '/_protected/dashboard'
@@ -207,10 +358,33 @@ const ProtectedRouteWithChildren = ProtectedRoute._addFileChildren(
   ProtectedRouteChildren,
 )
 
+interface DocsRouteChildren {
+  DocsAiCoauthorRoute: typeof DocsAiCoauthorRoute
+  DocsApiRoute: typeof DocsApiRoute
+  DocsBlocksRoute: typeof DocsBlocksRoute
+  DocsCollaborationRoute: typeof DocsCollaborationRoute
+  DocsInstallationRoute: typeof DocsInstallationRoute
+  DocsQuickStartRoute: typeof DocsQuickStartRoute
+  DocsIndexRoute: typeof DocsIndexRoute
+}
+
+const DocsRouteChildren: DocsRouteChildren = {
+  DocsAiCoauthorRoute: DocsAiCoauthorRoute,
+  DocsApiRoute: DocsApiRoute,
+  DocsBlocksRoute: DocsBlocksRoute,
+  DocsCollaborationRoute: DocsCollaborationRoute,
+  DocsInstallationRoute: DocsInstallationRoute,
+  DocsQuickStartRoute: DocsQuickStartRoute,
+  DocsIndexRoute: DocsIndexRoute,
+}
+
+const DocsRouteWithChildren = DocsRoute._addFileChildren(DocsRouteChildren)
+
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AuthRoute: AuthRouteWithChildren,
   ProtectedRoute: ProtectedRouteWithChildren,
+  DocsRoute: DocsRouteWithChildren,
   VerifyEmailRoute: VerifyEmailRoute,
 }
 export const routeTree = rootRouteImport
