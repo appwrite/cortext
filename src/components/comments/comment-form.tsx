@@ -123,8 +123,12 @@ export const CommentForm = forwardRef<CommentFormRef, CommentFormProps>(({
       
       <div className="flex items-center justify-between">
         <div className="flex items-center space-x-0.5 text-[10px] text-muted-foreground">
-          <KeyIcon />
-          <span>+ {isMac ? 'Return' : 'Enter'} to submit</span>
+          {typeof navigator !== 'undefined' && navigator.maxTouchPoints === 0 && (
+            <>
+              <KeyIcon />
+              <span>+ {isMac ? 'Return' : 'Enter'} to submit</span>
+            </>
+          )}
         </div>
         <Button
           type="submit"

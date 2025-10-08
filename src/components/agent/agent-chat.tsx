@@ -812,14 +812,16 @@ export function AgentChat({
                         <CornerDownLeft className="h-3 w-3" />
                     </Button>
                 </div>
-                <div className="flex items-center justify-between text-[10px] text-muted-foreground">
-                    <div className="flex items-center space-x-0.5">
-                        <div className="inline-flex items-center justify-center w-3 h-3 text-[8px] font-medium bg-muted rounded border">
-                            {typeof navigator !== 'undefined' && /Mac|iPod|iPhone|iPad/.test(navigator.platform) ? '⌘' : 'Ctrl'}
+                {typeof navigator !== 'undefined' && navigator.maxTouchPoints === 0 && (
+                    <div className="flex items-center justify-between text-[10px] text-muted-foreground">
+                        <div className="flex items-center space-x-0.5">
+                            <div className="inline-flex items-center justify-center w-3 h-3 text-[8px] font-medium bg-muted rounded border">
+                                {/Mac|iPod|iPhone|iPad/.test(navigator.platform) ? '⌘' : 'Ctrl'}
+                            </div>
+                            <span>+ {/Mac|iPod|iPhone|iPad/.test(navigator.platform) ? 'Return' : 'Enter'} to submit</span>
                         </div>
-                        <span>+ {typeof navigator !== 'undefined' && /Mac|iPod|iPhone|iPad/.test(navigator.platform) ? 'Return' : 'Enter'} to submit</span>
                     </div>
-                </div>
+                )}
             </div>
         </>
     )
