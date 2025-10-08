@@ -92,11 +92,11 @@ export const CommentForm = forwardRef<CommentFormRef, CommentFormProps>(({
 
   // Detect if user is on Mac to show correct shortcut text
   const isMac = typeof navigator !== 'undefined' && /Mac|iPod|iPhone|iPad/.test(navigator.platform);
-  const shortcutText = isMac ? 'Cmd+Enter' : 'Ctrl+Enter';
+  const shortcutText = isMac ? 'Cmd+Return' : 'Ctrl+Enter';
 
   // Cmd/Ctrl icon component
   const KeyIcon = () => (
-    <div className="inline-flex items-center justify-center w-4 h-4 text-xs font-medium bg-muted rounded border">
+    <div className="inline-flex items-center justify-center w-3 h-3 text-[8px] font-medium bg-muted rounded border">
       {isMac ? '⌘' : 'Ctrl'}
     </div>
   );
@@ -122,9 +122,9 @@ export const CommentForm = forwardRef<CommentFormRef, CommentFormProps>(({
       />
       
       <div className="flex items-center justify-between">
-        <div className="flex items-center space-x-1 text-xs text-muted-foreground">
+        <div className="flex items-center space-x-0.5 text-[10px] text-muted-foreground">
           <KeyIcon />
-          <span>+ Enter to submit</span>
+          <span>+ {isMac ? 'Return' : 'Enter'} to submit</span>
         </div>
         <Button
           type="submit"

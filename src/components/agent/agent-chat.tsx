@@ -1,10 +1,11 @@
 import { useEffect, useRef, useState, useCallback, useMemo } from 'react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+import { Textarea } from '@/components/ui/textarea'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { Drawer, DrawerContent, DrawerHeader, DrawerTitle } from '@/components/ui/drawer'
 import { MarkdownRenderer } from '@/components/ui/markdown-renderer'
-import { Brain, Sparkles, Send, MessageCircle } from 'lucide-react'
+import { Brain, Sparkles, Send, MessageCircle, CornerDownLeft } from 'lucide-react'
 import { useIsMobile } from '@/hooks/use-mobile'
 import { useConversationManager, useMessagesWithNotifications } from '@/hooks/use-conversations'
 import { ConversationSelector } from './conversation-selector'
@@ -61,7 +62,7 @@ export function AgentChat({
     const [lastMetadataStatus, setLastMetadataStatus] = useState<string>('None')
     const [showDebugPanel, setShowDebugPanel] = useState<boolean>(false)
     const isMobile = useIsMobile()
-    const inputRef = useRef<HTMLInputElement>(null)
+    const inputRef = useRef<HTMLTextAreaElement>(null)
     const currentConversationIdRef = useRef<string | null>(currentConversationId)
     const isStreamingRef = useRef<boolean>(false)
 
@@ -711,28 +712,55 @@ export function AgentChat({
             <div className="relative px-6 py-6 space-y-2 bg-background border-t border-foreground/30">
                 {/* Gradient fade overlay - more gradual */}
                 <div className="absolute inset-x-0 -top-8 h-12 bg-gradient-to-t from-background via-background/80 to-transparent pointer-events-none" />
-                <div className="flex gap-2">
+                <div className="flex flex-wrap gap-1.5">
                     <Button 
                         variant="secondary" 
                         size="sm" 
-                        className="gap-1 h-7 px-2 text-[11px]" 
+                        className="gap-1 h-6 px-2 text-[10px]" 
                         onClick={applySEOTitle}
                         disabled={isPromptLocked}
                     >
-                        <Sparkles className="h-3.5 w-3.5" /> SEO title
+                        <Sparkles className="h-3 w-3" /> Optimize SEO title
                     </Button>
                     <Button 
                         variant="secondary" 
                         size="sm" 
-                        className="gap-1 h-7 px-2 text-[11px]" 
+                        className="gap-1 h-6 px-2 text-[10px]" 
                         onClick={generateMetaDescription}
                         disabled={isPromptLocked}
                     >
-                        <Sparkles className="h-3.5 w-3.5" /> Meta description
+                        <Sparkles className="h-3 w-3" /> Generate meta description
+                    </Button>
+                    <Button 
+                        variant="secondary" 
+                        size="sm" 
+                        className="gap-1 h-6 px-2 text-[10px]" 
+                        onClick={() => send("Improve this title")}
+                        disabled={isPromptLocked}
+                    >
+                        <Sparkles className="h-3 w-3" /> Improve title
+                    </Button>
+                    <Button 
+                        variant="secondary" 
+                        size="sm" 
+                        className="gap-1 h-6 px-2 text-[10px]" 
+                        onClick={() => send("Write a better introduction")}
+                        disabled={isPromptLocked}
+                    >
+                        <Sparkles className="h-3 w-3" /> Better intro
+                    </Button>
+                    <Button 
+                        variant="secondary" 
+                        size="sm" 
+                        className="gap-1 h-6 px-2 text-[10px]" 
+                        onClick={() => send("Add more sections to structure this content")}
+                        disabled={isPromptLocked}
+                    >
+                        <Sparkles className="h-3 w-3" /> Add sections
                     </Button>
                 </div>
-                <div className="flex items-center gap-2">
-                    <Input
+                <div className="relative">
+                    <Textarea
                         ref={inputRef}
                         value={input}
                         onChange={(e) => {
@@ -747,7 +775,7 @@ export function AgentChat({
                                     ? "AI is responding..." 
                                     : "Ask the agent…"
                         }
-                        className={`h-9 text-sm ${isPromptLocked ? 'opacity-50 cursor-not-allowed' : ''}`}
+                        className={`min-h-[44px] max-h-32 pr-12 text-sm resize-none ${isPromptLocked ? 'opacity-50 cursor-not-allowed' : ''}`}
                         disabled={isPromptLocked}
                         onKeyDown={(e) => {
                             // Block all input when prompt is locked
@@ -756,8 +784,8 @@ export function AgentChat({
                                 return
                             }
                             
-                            // Only allow Enter to submit when not locked
-                            if (e.key === 'Enter' && !e.shiftKey) {
+                            // Submit on Cmd+Enter (Mac) or Ctrl+Enter (Windows)
+                            if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') {
                                 e.preventDefault()
                                 send()
                             }
@@ -777,12 +805,20 @@ export function AgentChat({
                     />
                     <Button 
                         size="sm" 
-                        className="h-9 px-3" 
+                        className="absolute bottom-1.5 right-1.5 h-6 w-6 p-0" 
                         onClick={() => send()}
                         disabled={isPromptLocked || !input.trim()}
                     >
-                        <Send className="h-4 w-4" />
+                        <CornerDownLeft className="h-3 w-3" />
                     </Button>
+                </div>
+                <div className="flex items-center justify-between text-[10px] text-muted-foreground">
+                    <div className="flex items-center space-x-0.5">
+                        <div className="inline-flex items-center justify-center w-3 h-3 text-[8px] font-medium bg-muted rounded border">
+                            {typeof navigator !== 'undefined' && /Mac|iPod|iPhone|iPad/.test(navigator.platform) ? '⌘' : 'Ctrl'}
+                        </div>
+                        <span>+ {typeof navigator !== 'undefined' && /Mac|iPod|iPhone|iPad/.test(navigator.platform) ? 'Return' : 'Enter'} to submit</span>
+                    </div>
                 </div>
             </div>
         </>
