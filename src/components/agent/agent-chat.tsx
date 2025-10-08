@@ -379,7 +379,7 @@ export function AgentChat({
                 // Only clear loading state when the message has actual content (not just placeholder)
                 const hasRealContent = lastDbMessage.content && 
                     lastDbMessage.content.trim().length > 0 && 
-                    lastDbMessage.content !== ''
+                    lastDbMessage.content !== 'Thinking...'
                 
                 // Clear immediately when real AI message arrives (no timeout needed)
                 if (hasRealContent) {
@@ -617,8 +617,15 @@ export function AgentChat({
                     </div>
                 ) : hasMessages ? (
                     <div className="px-6 py-6 space-y-2">
-                        {messages.map((m) => (
-                            <div key={m.id} className="space-y-1">
+                        {messages.map((m, index) => (
+                            <div 
+                                key={m.id} 
+                                className="space-y-1 opacity-0 animate-in fade-in-0 duration-200"
+                                style={{ 
+                                    animationDelay: `${Math.min(index * 25, 100)}ms`,
+                                    animationFillMode: 'forwards'
+                                }}
+                            >
                                 <div className={m.role === 'assistant' ? 'flex gap-2 items-start' : 'flex justify-end'}>
                                     {m.role === 'assistant' && (
                                         <div className="mt-0.5 text-muted-foreground">
@@ -671,7 +678,7 @@ export function AgentChat({
                         
                         {/* Show loading indicator when waiting for AI response */}
                         {isWaitingForStream && (
-                            <div className="space-y-1">
+                            <div className="space-y-1 animate-in fade-in-0 duration-300">
                                 <div className="flex gap-2 items-start">
                                     <div className="mt-0.5 text-muted-foreground">
                                         <Brain className="h-4 w-4" />
@@ -683,7 +690,7 @@ export function AgentChat({
                                                 <div className="w-1 h-1 bg-muted-foreground rounded-full animate-pulse" style={{ animationDelay: '150ms' }}></div>
                                                 <div className="w-1 h-1 bg-muted-foreground rounded-full animate-pulse" style={{ animationDelay: '300ms' }}></div>
                                             </div>
-                                            <span className="text-xs text-muted-foreground"></span>
+                                            <span className="text-xs text-muted-foreground">Thinking...</span>
                                         </div>
                                     </div>
                                 </div>
