@@ -2,6 +2,7 @@ import { useEffect, useRef, useState, useCallback } from 'react'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { db, createUpdateRevision } from '@/lib/appwrite/db'
 import type { Articles } from '@/lib/appwrite/appwrite.types'
+import { saveBackup, removeBackup, getBackup } from '@/lib/local-storage-backup'
 
 interface AutoSaveOptions {
   articleId: string
@@ -18,6 +19,7 @@ interface AutoSaveState {
   hasUnsavedChanges: boolean
   saveError: string | null
   showSaved: boolean
+  showBackupRestored: boolean
   queueLength: number
 }
 
@@ -41,6 +43,7 @@ export function useAutoSave({
     hasUnsavedChanges: false,
     saveError: null,
     showSaved: false,
+    showBackupRestored: false,
     queueLength: 0
   })
 
@@ -78,6 +81,32 @@ export function useAutoSave({
     return lastInteractionRef.current > 0 && (Date.now() - lastInteractionRef.current) < interactionDelayMs
   }, [interactionDelayMs])
 
+  // Recover data from backup
+  const recoverFromBackup = useCallback(() => {
+    const backup = getBackup(articleId)
+    if (!backup) {
+      return null
+    }
+
+
+    return backup.formData
+  }, [articleId])
+
+  // Manually trigger backup (for immediate backup without auto-save)
+  const triggerBackup = useCallback((formData: any) => {
+    saveBackup(articleId, formData)
+  }, [articleId])
+
+  // Show backup restored indicator
+  const triggerBackupRestored = useCallback(() => {
+    setState(prev => ({ ...prev, showBackupRestored: true }))
+    
+    // Hide the indicator after 3 seconds
+    setTimeout(() => {
+      setState(prev => ({ ...prev, showBackupRestored: false }))
+    }, 3000)
+  }, [])
+
   // Mutation for updating article
   const updateArticle = useMutation({
     mutationFn: (data: Partial<Articles>) => db.articles.update(articleId, data),
@@ -92,7 +121,6 @@ export function useAutoSave({
 
     // Additional safety check - ensure article has required fields
     if (!article.$id || !article.title) {
-      console.warn('Auto-save skipped: Invalid article data')
       return
     }
 
@@ -113,19 +141,18 @@ export function useAutoSave({
     
     // If this data is the same as what we last saved, skip this save
     if (lastSavedDataRef.current === formDataString) {
-      console.warn('Auto-save skipped: Data is identical to last saved data')
       return
     }
 
+    // Add a timeout to prevent auto-save from hanging indefinitely
+    const saveTimeout = setTimeout(() => {
+      console.warn('Auto-save timeout - resetting state')
+      setState(prev => ({ ...prev, isSaving: false, saveError: 'Save timeout' }))
+      throw new Error('Save timeout')
+    }, 10000) // 10 second timeout
+
     try {
       setState(prev => ({ ...prev, saveError: null }))
-
-      // Add a timeout to prevent auto-save from hanging indefinitely
-      const saveTimeout = setTimeout(() => {
-        console.warn('Auto-save timeout - resetting state')
-        setState(prev => ({ ...prev, isSaving: false, saveError: 'Save timeout' }))
-        throw new Error('Save timeout')
-      }, 10000) // 10 second timeout
 
       const currentFormData = {
         trailer: formData.trailer,
@@ -195,6 +222,9 @@ export function useAutoSave({
 
         // Update the reference to track what was last saved
         lastSavedDataRef.current = JSON.stringify(formData)
+        
+        // Remove backup from local storage after successful save
+        removeBackup(articleId)
       }
     } catch (error) {
       console.error('Auto-save error:', error)
@@ -261,6 +291,9 @@ export function useAutoSave({
     // Track this as a user interaction
     trackInteraction()
     
+    // Save backup immediately on any change - no delays or conditions
+    saveBackup(articleId, formData)
+    
     // Clear existing timeout
     if (timeoutRef.current) {
       clearTimeout(timeoutRef.current)
@@ -304,7 +337,7 @@ export function useAutoSave({
         triggerAutoSave(formData)
       }
     }, totalDelay)
-  }, [addToQueue, debounceMs, trackInteraction, isUserInteracting, interactionDelayMs])
+  }, [addToQueue, debounceMs, trackInteraction, isUserInteracting, interactionDelayMs, articleId])
 
   // Cleanup timeouts on unmount
   useEffect(() => {
@@ -325,6 +358,9 @@ export function useAutoSave({
     ...state,
     triggerAutoSave,
     trackInteraction,
+    recoverFromBackup,
+    triggerBackup,
+    triggerBackupRestored,
     isAutoSaving: state.isSaving,
     queueLength: state.queueLength
   }

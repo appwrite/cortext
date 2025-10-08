@@ -5,6 +5,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { db, createInitialRevision, createUpdateRevision, createRevertRevision } from '@/lib/appwrite/db'
 import { useLatestRevision } from '@/hooks/use-latest-revision'
 import { useAutoSave } from '@/hooks/use-auto-save'
+import { getBackupDebugInfo, getDetailedBackupInfo, forceCleanupAllBackups } from '@/lib/local-storage-backup'
 import { files } from '@/lib/appwrite/storage'
 import { getAccountClient } from '@/lib/appwrite'
 import type { Articles } from '@/lib/appwrite/appwrite.types'
@@ -843,22 +844,6 @@ function ArticleEditor({ articleId, userId, onBack }: { articleId: string; userI
         return () => window.removeEventListener('resize', handleResize)
     }, [updateRowPositions])
 
-    useEffect(() => {
-        if (latestFormData?.body) {
-            try {
-                const sections = JSON.parse(latestFormData.body)
-                const parsedSections = Array.isArray(sections) ? sections : []
-                setLocalSections(parsedSections)
-                // Store initial sections for comparison
-                setInitialSections(parsedSections)
-            } catch {
-                setLocalSections([])
-                setInitialSections([])
-            }
-            // Mark data as loaded after sections are loaded
-            setIsDataLoaded(true)
-        }
-    }, [latestFormData?.body, latestFormData?.$updatedAt]) // Only update when the body or data actually changes
 
     // Track a newly created section to focus its first relevant input when it renders
     const focusTargetRef = useRef<{ id: string; type: string } | null>(null)
@@ -1138,9 +1123,39 @@ function ArticleEditor({ articleId, userId, onBack }: { articleId: string; userI
     const [isDataLoaded, setIsDataLoaded] = useState(false)
     const [isFullyLoaded, setIsFullyLoaded] = useState(false)
     const [initialSections, setInitialSections] = useState<any[]>([])
+    const [hasRecoveredFromBackup, setHasRecoveredFromBackup] = useState(false)
+
+    // Load sections from server data (but skip if we've recovered from backup)
+    useEffect(() => {
+        console.log('🔄 Server data loading effect triggered:', {
+            hasLatestFormData: !!latestFormData?.body,
+            hasRecoveredFromBackup,
+            shouldLoad: latestFormData?.body && !hasRecoveredFromBackup
+        })
+        
+        if (latestFormData?.body && !hasRecoveredFromBackup) {
+            try {
+                const sections = JSON.parse(latestFormData.body)
+                const parsedSections = Array.isArray(sections) ? sections : []
+                console.log('📥 Loading sections from server:', {
+                    sectionsCount: parsedSections.length,
+                    sections: parsedSections
+                })
+                setLocalSections(parsedSections)
+                // Store initial sections for comparison
+                setInitialSections(parsedSections)
+            } catch {
+                console.log('❌ Failed to parse server sections')
+                setLocalSections([])
+                setInitialSections([])
+            }
+            // Mark data as loaded after sections are loaded
+            setIsDataLoaded(true)
+        }
+    }, [latestFormData?.body, latestFormData?.$updatedAt, hasRecoveredFromBackup]) // Only update when the body or data actually changes
 
     // Auto-save functionality with optimized debounce for faster response
-    const { isAutoSaving, lastSaved, hasUnsavedChanges, showSaved, triggerAutoSave, trackInteraction, queueLength } = useAutoSave({
+    const { isAutoSaving, lastSaved, hasUnsavedChanges, showSaved, showBackupRestored, triggerAutoSave, trackInteraction, recoverFromBackup, triggerBackup, triggerBackupRestored, queueLength } = useAutoSave({
         articleId,
         article,
         teamId: currentTeam?.$id,
@@ -1163,12 +1178,9 @@ function ArticleEditor({ articleId, userId, onBack }: { articleId: string; userI
         setLocalSections(updatedSections)
         // Only set hasUserInteracted if we're not in initial load
         if (isFullyLoaded) {
-            console.log('Section added, setting hasUserInteracted to true')
             setHasUserInteracted(true)
             // Track this as a user interaction to delay auto-save
             trackInteraction()
-        } else {
-            console.log('Section added during initial load, not setting hasUserInteracted')
         }
         // Focus the first input after the component re-renders
         focusTargetRef.current = { id: newSection.id, type: String(type) }
@@ -1307,9 +1319,21 @@ function ArticleEditor({ articleId, userId, onBack }: { articleId: string; userI
     }, [hasUnpublishedChanges, saving])
 
     useEffect(() => {
-        if (latestFormData) {
+        console.log('🔄 Form data loading effect triggered:', {
+            hasLatestFormData: !!latestFormData,
+            hasRecoveredFromBackup,
+            shouldLoad: latestFormData && !hasRecoveredFromBackup
+        })
+        
+        if (latestFormData && !hasRecoveredFromBackup) {
             // Set flag to prevent auto-save during data loading
             isRevertingRef.current = true
+            
+            console.log('📥 Loading form data from server:', {
+                title: latestFormData.title,
+                subtitle: latestFormData.subtitle,
+                trailer: latestFormData.trailer
+            })
             
             setTrailer(latestFormData.trailer ?? '')
             setTitle(latestFormData.title ?? '')
@@ -1325,7 +1349,7 @@ function ArticleEditor({ articleId, userId, onBack }: { articleId: string; userI
                 isRevertingRef.current = false
             }, 100)
         }
-    }, [latestFormData?.$id, latestFormData?.$updatedAt]) // Only update when the data actually changes
+    }, [latestFormData?.$id, latestFormData?.$updatedAt, hasRecoveredFromBackup]) // Only update when the data actually changes
 
     // Auto-save when form data changes (only after user interaction and fully loaded)
     useEffect(() => {
@@ -1384,6 +1408,59 @@ function ArticleEditor({ articleId, userId, onBack }: { articleId: string; userI
             return () => clearTimeout(timer)
         }
     }, [isDataLoaded, latestFormData])
+
+    // Check for backup data immediately on component mount - before any server data loads
+    useEffect(() => {
+        const backupData = recoverFromBackup()
+        if (backupData) {
+            console.log('🔄 Recovering from backup:', {
+                hasBody: !!backupData.body,
+                bodyType: typeof backupData.body,
+                bodyLength: backupData.body?.length || 0,
+                bodyPreview: backupData.body?.substring(0, 100) + '...'
+            })
+            
+            // Restore form data from backup immediately
+            if (backupData.trailer !== undefined) setTrailer(backupData.trailer)
+            if (backupData.title !== undefined) setTitle(backupData.title)
+            if (backupData.subtitle !== undefined) setExcerpt(backupData.subtitle)
+            if (backupData.live !== undefined) setLive(backupData.live)
+            if (backupData.redirect !== undefined) setRedirect(backupData.redirect)
+            if (backupData.authors !== undefined) setAuthors(backupData.authors)
+            if (backupData.categories !== undefined) setCategories(backupData.categories)
+            if (backupData.status !== undefined) setStatus(backupData.status)
+            
+            // Restore sections
+            if (backupData.body) {
+                try {
+                    const sections = typeof backupData.body === 'string' 
+                        ? JSON.parse(backupData.body) 
+                        : backupData.body
+                    console.log('📝 Restoring sections:', {
+                        sectionsCount: sections?.length || 0,
+                        sections: sections
+                    })
+                    setLocalSections(sections)
+                    setInitialSections(sections)
+                } catch (error) {
+                    console.error('Failed to parse backup sections:', error)
+                }
+            } else {
+                console.log('⚠️ No body data in backup')
+            }
+            
+            // Mark as user interacted to trigger auto-save
+            setHasUserInteracted(true)
+            // Set flag to prevent server data from overwriting backup data
+            setHasRecoveredFromBackup(true)
+            // Mark data as loaded since we've restored from backup
+            setIsDataLoaded(true)
+            // Show backup restored indicator
+            triggerBackupRestored()
+        } else {
+            console.log('ℹ️ No backup data found')
+        }
+    }, [recoverFromBackup, triggerBackupRestored]) // Only depend on recoverFromBackup, not on article or isFullyLoaded
 
     // Set document title based on article title
     useDocumentTitle(title || 'Editor')
@@ -1968,6 +2045,167 @@ function ArticleEditor({ articleId, userId, onBack }: { articleId: string; userI
                                     </div>
                                 </div>
                             </div>
+                            <div>
+                                <strong>Backup System:</strong>
+                                <div className="ml-2 text-gray-600 dark:text-gray-400">
+                                    {(() => {
+                                        const backupDebug = getBackupDebugInfo(articleId)
+                                        const detailedBackup = getDetailedBackupInfo(articleId)
+                                        
+                                        return (
+                                            <div className="space-y-2 p-2 bg-white dark:bg-gray-900 rounded border">
+                                                <div className="text-xs">
+                                                    <span className="font-medium">Has Backup:</span>
+                                                    <span className={`ml-2 px-2 py-1 rounded text-xs ${
+                                                        backupDebug.hasBackup 
+                                                            ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200' 
+                                                            : 'bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-200'
+                                                    }`}>
+                                                        {backupDebug.hasBackup ? 'Yes' : 'No'}
+                                                    </span>
+                                                </div>
+                                                
+                                                {backupDebug.hasBackup && detailedBackup && (
+                                                    <>
+                                                        <div className="text-xs">
+                                                            <span className="font-medium">Backup Age:</span>
+                                                            <span className={`ml-2 px-2 py-1 rounded text-xs ${
+                                                                (detailedBackup.age || 0) > 60 
+                                                                    ? 'bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-200' 
+                                                                    : 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200'
+                                                            }`}>
+                                                                {detailedBackup.age} minutes
+                                                            </span>
+                                                        </div>
+                                                        <div className="text-xs">
+                                                            <span className="font-medium">Backup Size:</span>
+                                                            <span className="ml-2 text-blue-600 dark:text-blue-400">
+                                                                {(detailedBackup.totalSize / 1024).toFixed(1)} KB
+                                                            </span>
+                                                        </div>
+                                                        <div className="text-xs">
+                                                            <span className="font-medium">Body Length:</span>
+                                                            <span className="ml-2 text-blue-600 dark:text-blue-400">
+                                                                {detailedBackup.bodyLength} chars
+                                                            </span>
+                                                        </div>
+                                                        <div className="text-xs">
+                                                            <span className="font-medium">Form Data Keys:</span>
+                                                            <span className="ml-2 text-blue-600 dark:text-blue-400">
+                                                                {detailedBackup.formDataKeys.join(', ')}
+                                                            </span>
+                                                        </div>
+                                                        <div className="text-xs">
+                                                            <span className="font-medium">Backup Timestamp:</span>
+                                                            <span className="ml-2 text-blue-600 dark:text-blue-400">
+                                                                {new Date(detailedBackup.timestamp).toLocaleString()}
+                                                            </span>
+                                                        </div>
+                                                    </>
+                                                )}
+                                                
+                                                <div className="text-xs">
+                                                    <span className="font-medium">Total Backups:</span>
+                                                    <span className="ml-2 text-blue-600 dark:text-blue-400">
+                                                        {backupDebug.totalBackups}
+                                                    </span>
+                                                </div>
+                                                
+                                                <div className="text-xs">
+                                                    <span className="font-medium">LocalStorage Available:</span>
+                                                    <span className={`ml-2 px-2 py-1 rounded text-xs ${
+                                                        backupDebug.localStorageAvailable 
+                                                            ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200' 
+                                                            : 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200'
+                                                    }`}>
+                                                        {backupDebug.localStorageAvailable ? 'Yes' : 'No'}
+                                                    </span>
+                                                </div>
+                                                
+                                                <div className="text-xs">
+                                                    <span className="font-medium">Auto-save Status:</span>
+                                                    <span className={`ml-2 px-2 py-1 rounded text-xs ${
+                                                        isAutoSaving 
+                                                            ? 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200' 
+                                                            : hasUnsavedChanges
+                                                            ? 'bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-200'
+                                                            : 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200'
+                                                    }`}>
+                                                        {isAutoSaving ? 'Saving...' : hasUnsavedChanges ? 'Unsaved Changes' : 'Saved'}
+                                                    </span>
+                                                </div>
+                                                
+                                                <div className="text-xs">
+                                                    <span className="font-medium">Last Saved:</span>
+                                                    <span className="ml-2 text-blue-600 dark:text-blue-400">
+                                                        {lastSaved ? lastSaved.toLocaleString() : 'Never'}
+                                                    </span>
+                                                </div>
+                                                
+                                                <div className="flex gap-2 mt-2">
+                                                    <button
+                                                        onClick={() => {
+                                                            const formData = {
+                                                                trailer,
+                                                                title,
+                                                                slug: title ? slugify(title) : '',
+                                                                subtitle,
+                                                                live,
+                                                                redirect,
+                                                                authors,
+                                                                categories,
+                                                                body: JSON.stringify(localSections),
+                                                                status,
+                                                                pinned: article?.pinned || false,
+                                                                images: article?.images || null,
+                                                                blogId: article?.blogId || null,
+                                                                createdBy: article?.createdBy || userId,
+                                                            }
+                                                            triggerBackup(formData)
+                                                        }}
+                                                        className="px-2 py-1 text-xs bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200 rounded hover:bg-green-200 dark:hover:bg-green-800"
+                                                    >
+                                                        Manual Backup
+                                                    </button>
+                                                    <button
+                                                        onClick={() => {
+                                                            const backupData = recoverFromBackup()
+                                                            if (backupData) {
+                                                                console.log('Backup data:', backupData)
+                                                            }
+                                                        }}
+                                                        className="px-2 py-1 text-xs bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200 rounded hover:bg-blue-200 dark:hover:bg-blue-800"
+                                                    >
+                                                        Test Recovery
+                                                    </button>
+                                                    <button
+                                                        onClick={() => {
+                                                            const cleaned = forceCleanupAllBackups()
+                                                            console.log(`Cleaned up ${cleaned} backup entries`)
+                                                        }}
+                                                        className="px-2 py-1 text-xs bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200 rounded hover:bg-red-200 dark:hover:bg-red-800"
+                                                    >
+                                                        Clean All Backups
+                                                    </button>
+                                                </div>
+                                                
+                                                {backupDebug.allBackupKeys.length > 0 && (
+                                                    <div className="text-xs mt-2">
+                                                        <span className="font-medium">All Backup Keys:</span>
+                                                        <div className="mt-1 space-y-1">
+                                                            {backupDebug.allBackupKeys.map((key, index) => (
+                                                                <div key={index} className="text-gray-500 dark:text-gray-400 font-mono text-xs">
+                                                                    {key}
+                                                                </div>
+                                                            ))}
+                                                        </div>
+                                                    </div>
+                                                )}
+                                            </div>
+                                        )
+                                    })()}
+                                </div>
+                            </div>
                         </div>
                     </div>
                 )}
@@ -2364,7 +2602,7 @@ function ArticleEditor({ articleId, userId, onBack }: { articleId: string; userI
                                 }}
                             />
                             <div className={`flex items-center gap-1.5 transition-all duration-500 ease-in-out ${
-                                isAutoSaving || hasUnsavedChanges || showSaved ? 'opacity-100 animate-in fade-in' : 'opacity-0 animate-out fade-out'
+                                isAutoSaving || hasUnsavedChanges || showSaved || showBackupRestored ? 'opacity-100 animate-in fade-in' : 'opacity-0 animate-out fade-out'
                             }`}>
                                 {isAutoSaving ? (
                                     <div className="flex items-center gap-1.5 animate-in fade-in duration-300">
@@ -2375,6 +2613,11 @@ function ArticleEditor({ articleId, userId, onBack }: { articleId: string; userI
                                     <div className="flex items-center gap-1.5 animate-in fade-in duration-300">
                                         <div className="w-1.5 h-1.5 bg-amber-400 rounded-full animate-pulse" />
                                         <span className="text-xs text-muted-foreground">Unsaved changes</span>
+                                    </div>
+                                ) : showBackupRestored ? (
+                                    <div className="flex items-center gap-1.5 animate-in fade-in duration-500">
+                                        <div className="w-1.5 h-1.5 bg-blue-400 rounded-full" />
+                                        <span className="text-xs text-muted-foreground">Backup restored</span>
                                     </div>
                                 ) : showSaved ? (
                                     <div className="flex items-center gap-1.5 animate-in fade-in duration-500">
