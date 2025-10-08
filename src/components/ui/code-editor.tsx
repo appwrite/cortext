@@ -12,6 +12,7 @@ interface CodeEditorProps {
   readOnly?: boolean
   height?: string
   isDragging?: boolean
+  id?: string
 }
 
 const languageOptions = [
@@ -47,7 +48,8 @@ export function CodeEditor({
   onLanguageChange,
   readOnly = false,
   height = '300px',
-  isDragging = false
+  isDragging = false,
+  id
 }: CodeEditorProps) {
   const [currentLanguage, setCurrentLanguage] = useState(language)
   const [copied, setCopied] = useState(false)
@@ -194,7 +196,7 @@ export function CodeEditor({
       <div className="border rounded-md overflow-hidden">
         <div className="flex items-center justify-between p-2 bg-muted border-b">
           <Select value={currentLanguage} onValueChange={handleLanguageChange}>
-            <SelectTrigger className="w-48 h-8">
+            <SelectTrigger className="w-48 h-8" id={id}>
               <SelectValue placeholder="Select language" />
             </SelectTrigger>
             <SelectContent>
@@ -242,7 +244,7 @@ export function CodeEditor({
     <div className="border rounded-md overflow-hidden">
       <div className="flex items-center justify-between p-2 bg-muted border-b">
         <Select value={currentLanguage} onValueChange={handleLanguageChange}>
-          <SelectTrigger className="w-48 h-8">
+          <SelectTrigger className="w-48 h-8" id={id}>
             <SelectValue placeholder="Select language" />
           </SelectTrigger>
           <SelectContent>

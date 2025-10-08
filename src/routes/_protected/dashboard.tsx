@@ -1010,13 +1010,8 @@ function ArticleEditor({ articleId, userId, user, onBack }: { articleId: string;
         const target = focusTargetRef.current
         if (!target) return
         
-        // For title sections, use the section-specific ID pattern
-        let inputId: string
-        if (target.type === 'title' && target.id) {
-            inputId = `title-${target.id}`
-        } else {
-            inputId = firstInputIdFor(target.type)
-        }
+        // Get the appropriate input ID for the section type
+        const inputId = firstInputIdFor(target.type, target.id)
         
         // try immediately and on next frame for safety
         const tryFocus = () => {
@@ -3198,6 +3193,7 @@ const CodeSectionEditor = memo(({ section, onLocalChange, isDragging = false, di
                 language={language}
                 onLanguageChange={disabled ? () => {} : handleLanguageChange}
                 isDragging={isDragging}
+                id={`code-${section.id}`}
             />
         </div>
     )
@@ -3221,16 +3217,31 @@ function sanitizeSectionUpdate(data: Partial<Omit<any, keyof Models.Document>>) 
     return rest
 }
 
-function firstInputIdFor(type: string) {
+function firstInputIdFor(type: string, sectionId?: string) {
+    if (!sectionId) {
+        // Fallback to generic IDs if no section ID provided
+        switch (type) {
+            case 'title': return 'title'
+            case 'text': return 'text'
+            case 'quote': return 'quote'
+            case 'image': return 'caption'
+            case 'video': return 'url'
+            case 'map': return 'lat'
+            case 'code': return 'code'
+            default: return 'content'
+        }
+    }
+    
+    // Return section-specific IDs
     switch (type) {
-        case 'title': return 'title'
-        case 'text': return 'text'
-        case 'quote': return 'quote'
-        case 'image': return 'caption'
-        case 'video': return 'url'
-        case 'map': return 'lat'
-        case 'code': return 'code'
-        default: return 'content'
+        case 'title': return `title-${sectionId}`
+        case 'text': return `text-${sectionId}`
+        case 'quote': return `quote-${sectionId}`
+        case 'image': return `caption-${sectionId}`
+        case 'video': return `video-url-${sectionId}`
+        case 'map': return `lat-${sectionId}`
+        case 'code': return `code-${sectionId}`
+        default: return `content-${sectionId}`
     }
 }
 
