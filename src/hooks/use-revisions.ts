@@ -34,14 +34,16 @@ export function useRevisions(articleId: string) {
       oldArticle, 
       newArticle, 
       teamId, 
-      messageId 
+      messageId,
+      userInfo
     }: { 
       oldArticle: Articles; 
       newArticle: Articles; 
       teamId?: string; 
-      messageId?: string 
+      messageId?: string;
+      userInfo?: { userId: string; userName: string; userEmail: string };
     }) => {
-      return createUpdateRevision(articleId, oldArticle, newArticle, teamId, messageId)
+      return createUpdateRevision(articleId, oldArticle, newArticle, teamId, messageId, userInfo)
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['revisions', articleId] })
@@ -132,14 +134,16 @@ export function useChangeTracking(articleId: string, teamId?: string) {
   const trackChanges = async (
     oldArticle: Articles, 
     newArticle: Articles, 
-    messageId?: string
+    messageId?: string,
+    userInfo?: { userId: string; userName: string; userEmail: string }
   ) => {
     try {
       const revision = await createRevision({
         oldArticle,
         newArticle,
         teamId,
-        messageId
+        messageId,
+        userInfo
       })
 
       if (revision) {

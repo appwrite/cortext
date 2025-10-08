@@ -81,7 +81,7 @@ function RouteComponent() {
         <TeamBlogProvider userId={userId}>
             <div className="h-dvh overflow-y-auto overscroll-none flex flex-col">
                 <Header userId={userId} onSignOut={() => signOut.mutate()} user={user} />
-                <Dashboard userId={userId} />
+                <Dashboard userId={userId} user={user} />
             </div>
         </TeamBlogProvider>
     )
@@ -116,7 +116,7 @@ function Header({ userId, onSignOut, user }: { userId: string; onSignOut: () => 
     )
 }
 
-function Dashboard({ userId }: { userId: string }) {
+function Dashboard({ userId, user }: { userId: string; user: any }) {
     const search = useSearch({ strict: false }) as { articleId?: string }
     const navigate = useNavigate()
     const { currentBlog } = useTeamBlogContext()
@@ -126,7 +126,7 @@ function Dashboard({ userId }: { userId: string }) {
         return (
             <main className="flex-1">
                 <div className="px-12 py-6">
-                    <ArticleEditor key={editingId} articleId={editingId} userId={userId} onBack={() => navigate({ to: '/dashboard', search: {} })} />
+                    <ArticleEditor key={editingId} articleId={editingId} userId={userId} user={user} onBack={() => navigate({ to: '/dashboard', search: {} })} />
                 </div>
             </main>
         )
@@ -667,7 +667,7 @@ function CreateArticleView({ userId, onDone, onCancel }: { userId: string; onDon
     )
 }
 
-function ArticleEditor({ articleId, userId, onBack }: { articleId: string; userId: string; onBack: () => void }) {
+function ArticleEditor({ articleId, userId, user, onBack }: { articleId: string; userId: string; user: any; onBack: () => void }) {
     const scrollContainerRef = useRef<HTMLDivElement>(null)
     const qc = useQueryClient()
     
@@ -1168,6 +1168,11 @@ function ArticleEditor({ articleId, userId, onBack }: { articleId: string; userI
         article,
         teamId: currentTeam?.$id,
         userId,
+        userInfo: user ? {
+            userId: user.$id,
+            userName: user.name || user.email || 'Unknown User',
+            userEmail: user.email || ''
+        } : undefined,
         debounceMs: 1000, // Reduced to 1 second for faster auto-save
         interactionDelayMs: 3000 // 3 second delay while user is actively interacting
     })

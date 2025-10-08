@@ -334,12 +334,19 @@ export const detectSectionChanges = (oldSections: any[], newSections: any[]) => 
 };
 
 // Helper function to create an initial revision for a new article
-export const createInitialRevision = async (article: Articles, teamId?: string) => {
+export const createInitialRevision = async (
+  article: Articles, 
+  teamId?: string,
+  userInfo?: { userId: string; userName: string; userEmail: string }
+) => {
   const revisionData: Omit<Revisions, keyof Models.Document> = {
     articleId: article.$id,
     version: 1,
     status: 'draft',
     createdBy: article.createdBy,
+    userId: userInfo?.userId || null,
+    userName: userInfo?.userName || null,
+    userEmail: userInfo?.userEmail || null,
     messageId: null,
     data: JSON.stringify({
       initial: true,
@@ -371,7 +378,8 @@ export const createUpdateRevision = async (
   oldArticle: Articles, 
   newArticle: Articles, 
   teamId?: string,
-  messageId?: string
+  messageId?: string,
+  userInfo?: { userId: string; userName: string; userEmail: string }
 ) => {
   const { changes, changedAttributes } = detectChanges(oldArticle, newArticle);
   
@@ -396,6 +404,9 @@ export const createUpdateRevision = async (
     version: nextVersion,
     status: 'draft',
     createdBy: newArticle.createdBy,
+    userId: userInfo?.userId || null,
+    userName: userInfo?.userName || null,
+    userEmail: userInfo?.userEmail || null,
     messageId: messageId || null,
     data: JSON.stringify({
       initial: false,
@@ -431,7 +442,8 @@ export const createRevertRevision = async (
   oldArticle: Articles, 
   newArticle: Articles, 
   teamId?: string,
-  messageId?: string
+  messageId?: string,
+  userInfo?: { userId: string; userName: string; userEmail: string }
 ) => {
   // Get the current revision to determine the next version
   const currentRevisions = await db.revisions.list([
@@ -450,6 +462,9 @@ export const createRevertRevision = async (
     version: nextVersion,
     status: 'draft',
     createdBy: newArticle.createdBy,
+    userId: userInfo?.userId || null,
+    userName: userInfo?.userName || null,
+    userEmail: userInfo?.userEmail || null,
     messageId: messageId || null,
     data: JSON.stringify({
       initial: false,

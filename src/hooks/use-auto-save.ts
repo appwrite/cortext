@@ -9,6 +9,7 @@ interface AutoSaveOptions {
   article: Articles | null | undefined
   teamId?: string
   userId: string
+  userInfo?: { userId: string; userName: string; userEmail: string }
   debounceMs?: number
   interactionDelayMs?: number
 }
@@ -34,6 +35,7 @@ export function useAutoSave({
   article,
   teamId,
   userId,
+  userInfo,
   debounceMs = 1000,
   interactionDelayMs = 2000
 }: AutoSaveOptions) {
@@ -176,7 +178,9 @@ export function useAutoSave({
         articleId,
         article,
         currentFormData as Articles,
-        teamId
+        teamId,
+        undefined, // messageId
+        userInfo
       )
 
       if (revision) {

@@ -118,6 +118,9 @@ export type Revisions = Models.Document & {
     version: number;
     status: string | null;
     createdBy: string | null;
+    userId: string | null; // User ID who created the revision
+    userName: string | null; // User name who created the revision
+    userEmail: string | null; // User email who created the revision
     messageId: string | null;
     data: string; // JSON string for full article snapshot
     changes: string[] | null; // Array of change descriptions

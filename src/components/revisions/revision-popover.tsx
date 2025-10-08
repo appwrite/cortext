@@ -193,14 +193,14 @@ export function RevisionPopover({
                     key={revision.$id}
                     className={cn(
                       "group flex items-center gap-2 px-3 py-2.5 rounded-md hover:bg-accent transition-colors",
-                      revision.$id === currentRevisionId ? "bg-secondary" : ""
+                      revision.$id === formRevisionId ? "bg-secondary" : ""
                     )}
                   >
                     {/* Revision info */}
                     <div
                       className="flex-1 min-w-0 cursor-pointer pr-2"
                       onClick={() => {
-                        if (onRevertToRevision && revision.$id !== currentRevisionId) {
+                        if (onRevertToRevision && revision.$id !== formRevisionId) {
                           onRevertToRevision(revision.$id)
                         } else if (onSelectRevision) {
                           onSelectRevision(revision.$id)
@@ -240,10 +240,10 @@ export function RevisionPopover({
                           </div>
                         </div>
                         
-                        <div className="text-xs text-muted-foreground leading-5">
-                          <span>{revision.createdBy ? `User ${revision.createdBy.slice(-4)}` : 'Unknown'}</span>
-                          <span className="mx-1">•</span>
-                          <span>{formatDateRelative(revision.timestamp)}</span>
+                          <div className="text-xs text-muted-foreground leading-5">
+                            <span>{revision.userName || revision.userEmail || 'Unknown'}</span>
+                            <span className="mx-1">•</span>
+                            <span>{formatDateRelative(revision.timestamp)}</span>
                           {revision.changes && revision.changes.length > 0 && (
                             <>
                               <span className="mx-1">•</span>
@@ -259,6 +259,7 @@ export function RevisionPopover({
                       {onDeleteRevision && 
                        !revision.isInitial && 
                        revision.$id !== currentRevisionId && 
+                       revision.$id !== formRevisionId && 
                        revisionHistory.length > 1 && (
                         <Button
                           variant="ghost"
