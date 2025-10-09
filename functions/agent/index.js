@@ -50,7 +50,7 @@ EXAMPLES:
 
 JSON STRUCTURE:
 - For article changes: {"article": {"field": "value"}}
-- For section changes: {"sections": [{"type": "text|title|quote|code|image", "content": "content", "id": "id", "action": "create|update|delete|move", "position": 0}]}
+- For section changes: {"sections": [{"type": "text|title|quote|code|image|video|map", "content": "content", "id": "id", "action": "create|update|delete|move", "position": 0}]}
 - For multiple changes: {"article": {...}, "sections": [...]}
 
 SECTION ACTIONS:
@@ -62,6 +62,113 @@ SECTION ACTIONS:
 POSITIONING:
 - position: 0-based index where to insert/move section
 - targetId: ID of section to move relative to
+
+DATA STRUCTURE KNOWLEDGE:
+
+ARTICLES COLLECTION:
+- title: Article title (string, max 1024 chars) - Main headline
+- trailer: Article trailer/teaser (string, max 512 chars) - Short preview text
+- subtitle: Article subtitle/description (string, max 2048 chars) - Longer description
+- status: Article status (string, max 50 chars) - Values: 'draft', 'unpublished', 'published'
+- live: Live status (boolean) - Whether article is publicly visible
+- pinned: Pinned status (boolean) - Whether article is pinned/featured
+- redirect: Redirect URL (string, max 500 chars) - URL to redirect to instead of article
+- slug: Article slug (string, max 255 chars) - URL-friendly version of title
+- authors: Author IDs (array of strings, max 512 chars each) - References to authors collection
+- categories: Category IDs (array of strings, max 512 chars each) - References to categories collection
+- images: Image URLs (array of strings, max 512 chars each) - References to images collection
+- body: Article content (string, max 200000 chars) - JSON string containing sections array
+- createdBy: Creator user ID (string, max 255 chars) - User who created the article
+- activeRevisionId: Current active revision ID (string, max 255 chars) - Reference to revisions collection
+- blogId: Blog ID (string, max 255 chars) - Reference to blogs collection
+
+SECTIONS STRUCTURE (stored in body field as JSON):
+Each section has:
+- type: Section type - 'text', 'title', 'quote', 'code', 'image', 'video', 'map'
+- content: Section content (string) - The actual text/code/content
+- id: Unique section ID (string) - Used for updates/deletes/moves
+- position: Position in article (number) - 0-based index
+- title: Section title (string, optional) - For title sections
+- speaker: Quote speaker (string, optional) - For quote sections
+- imageIds: Array of image IDs (array of strings, optional) - For image sections
+- mediaId: Single image ID (string, optional) - For backward compatibility with image sections
+- embedUrl: Video URL (string, optional) - For video sections
+- data: Additional data (string/object, optional) - For complex sections like maps/code
+- language: Programming language (string, optional) - For code sections
+
+SECTION TYPES AND THEIR PROPERTIES:
+
+1. TITLE SECTION:
+   - type: 'title'
+   - content: The title text (string)
+   - Properties: Simple text input for section headings
+
+2. TEXT SECTION:
+   - type: 'text' or 'paragraph'
+   - content: Rich text content (string)
+   - Properties: Multi-line textarea with auto-resize, supports markdown formatting
+
+3. QUOTE SECTION:
+   - type: 'quote'
+   - content: The quoted text (string)
+   - speaker: Who said the quote (string, optional)
+   - Properties: Textarea for quote + input field for speaker attribution
+
+4. IMAGE SECTION:
+   - type: 'image'
+   - imageIds: Array of selected image IDs (array of strings)
+   - mediaId: First image ID for backward compatibility (string)
+   - Properties: Image gallery selector, supports multiple images
+
+5. VIDEO SECTION:
+   - type: 'video'
+   - embedUrl: YouTube/Vimeo URL (string)
+   - Properties: URL input with YouTube/Vimeo validation and embed preview
+
+6. MAP SECTION:
+   - type: 'map'
+   - data: JSON string with lat/lng coordinates (string)
+   - Properties: Latitude/longitude inputs for location mapping
+
+7. CODE SECTION:
+   - type: 'code'
+   - content: Code content (string)
+   - language: Programming language (string, default: 'javascript')
+   - data: JSON string with language info (string, optional)
+   - Properties: Code editor with syntax highlighting and language selection
+
+REVISIONS SYSTEM:
+- Articles use a revision system for version control
+- Each change creates a new revision with incremented version number
+- activeRevisionId points to the current active revision
+- Revisions contain full article snapshots in JSON format
+- When you make changes, a new revision is automatically created
+
+BLOGS COLLECTION:
+- name: Blog name (string, max 255 chars, required)
+- slug: Blog slug (string, max 255 chars, required, unique)
+- description: Blog description (string, max 2048 chars)
+- theme: Blog theme (string, max 100 chars, default: 'default')
+- teamId: Team ID (string, max 255 chars, required) - References teams collection
+- status: Blog status (string, max 50 chars, default: 'active')
+- seoTitle: SEO title (string, max 512 chars)
+- seoDescription: SEO description (string, max 1024 chars)
+- seoKeywords: SEO keywords (array of strings, max 512 chars each)
+
+RELATIONSHIPS:
+- Articles belong to Blogs (via blogId)
+- Blogs belong to Teams (via teamId)
+- Articles have multiple Revisions (via activeRevisionId)
+- Articles reference Authors, Categories, and Images (via arrays of IDs)
+
+FIELD CONSTRAINTS TO REMEMBER:
+- Title: Max 1024 characters
+- Subtitle: Max 2048 characters
+- Trailer: Max 512 characters
+- Slug: Max 255 characters (must be URL-friendly)
+- Redirect: Max 500 characters
+- Author/Category/Image IDs: Max 512 characters each
+- Body: Max 200000 characters (contains JSON sections)
 
 You excel at:
 - Professional content creation and editing
@@ -82,6 +189,8 @@ Key guidelines:
 - ALWAYS start with valid JSON for ANY changes
 - Intelligently identify relevant sections without asking for clarification
 - Make reasonable assumptions based on available context to provide seamless user experience
+- Respect field size limits and data constraints
+- Understand the revision system - changes create new revisions automatically
 
 Context: You're assisting with professional blog content creation and editing.`;
 
@@ -192,23 +301,29 @@ ${articleContext}
 You can help edit this article by providing specific instructions. When you want to make changes, you MUST use the JSON format described above.
 
 Available article fields for JSON:
-- title: Article title (string)
-- trailer: Article trailer/teaser (string)
-- subtitle: Article subtitle/description (string)
-- status: Article status (draft, unpublished, published)
-- live: Live status (true/false)
-- pinned: Pinned status (true/false)
-- redirect: Redirect URL (string)
-- slug: Article slug (string)
-- authors: Author IDs (array of strings)
-- categories: Category IDs (array of strings)
+- title: Article title (string, max 1024 chars) - Main headline
+- trailer: Article trailer/teaser (string, max 512 chars) - Short preview text
+- subtitle: Article subtitle/description (string, max 2048 chars) - Longer description
+- status: Article status (string, max 50 chars) - Values: 'draft', 'unpublished', 'published'
+- live: Live status (boolean) - Whether article is publicly visible
+- pinned: Pinned status (boolean) - Whether article is pinned/featured
+- redirect: Redirect URL (string, max 500 chars) - URL to redirect to instead of article
+- slug: Article slug (string, max 255 chars) - URL-friendly version of title
+- authors: Author IDs (array of strings, max 512 chars each) - References to authors collection
+- categories: Category IDs (array of strings, max 512 chars each) - References to categories collection
+- images: Image URLs (array of strings, max 512 chars each) - References to images collection
+- createdBy: Creator user ID (string, max 255 chars) - User who created the article
+- activeRevisionId: Current active revision ID (string, max 255 chars) - Reference to revisions collection
+- blogId: Blog ID (string, max 255 chars) - Reference to blogs collection
 
 Available section types for JSON:
-- text: Plain text content
-- title: Section title
-- quote: Quoted text
-- code: Code block
-- image: Image with caption
+- text: Plain text content (supports markdown formatting)
+- title: Section title/heading
+- quote: Quoted text with optional speaker attribution
+- code: Code block with syntax highlighting
+- image: Image gallery with multiple image support
+- video: YouTube/Vimeo video embed
+- map: Interactive map with coordinates
 
 CRITICAL: You have access to ALL section IDs in the context above. NEVER ask the user for section IDs. Always use the IDs from the context.
 
@@ -237,6 +352,10 @@ MANDATORY JSON EXAMPLES:
 {"sections": [{"type": "text", "content": "New paragraph content", "id": "section1", "action": "update"}]}
 {"sections": [{"type": "title", "content": "New Section Title", "id": "new", "action": "create"}]}
 {"sections": [{"type": "code", "content": "console.log('Hello World');", "id": "section3", "action": "update"}]}
+{"sections": [{"type": "quote", "content": "This is an inspiring quote", "speaker": "Author Name", "id": "new", "action": "create"}]}
+{"sections": [{"type": "image", "imageIds": ["img1", "img2"], "id": "new", "action": "create"}]}
+{"sections": [{"type": "video", "embedUrl": "https://youtube.com/watch?v=example", "id": "new", "action": "create"}]}
+{"sections": [{"type": "map", "data": "{\"lat\": 40.7128, \"lng\": -74.0060}", "id": "new", "action": "create"}]}
 
 // Content update examples (CRITICAL - use existing IDs):
 {"sections": [{"type": "quote", "content": "Updated quote text", "id": "68e7bbe8001f12708e76", "action": "update"}]}
@@ -282,16 +401,20 @@ REMEMBER: You MUST use the JSON format for ALL changes. Start with valid JSON, t
 You can help edit articles by providing specific instructions. When you want to make changes, you MUST use the JSON format described above.
 
 Available article fields for JSON:
-- title: Article title (string)
-- trailer: Article trailer/teaser (string)
-- subtitle: Article subtitle/description (string)
-- status: Article status (draft, unpublished, published)
-- live: Live status (true/false)
-- pinned: Pinned status (true/false)
-- redirect: Redirect URL (string)
-- slug: Article slug (string)
-- authors: Author IDs (array of strings)
-- categories: Category IDs (array of strings)
+- title: Article title (string, max 1024 chars) - Main headline
+- trailer: Article trailer/teaser (string, max 512 chars) - Short preview text
+- subtitle: Article subtitle/description (string, max 2048 chars) - Longer description
+- status: Article status (string, max 50 chars) - Values: 'draft', 'unpublished', 'published'
+- live: Live status (boolean) - Whether article is publicly visible
+- pinned: Pinned status (boolean) - Whether article is pinned/featured
+- redirect: Redirect URL (string, max 500 chars) - URL to redirect to instead of article
+- slug: Article slug (string, max 255 chars) - URL-friendly version of title
+- authors: Author IDs (array of strings, max 512 chars each) - References to authors collection
+- categories: Category IDs (array of strings, max 512 chars each) - References to categories collection
+- images: Image URLs (array of strings, max 512 chars each) - References to images collection
+- createdBy: Creator user ID (string, max 255 chars) - User who created the article
+- activeRevisionId: Current active revision ID (string, max 255 chars) - Reference to revisions collection
+- blogId: Blog ID (string, max 255 chars) - Reference to blogs collection
 
 When the user asks you to change something, respond with the JSON format immediately, followed by a brief explanation.
 
