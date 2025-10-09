@@ -3,7 +3,8 @@ import { Button } from '@/components/ui/button'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog'
-import { Trash2, History } from 'lucide-react'
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
+import { Trash2, History, Code } from 'lucide-react'
 import { useRevisionHistory } from '@/hooks/use-revisions'
 import { formatDateRelative } from '@/lib/date-utils'
 import { cn } from '@/lib/utils'
@@ -18,6 +19,7 @@ interface RevisionPopoverProps {
   onScrollToTop?: () => void
   className?: string
   currentRevisionVersion?: number
+  debugMode?: boolean
 }
 
 export function RevisionPopover({
@@ -29,11 +31,14 @@ export function RevisionPopover({
   onRevertToRevision,
   onScrollToTop,
   className,
-  currentRevisionVersion
+  currentRevisionVersion,
+  debugMode = false
 }: RevisionPopoverProps) {
   const [isOpen, setIsOpen] = useState(false)
   const [revisionToDelete, setRevisionToDelete] = useState<string | null>(null)
   const [popoverPosition, setPopoverPosition] = useState<'bottom' | 'top'>('bottom')
+  const [jsonDialogOpen, setJsonDialogOpen] = useState(false)
+  const [selectedRevisionForJson, setSelectedRevisionForJson] = useState<any>(null)
   const containerRef = useRef<HTMLDivElement>(null)
   const { revisionHistory, isLoading } = useRevisionHistory(articleId)
 
@@ -46,6 +51,11 @@ export function RevisionPopover({
       onDeleteRevision(revisionToDelete)
       setRevisionToDelete(null)
     }
+  }
+
+  const handleViewJson = (revision: any) => {
+    setSelectedRevisionForJson(revision)
+    setJsonDialogOpen(true)
   }
 
   // Calculate popover position and height
@@ -260,6 +270,22 @@ export function RevisionPopover({
                     
                     {/* Action buttons */}
                     <div className="flex items-center gap-1 flex-shrink-0 opacity-60 group-hover:opacity-100 transition-opacity">
+                      {/* JSON View Button - Only visible in debug mode */}
+                      {debugMode && (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="h-7 w-7 p-0 text-purple-600 bg-purple-100 hover:bg-purple-200 dark:text-purple-400 dark:bg-purple-900 dark:hover:bg-purple-800"
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            handleViewJson(revision)
+                          }}
+                          title="View JSON data"
+                        >
+                          <Code className="h-3.5 w-3.5" />
+                        </Button>
+                      )}
+                      
                       {onDeleteRevision && 
                        !revision.isInitial && 
                        revision.$id !== currentRevisionId && 
@@ -306,6 +332,24 @@ export function RevisionPopover({
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* JSON Data Dialog */}
+      <Dialog open={jsonDialogOpen} onOpenChange={setJsonDialogOpen}>
+        <DialogContent className="max-w-4xl max-h-[80vh] overflow-hidden bg-purple-50 dark:bg-purple-950 border-purple-200 dark:border-purple-800">
+          <DialogHeader>
+            <DialogTitle className="text-purple-800 dark:text-purple-200">
+              Revision JSON Data - Version {selectedRevisionForJson?.version}
+            </DialogTitle>
+          </DialogHeader>
+          <div className="flex-1 overflow-hidden">
+            <ScrollArea className="h-[60vh] w-full">
+              <pre className="text-xs bg-purple-100 dark:bg-purple-900 p-4 rounded-md overflow-auto text-purple-800 dark:text-purple-200">
+                {selectedRevisionForJson ? JSON.stringify(selectedRevisionForJson, null, 2) : ''}
+              </pre>
+            </ScrollArea>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

@@ -707,6 +707,53 @@ function ArticleEditor({ articleId, userId, user, onBack }: { articleId: string;
     const { article, formData: latestFormData, hasUnpublishedChanges, latestRevision, isLoading: isLoadingRevision } = useLatestRevision(articleId)
     const isPending = isLoadingRevision
 
+    // Helper function to get descriptive version name
+    const getRevisionVersionName = (revision: any) => {
+        if (!revision) return 'Unknown'
+        
+        const truncate = (text: string, maxLength: number = 30) => {
+            return text.length > maxLength ? text.substring(0, maxLength) + '...' : text
+        }
+
+        if (revision.isInitial) {
+            return `Version ${revision.version} - Initial`
+        }
+        
+        const changes = revision.changes || []
+        if (changes.length === 0) return `Version ${revision.version}`
+        
+        // Get the first meaningful change
+        const firstChange = changes[0]
+        if (firstChange.includes('Updated title:')) {
+            const titleChange = firstChange.split('Updated title: ')[1]
+            const newTitle = titleChange.split(' → ')[1] || titleChange
+            return `Version ${revision.version} - Title: ${truncate(newTitle, 20)}`
+        }
+        if (firstChange.includes('Section')) {
+            const sectionInfo = firstChange.split(': ')[0]
+            return `Version ${revision.version} - ${truncate(sectionInfo, 25)}`
+        }
+        if (firstChange.includes('Updated')) {
+            const field = firstChange.split('Updated ')[1].split(':')[0]
+            return `Version ${revision.version} - Updated ${truncate(field, 20)}`
+        }
+        
+        return `Version ${revision.version}`
+    }
+
+    // Debug latest revision data
+    useEffect(() => {
+        console.log('🔍 Latest revision data:', {
+            latestRevisionId: latestRevision?.$id,
+            latestRevisionVersion: latestRevision?.version,
+            formDataRevisionId: latestFormData?.activeRevisionId,
+            formDataTitle: latestFormData?.title,
+            formDataSubtitle: latestFormData?.subtitle,
+            formDataBodyLength: latestFormData?.body?.length,
+            isLoadingRevision
+        })
+    }, [latestRevision, latestFormData, isLoadingRevision])
+
     // User preferences for hide comments
     const account = getAccountClient()
     const { data: userPrefs } = useQuery({
@@ -1135,34 +1182,67 @@ function ArticleEditor({ articleId, userId, user, onBack }: { articleId: string;
     const [initialSections, setInitialSections] = useState<any[]>([])
     const [hasRecoveredFromBackup, setHasRecoveredFromBackup] = useState(false)
 
+    // Track the last processed revision ID to detect new revisions
+    const [lastProcessedRevisionId, setLastProcessedRevisionId] = useState<string | null>(null)
+    
     // Load sections from server data (but skip if we've recovered from backup)
     useEffect(() => {
-        console.log('🔄 Server data loading effect triggered:', {
+        console.log('🔄 Sections loading effect triggered:', {
             hasLatestFormData: !!latestFormData?.body,
             hasRecoveredFromBackup,
-            shouldLoad: latestFormData?.body && !hasRecoveredFromBackup
+            shouldLoad: latestFormData?.body && !hasRecoveredFromBackup,
+            revisionId: latestFormData?.activeRevisionId,
+            lastProcessedRevisionId,
+            bodyLength: latestFormData?.body?.length
         })
         
-        if (latestFormData?.body && !hasRecoveredFromBackup) {
+        // Allow updates if this is a new revision (revision ID changed)
+        const isNewRevision = latestFormData?.activeRevisionId && latestFormData.activeRevisionId !== lastProcessedRevisionId
+        
+        console.log('🔍 Sections revision check:', {
+            currentRevisionId: latestFormData?.activeRevisionId,
+            lastProcessedRevisionId,
+            isNewRevision,
+            hasRecoveredFromBackup,
+            willUpdate: latestFormData?.body && (!hasRecoveredFromBackup || isNewRevision)
+        })
+        
+        if (latestFormData?.body && (!hasRecoveredFromBackup || isNewRevision)) {
             try {
                 const sections = JSON.parse(latestFormData.body)
                 const parsedSections = Array.isArray(sections) ? sections : []
                 console.log('📥 Loading sections from server:', {
                     sectionsCount: parsedSections.length,
-                    sections: parsedSections
+                    sections: parsedSections,
+                    isNewRevision,
+                    firstSectionTitle: parsedSections[0]?.content?.substring(0, 50)
                 })
                 setLocalSections(parsedSections)
                 // Store initial sections for comparison
                 setInitialSections(parsedSections)
-            } catch {
-                console.log('❌ Failed to parse server sections')
+                
+                console.log('✅ Sections state updated')
+                
+                // Update the last processed revision ID
+                if (latestFormData.activeRevisionId) {
+                    setLastProcessedRevisionId(latestFormData.activeRevisionId)
+                }
+            } catch (error) {
+                console.log('❌ Failed to parse server sections:', error)
                 setLocalSections([])
                 setInitialSections([])
             }
             // Mark data as loaded after sections are loaded
             setIsDataLoaded(true)
+        } else {
+            console.log('⏭️ Skipping sections update:', {
+                hasLatestFormData: !!latestFormData?.body,
+                hasRecoveredFromBackup,
+                isNewRevision,
+                reason: !latestFormData?.body ? 'No body data' : hasRecoveredFromBackup && !isNewRevision ? 'Recovered from backup and not new revision' : 'Unknown'
+            })
         }
-    }, [latestFormData?.body, latestFormData?.$updatedAt, hasRecoveredFromBackup]) // Only update when the body or data actually changes
+    }, [latestFormData?.body, latestFormData?.$updatedAt, latestFormData?.activeRevisionId, hasRecoveredFromBackup, lastProcessedRevisionId]) // Update when revision ID changes
 
     // Auto-save functionality with optimized debounce for faster response
     const { isAutoSaving, lastSaved, hasUnsavedChanges, showSaved, showBackupRestored, triggerAutoSave, trackInteraction, recoverFromBackup, triggerBackup, triggerBackupRestored, queueLength } = useAutoSave({
@@ -1337,17 +1417,37 @@ function ArticleEditor({ articleId, userId, user, onBack }: { articleId: string;
         console.log('🔄 Form data loading effect triggered:', {
             hasLatestFormData: !!latestFormData,
             hasRecoveredFromBackup,
-            shouldLoad: latestFormData && !hasRecoveredFromBackup
+            shouldLoad: latestFormData && !hasRecoveredFromBackup,
+            revisionId: latestFormData?.activeRevisionId,
+            revisionUpdatedAt: latestFormData?.$updatedAt,
+            bodyLength: latestFormData?.body?.length,
+            lastProcessedRevisionId,
+            formDataTitle: latestFormData?.title,
+            formDataSubtitle: latestFormData?.subtitle
         })
         
-        if (latestFormData && !hasRecoveredFromBackup) {
+        // Allow updates if this is a new revision (revision ID changed)
+        const isNewRevision = latestFormData?.activeRevisionId && latestFormData.activeRevisionId !== lastProcessedRevisionId
+        
+        console.log('🔍 Revision check:', {
+            currentRevisionId: latestFormData?.activeRevisionId,
+            lastProcessedRevisionId,
+            isNewRevision,
+            hasRecoveredFromBackup,
+            willUpdate: latestFormData && (!hasRecoveredFromBackup || isNewRevision)
+        })
+        
+        if (latestFormData && (!hasRecoveredFromBackup || isNewRevision)) {
             // Set flag to prevent auto-save during data loading
             isRevertingRef.current = true
             
             console.log('📥 Loading form data from server:', {
                 title: latestFormData.title,
                 subtitle: latestFormData.subtitle,
-                trailer: latestFormData.trailer
+                trailer: latestFormData.trailer,
+                revisionId: latestFormData.activeRevisionId,
+                bodyLength: latestFormData.body?.length,
+                isNewRevision
             })
             
             setTrailer(latestFormData.trailer ?? '')
@@ -1359,12 +1459,30 @@ function ArticleEditor({ articleId, userId, user, onBack }: { articleId: string;
             setCategories(latestFormData.categories ?? [])
             setStatus(latestFormData.status ?? 'unpublished')
             
+            console.log('✅ Form state updated with:', {
+                title: latestFormData.title,
+                subtitle: latestFormData.subtitle,
+                trailer: latestFormData.trailer
+            })
+            
+            // Update the last processed revision ID
+            if (latestFormData.activeRevisionId) {
+                setLastProcessedRevisionId(latestFormData.activeRevisionId)
+            }
+            
             // Reset flag after a short delay to allow form state to settle
             setTimeout(() => {
                 isRevertingRef.current = false
             }, 100)
+        } else {
+            console.log('⏭️ Skipping form update:', {
+                hasLatestFormData: !!latestFormData,
+                hasRecoveredFromBackup,
+                isNewRevision,
+                reason: !latestFormData ? 'No form data' : hasRecoveredFromBackup && !isNewRevision ? 'Recovered from backup and not new revision' : 'Unknown'
+            })
         }
-    }, [latestFormData?.$id, latestFormData?.$updatedAt, hasRecoveredFromBackup]) // Only update when the data actually changes
+    }, [latestFormData?.$id, latestFormData?.$updatedAt, latestFormData?.body, latestFormData?.title, latestFormData?.subtitle, latestFormData?.activeRevisionId, hasRecoveredFromBackup, lastProcessedRevisionId]) // Update when revision ID changes
 
     // Auto-save when form data changes (only after user interaction and fully loaded)
     useEffect(() => {
@@ -1747,13 +1865,14 @@ function ArticleEditor({ articleId, userId, user, onBack }: { articleId: string;
             // Disable auto-save temporarily during AI revision application
             isRevertingRef.current = true
             
-            // Just invalidate queries to refresh the form data
-            // The form will automatically load the latest revision (which should be the AI revision)
-            qc.invalidateQueries({ queryKey: ['revisions', articleId] })
-            qc.invalidateQueries({ queryKey: ['article', articleId] })
-            qc.invalidateQueries({ queryKey: ['latestRevision', articleId] })
+            // Force refetch of all related queries to ensure we get the latest data
+            await Promise.all([
+                qc.refetchQueries({ queryKey: ['revisions', articleId] }),
+                qc.refetchQueries({ queryKey: ['article', articleId] }),
+                qc.refetchQueries({ queryKey: ['latestRevision', articleId] })
+            ])
 
-            console.log('✅ AI revision queries invalidated - form will load latest revision')
+            console.log('✅ AI revision queries refetched - form should load latest revision')
             
         } catch (error) {
             console.error('❌ Error applying AI revision:', error)
@@ -2064,12 +2183,19 @@ function ArticleEditor({ articleId, userId, user, onBack }: { articleId: string;
 
                 {/* Debug panel */}
                 {showDebug && (
-                    <div className="mb-6 p-4 bg-gray-100 dark:bg-gray-800 rounded-lg border">
+                    <div className="mb-6 p-4 bg-purple-100 dark:bg-purple-900 rounded-lg border border-purple-200 dark:border-purple-700">
                         <div className="flex items-center justify-between mb-3">
-                            <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-300">Debug Information</h3>
+                            <h3 className="text-sm font-semibold text-purple-800 dark:text-purple-200">
+                                Debug Information
+                                {latestRevision && (
+                                    <span className="ml-2 text-xs font-normal text-purple-600 dark:text-purple-300">
+                                        ({getRevisionVersionName(latestRevision)})
+                                    </span>
+                                )}
+                            </h3>
                             <button 
                                 onClick={() => setShowDebug(false)}
-                                className="text-xs text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
+                                className="text-xs text-purple-600 hover:text-purple-800 dark:text-purple-400 dark:hover:text-purple-200"
                             >
                                 Close
                             </button>
@@ -2777,6 +2903,7 @@ function ArticleEditor({ articleId, userId, user, onBack }: { articleId: string;
                                 currentRevisionId={article?.activeRevisionId}
                                 formRevisionId={latestRevision?.$id}
                                 currentRevisionVersion={latestRevision?.version}
+                                debugMode={showDebug}
                                 onRevertToRevision={handleSelectRevisionForRevert}
                                 onScrollToTop={scrollToTop}
                                 onDeleteRevision={async (revisionId) => {

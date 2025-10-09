@@ -680,10 +680,10 @@ export function AgentChat({
             <ScrollArea ref={scrollAreaRef} className="flex-1">
                 {/* Debug panel - sticky to top (toggleable with Cmd+. or Ctrl+.) */}
                 {showDebugPanel && (
-                    <div className="sticky top-0 z-10 p-2 bg-slate-100/80 dark:bg-slate-800/80 backdrop-blur-sm border-b border-slate-200 dark:border-slate-700">
+                    <div className="sticky top-0 z-10 p-2 bg-purple-100/80 dark:bg-purple-900/80 backdrop-blur-sm border-b border-purple-200 dark:border-purple-700">
                     <div className="flex items-center gap-1 mb-1">
                         <div className={`w-1.5 h-1.5 rounded-full ${isLoadingConversations ? 'bg-yellow-500' : 'bg-green-500'}`}></div>
-                        <span className="text-[10px] font-semibold text-slate-700 dark:text-slate-300">Debug</span>
+                        <span className="text-[10px] font-semibold text-purple-700 dark:text-purple-300">Debug</span>
                         <div className="ml-auto flex items-center gap-1">
                             {isPromptLocked && (
                                 <button
@@ -701,42 +701,42 @@ export function AgentChat({
                                     Reset
                                 </button>
                             )}
-                            <div className="text-[9px] text-slate-500 dark:text-slate-400">
+                            <div className="text-[9px] text-purple-500 dark:text-purple-400">
                                 {new Date().toLocaleTimeString()}
                             </div>
                         </div>
                     </div>
                     <div className="grid grid-cols-3 text-[10px]">
                         <div>
-                            <div className="text-slate-500 dark:text-slate-400 font-medium text-[9px]">Conversation</div>
-                            <div className="text-slate-800 dark:text-slate-200 font-mono text-[10px]">
+                            <div className="text-purple-500 dark:text-purple-400 font-medium text-[9px]">Conversation</div>
+                            <div className="text-purple-800 dark:text-purple-200 font-mono text-[10px]">
                                 {conversations.find(c => c.$id === currentConversationId)?.title || 'None'}
                             </div>
-                            <div className="text-slate-600 dark:text-slate-400 text-[9px] font-mono">
+                            <div className="text-purple-600 dark:text-purple-400 text-[9px] font-mono">
                                 ID: {currentConversationId?.slice(-8) || 'None'}
                             </div>
                         </div>
                         <div>
-                            <div className="text-slate-500 dark:text-slate-400 font-medium text-[9px]">Messages & Status</div>
-                            <div className="text-slate-800 dark:text-slate-200 font-mono text-[10px]">
+                            <div className="text-purple-500 dark:text-purple-400 font-medium text-[9px]">Messages & Status</div>
+                            <div className="text-purple-800 dark:text-purple-200 font-mono text-[10px]">
                                 Messages: {messages.length}
                             </div>
-                            <div className="text-slate-600 dark:text-slate-400 text-[9px] font-mono">
+                            <div className="text-purple-600 dark:text-purple-400 text-[9px] font-mono">
                                 {isWaitingForStream ? '⏳ Waiting' : ''} {isStreaming ? '🔄 Streaming' : ''} {isPromptLocked ? '🔒 Locked' : '🔓 Unlocked'}
                             </div>
-                            <div className="text-slate-500 dark:text-slate-400 text-[8px] font-mono">
+                            <div className="text-purple-500 dark:text-purple-400 text-[8px] font-mono">
                                 Last: {lastMetadataStatus}
                             </div>
                         </div>
                         <div>
-                            <div className="text-slate-500 dark:text-slate-400 font-medium text-[9px]">Cost & Tokens</div>
-                            <div className="text-slate-800 dark:text-slate-200 font-mono text-[10px]">
+                            <div className="text-purple-500 dark:text-purple-400 font-medium text-[9px]">Cost & Tokens</div>
+                            <div className="text-purple-800 dark:text-purple-200 font-mono text-[10px]">
                                 Total: ${totalCost.toFixed(6)}
                             </div>
-                            <div className="text-slate-600 dark:text-slate-400 text-[9px] font-mono">
+                            <div className="text-purple-600 dark:text-purple-400 text-[9px] font-mono">
                                 Tokens: {totalTokens.toLocaleString()}
                             </div>
-                            <div className="text-slate-500 dark:text-slate-400 text-[8px] font-mono">
+                            <div className="text-purple-500 dark:text-purple-400 text-[8px] font-mono">
                                 In: {totalInputTokens.toLocaleString()} | Out: {totalOutputTokens.toLocaleString()}
                             </div>
                         </div>
