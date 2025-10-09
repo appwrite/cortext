@@ -736,6 +736,18 @@ export default async function ({ req, res, log, error }) {
               addDebugLog(`Current article: ${currentArticle.title}`);
               addDebugLog(`Current revision version: ${currentRevision.version}`);
               
+              // Get team ID from the blog for proper permissions
+              let teamId = null;
+              if (currentArticle.blogId) {
+                try {
+                  const blog = await serverDatabases.getDocument(databaseId, 'blogs', currentArticle.blogId);
+                  teamId = blog.teamId;
+                  addDebugLog(`Found team ID: ${teamId}`);
+                } catch (blogError) {
+                  addDebugLog(`Failed to get blog ${currentArticle.blogId}: ${blogError.message}`);
+                }
+              }
+              
               // Parse current revision data
               const currentRevisionData = currentRevision.data ? JSON.parse(currentRevision.data) : {};
               const currentAttributes = currentRevisionData.attributes || currentRevisionData;
@@ -853,11 +865,21 @@ export default async function ({ req, res, log, error }) {
                 parentRevisionId: revisionId
               };
               
+              // Create permissions array for team access
+              const permissions = teamId ? [
+                ServerPermission.read(ServerRole.team(teamId)),
+                ServerPermission.update(ServerRole.team(teamId)),
+                ServerPermission.delete(ServerRole.team(teamId))
+              ] : undefined;
+              
+              addDebugLog(`Creating revision with permissions: ${permissions ? 'team-based' : 'default'}`);
+              
               const newRevision = await serverDatabases.createDocument(
                 databaseId,
                 'revisions',
                 ServerID.unique(),
-                newRevisionData
+                newRevisionData,
+                permissions
               );
               
               newRevisionId = newRevision.$id;
