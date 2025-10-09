@@ -72,6 +72,10 @@ export function AgentChat({
     const [streamingContentCheckCount, setStreamingContentCheckCount] = useState(0)
     const [lastMetadataStatus, setLastMetadataStatus] = useState<string>('None')
     const [showDebugPanel, setShowDebugPanel] = useState<boolean>(false)
+    const [totalCost, setTotalCost] = useState<number>(0)
+    const [totalTokens, setTotalTokens] = useState<number>(0)
+    const [totalInputTokens, setTotalInputTokens] = useState<number>(0)
+    const [totalOutputTokens, setTotalOutputTokens] = useState<number>(0)
     const isMobile = useIsMobile()
     const inputRef = useRef<HTMLTextAreaElement>(null)
     const currentConversationIdRef = useRef<string | null>(currentConversationId)
@@ -94,6 +98,42 @@ export function AgentChat({
     useEffect(() => {
         isStreamingRef.current = isStreaming
     }, [isStreaming])
+
+    // Calculate total cost from all messages
+    const calculateTotalCost = useCallback((messages: Message[]) => {
+        let totalCost = 0
+        let totalTokens = 0
+        let totalInputTokens = 0
+        let totalOutputTokens = 0
+
+        messages.forEach(message => {
+            if (message.metadata) {
+                try {
+                    const metadata = typeof message.metadata === 'string' 
+                        ? JSON.parse(message.metadata) 
+                        : message.metadata
+                    
+                    if (metadata.estimatedCost) {
+                        totalCost += metadata.estimatedCost
+                    }
+                    if (metadata.totalTokens) {
+                        totalTokens += metadata.totalTokens
+                    }
+                    if (metadata.inputTokens) {
+                        totalInputTokens += metadata.inputTokens
+                    }
+                    if (metadata.outputTokens) {
+                        totalOutputTokens += metadata.outputTokens
+                    }
+                } catch (e) {
+                    // Ignore parsing errors
+                }
+            }
+        })
+
+        return { totalCost, totalTokens, totalInputTokens, totalOutputTokens }
+    }, [])
+
 
     // Scroll to bottom function
     const scrollToBottom = useCallback(() => {
@@ -269,6 +309,15 @@ export function AgentChat({
 
     // Use database messages directly
     const messages: Message[] = dbMessagesFormatted
+
+    // Update cost tracking when messages change
+    useEffect(() => {
+        const costData = calculateTotalCost(messages)
+        setTotalCost(costData.totalCost)
+        setTotalTokens(costData.totalTokens)
+        setTotalInputTokens(costData.totalInputTokens)
+        setTotalOutputTokens(costData.totalOutputTokens)
+    }, [messages, calculateTotalCost])
 
     // Detect new revisions created by AI and trigger form refresh
     useEffect(() => {
@@ -657,7 +706,7 @@ export function AgentChat({
                             </div>
                         </div>
                     </div>
-                    <div className="grid grid-cols-2 text-[10px]">
+                    <div className="grid grid-cols-3 text-[10px]">
                         <div>
                             <div className="text-slate-500 dark:text-slate-400 font-medium text-[9px]">Conversation</div>
                             <div className="text-slate-800 dark:text-slate-200 font-mono text-[10px]">
@@ -677,6 +726,18 @@ export function AgentChat({
                             </div>
                             <div className="text-slate-500 dark:text-slate-400 text-[8px] font-mono">
                                 Last: {lastMetadataStatus}
+                            </div>
+                        </div>
+                        <div>
+                            <div className="text-slate-500 dark:text-slate-400 font-medium text-[9px]">Cost & Tokens</div>
+                            <div className="text-slate-800 dark:text-slate-200 font-mono text-[10px]">
+                                Total: ${totalCost.toFixed(6)}
+                            </div>
+                            <div className="text-slate-600 dark:text-slate-400 text-[9px] font-mono">
+                                Tokens: {totalTokens.toLocaleString()}
+                            </div>
+                            <div className="text-slate-500 dark:text-slate-400 text-[8px] font-mono">
+                                In: {totalInputTokens.toLocaleString()} | Out: {totalOutputTokens.toLocaleString()}
                             </div>
                         </div>
                     </div>
