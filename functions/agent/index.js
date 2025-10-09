@@ -52,9 +52,9 @@ JSON STRUCTURE:
 
 SECTION ACTIONS:
 - create: Create a new section (use id: "new" for auto-generated ID)
-- update: Update existing section content
-- delete: Remove a section
-- move: Move section to different position
+- update: Update existing section content (use exact section ID from context)
+- delete: Remove a section (use exact section ID from context)
+- move: Move section to different position (use exact section ID from context)
 
 POSITIONING:
 - position: 0-based index where to insert/move section
@@ -132,7 +132,7 @@ function buildArticleContext(article, maxTokens = 2000) {
     if (context.sections.length > 0) {
         contextStr += `Sections:\n`;
         context.sections.forEach((section, i) => {
-            contextStr += `${i + 1}. ${section.type}: ${section.content}\n`;
+            contextStr += `${i + 1}. ${section.type} (ID: ${section.id}): ${section.content}\n`;
         });
     }
     
@@ -174,6 +174,8 @@ Available section types for JSON:
 - quote: Quoted text
 - code: Code block
 - image: Image with caption
+
+IMPORTANT: When deleting or updating sections, you MUST use the exact section IDs provided in the context above. Do not make up or guess section IDs.
 
 MANDATORY JSON EXAMPLES:
 {"article": {"title": "New Article Title"}}
@@ -768,6 +770,7 @@ export default async function ({ req, res, log, error }) {
               
               // Apply section updates
               if (updates.sections) {
+                addDebugLog(`Processing ${updates.sections.length} section updates: ${JSON.stringify(updates.sections.map(u => ({ id: u.id, action: u.action, type: u.type })))}`);
                 updates.sections.forEach(update => {
                   switch (update.action) {
                     case 'create':
@@ -795,8 +798,13 @@ export default async function ({ req, res, log, error }) {
                       break;
                       
                     case 'delete':
+                      addDebugLog(`Attempting to delete section with ID: ${update.id}`);
+                      addDebugLog(`Current sections before deletion: ${JSON.stringify(sections.map(s => ({ id: s.id, type: s.type })))}`);
+                      const beforeCount = sections.length;
                       sections = sections.filter(s => s.id !== update.id);
-                      addDebugLog(`Deleted section ${update.id}`);
+                      const afterCount = sections.length;
+                      addDebugLog(`Deleted section ${update.id}. Sections before: ${beforeCount}, after: ${afterCount}`);
+                      addDebugLog(`Sections after deletion: ${JSON.stringify(sections.map(s => ({ id: s.id, type: s.type })))}`);
                       break;
                       
                     case 'move':
