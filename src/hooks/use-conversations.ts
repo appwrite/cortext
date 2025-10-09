@@ -152,6 +152,7 @@ export function useMessages(conversationId: string | null, blogId?: string, arti
       content: string; 
       metadata?: any;
       userId: string;
+      revisionId?: string | null;
     }) => {
       if (!conversationId) throw new Error('No conversation selected')
       
@@ -162,6 +163,7 @@ export function useMessages(conversationId: string | null, blogId?: string, arti
         userId: data.userId,
         agentId: 'temp-agent-id', // Temporary fake ID
         blogId: blogId || null,
+        revisionId: data.revisionId || null,
         metadata: data.metadata ? JSON.stringify(data.metadata) : null,
         tokenCount: null, // Will be updated by the agent
         generationTimeMs: null, // Will be updated by the agent
@@ -337,6 +339,7 @@ export function useMessagesWithNotifications(
       content: string; 
       metadata?: any;
       userId: string;
+      revisionId?: string | null;
     }) => {
       if (!conversationId) throw new Error('No conversation selected')
       
@@ -347,6 +350,7 @@ export function useMessagesWithNotifications(
         userId: data.userId,
         agentId: 'temp-agent-id', // Temporary fake ID
         blogId: blogId || null,
+        revisionId: data.revisionId || null,
         metadata: data.metadata ? JSON.stringify(data.metadata) : null,
         tokenCount: null, // Will be updated by the agent
         generationTimeMs: null, // Will be updated by the agent

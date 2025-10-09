@@ -11,24 +11,23 @@ if (!AGENT_FUNCTION_ID) {
 const functions = getFunctionsClient();
 
 export const functionService = {
+  // Updated to include articleId parameter
   /**
    * Trigger the agent function to generate a response
    * @param conversationId - The conversation ID
    * @param blogId - The blog ID
    * @param agentId - Optional agent ID (defaults to 'dummy-agent')
+   * @param articleId - The article ID for context
    * @param metadata - Optional metadata to pass to the function
    */
-  async triggerAgentResponse({
-    conversationId,
-    blogId,
-    agentId = 'dummy-agent',
-    metadata = {}
-  }: {
+  async triggerAgentResponse(params: {
     conversationId: string;
     blogId: string;
     agentId?: string;
+    articleId: string;
     metadata?: any;
   }) {
+    const { conversationId, blogId, agentId = 'dummy-agent', articleId, metadata = {} } = params;
     try {
       const execution = await functions.createExecution(
         AGENT_FUNCTION_ID,
@@ -36,6 +35,7 @@ export const functionService = {
           conversationId,
           blogId,
           agentId,
+          articleId,
           metadata
         }),
         true, // async: false - wait for completion to trigger realtime events

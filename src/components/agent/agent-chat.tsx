@@ -11,9 +11,13 @@ import { useConversationManager, useMessagesWithNotifications } from '@/hooks/us
 import { ConversationSelector } from './conversation-selector'
 import { ConversationPlaceholder } from './conversation-placeholder'
 import { useAuth } from '@/hooks/use-auth'
+import { useLatestRevision } from '@/hooks/use-latest-revision'
 import type { Messages } from '@/lib/appwrite/appwrite.types'
 import { functionService } from '@/lib/appwrite/functions'
 import { formatDuration } from '@/lib/date-utils'
+import { AIMessageRenderer } from './ai-message-renderer'
+import { AIChangeIndicators } from './ai-change-indicators'
+import { useQueryClient } from '@tanstack/react-query'
 
 type Message = {
     id: string
@@ -22,6 +26,7 @@ type Message = {
     createdAt: string
     tokenCount?: number | null
     generationTimeMs?: number | null
+    revisionId?: string | null
     metadata?: {
         streaming?: boolean
         status?: 'generating' | 'completed' | 'error'
@@ -46,12 +51,15 @@ export function AgentChat({
     blogId?: string
 }) {
     const { user } = useAuth()
+    const { latestRevision } = useLatestRevision(articleId)
+    const queryClient = useQueryClient()
     const [input, setInput] = useState('')
     const [currentConversationId, setCurrentConversationId] = useState<string | null>(null)
     const [isDrawerOpen, setIsDrawerOpen] = useState(false)
     const [isWaitingForAI, setIsWaitingForAI] = useState(false)
     const [previousMessageCount, setPreviousMessageCount] = useState(0)
     const [previousAssistantCount, setPreviousAssistantCount] = useState(0)
+    const [lastProcessedRevisionId, setLastProcessedRevisionId] = useState<string | null>(null)
     const [previousAssistantMessages, setPreviousAssistantMessages] = useState<Messages[]>([])
     const [isStreaming, setIsStreaming] = useState(false)
     const [isWaitingForStream, setIsWaitingForStream] = useState(false)
@@ -251,6 +259,7 @@ export function AgentChat({
             createdAt: msg.$createdAt,
             tokenCount: msg.tokenCount,
             generationTimeMs: msg.generationTimeMs,
+            revisionId: msg.revisionId,
             metadata: msg.metadata ? JSON.parse(msg.metadata) : undefined,
         }))
         .sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()) // Sort oldest to newest
@@ -258,6 +267,46 @@ export function AgentChat({
     // Use database messages directly
     const messages: Message[] = dbMessagesFormatted
 
+    // Detect new revisions created by AI and trigger form refresh
+    useEffect(() => {
+        if (messages.length === 0) return
+
+        // Check the latest assistant message for a new revision
+        const latestAssistantMessage = messages
+            .filter(m => m.role === 'assistant')
+            .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())[0]
+
+        // Look for revisionId in the message (not metadata)
+        console.log('🔍 Checking latest assistant message:', {
+            hasMessage: !!latestAssistantMessage,
+            revisionId: latestAssistantMessage?.revisionId,
+            lastProcessed: lastProcessedRevisionId,
+            messageId: latestAssistantMessage?.id
+        })
+        
+        if (latestAssistantMessage?.revisionId) {
+            const newRevisionId = latestAssistantMessage.revisionId
+            
+            // Only process if this is a new revision we haven't seen before
+            if (newRevisionId !== lastProcessedRevisionId) {
+                console.log('🔄 New revision detected:', newRevisionId)
+                
+                // Invalidate queries to refresh the form data
+                queryClient.invalidateQueries({ queryKey: ['revisions', articleId] })
+                queryClient.invalidateQueries({ queryKey: ['article', articleId] })
+                queryClient.invalidateQueries({ queryKey: ['latestRevision', articleId] })
+                
+                // Update the last processed revision ID
+                setLastProcessedRevisionId(newRevisionId)
+                
+                console.log('✅ Form data refreshed for new revision:', newRevisionId)
+            } else {
+                console.log('⏭️ Revision already processed:', newRevisionId)
+            }
+        } else {
+            console.log('❌ No revisionId found in latest assistant message')
+        }
+    }, [messages, lastProcessedRevisionId, articleId, queryClient])
 
     // Determine if prompt should be locked (waiting for stream or streaming)
     const isPromptLocked = isWaitingForStream || isStreaming
@@ -508,6 +557,7 @@ export function AgentChat({
                 role: 'user',
                 content: text,
                 userId: user?.$id || '',
+                revisionId: latestRevision?.$id || null,
             })
             console.log('📝 User message created:', userMessage.$id)
 
@@ -522,6 +572,7 @@ export function AgentChat({
                 conversationId: currentConversationId,
                 blogId: blogId || '',
                 agentId: 'dummy-agent',
+                articleId: articleId,
                 metadata: {
                     articleTitle: title,
                     userMessage: text
@@ -640,7 +691,7 @@ export function AgentChat({
                                     >
                                         {/* Debug: Role: {m.role}, Content: {m.content.substring(0, 50)}... */}
                                         {m.role === 'assistant' ? (
-                                            <MarkdownRenderer content={m.content} />
+                                            <AIMessageRenderer content={m.content} />
                                         ) : (
                                             m.content
                                         )}
@@ -673,6 +724,13 @@ export function AgentChat({
                                     </div>
                                 </div>
                                 
+                                {/* Show change indicators for assistant messages */}
+                                {m.role === 'assistant' && (
+                                    <AIChangeIndicators 
+                                        content={m.content} 
+                                        isStreaming={m.metadata?.streaming && m.metadata?.status === 'generating'} 
+                                    />
+                                )}
                             </div>
                         ))}
                         

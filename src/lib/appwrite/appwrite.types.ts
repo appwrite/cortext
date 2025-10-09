@@ -108,6 +108,7 @@ export type Messages = Models.Document & {
     userId: string;
     agentId: string;
     blogId: string | null;
+    revisionId: string | null; // Reference to revision ID
     metadata: string | null; // JSON string for additional data like AI model used, etc.
     tokenCount: number | null; // Number of tokens in the message
     generationTimeMs: number | null; // Time taken to generate the message in milliseconds
