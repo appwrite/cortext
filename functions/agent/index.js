@@ -81,7 +81,7 @@ Key guidelines:
 Context: You're assisting with professional blog content creation and editing.`;
 
 // Token-cache friendly article context builder
-function buildArticleContext(article, maxTokens = 2000) {
+function buildArticleContext(article, maxTokens = 4000) {
     if (!article) return '';
     
     const context = {
@@ -105,7 +105,7 @@ function buildArticleContext(article, maxTokens = 2000) {
             const sections = JSON.parse(article.body);
             context.sections = sections.map(section => ({
                 type: section.type,
-                content: section.content ? section.content.substring(0, 500) : '', // Increased to 500 chars for better identification
+                content: section.content ? section.content.substring(0, 300) : '', // Reduced to 300 chars to fit more sections
                 id: section.id
             }));
         } catch (e) {
@@ -134,6 +134,14 @@ function buildArticleContext(article, maxTokens = 2000) {
         context.sections.forEach((section, i) => {
             contextStr += `${i + 1}. ${section.type} (ID: ${section.id}): ${section.content}\n`;
         });
+        
+        // If we have many sections, also provide a summary of all section types and IDs
+        if (context.sections.length > 10) {
+            contextStr += `\nAll Section IDs for reference:\n`;
+            context.sections.forEach((section, i) => {
+                contextStr += `${i + 1}. ${section.type} - ID: ${section.id}\n`;
+            });
+        }
     }
     
     // Truncate if too long
@@ -179,9 +187,10 @@ IMPORTANT: When deleting or updating sections, you MUST use the exact section ID
 
 For deletion requests:
 1. Look through the sections list in the context to find sections that match the user's request
-2. Use the exact section IDs shown in the context (format: "ID: xxxxx")
-3. If you can't identify the specific sections, ask the user to clarify which sections they want to delete
-4. Always provide the JSON with the correct section IDs for deletion
+2. Search for keywords like "FAQ", "Q:", "A:", "question", "answer" to identify FAQ sections
+3. Use the exact section IDs shown in the context (format: "ID: xxxxx")
+4. If you can't identify the specific sections, ask the user to clarify which sections they want to delete
+5. Always provide the JSON with the correct section IDs for deletion
 
 MANDATORY JSON EXAMPLES:
 {"article": {"title": "New Article Title"}}
