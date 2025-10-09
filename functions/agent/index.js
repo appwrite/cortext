@@ -221,6 +221,12 @@ For content modification requests:
 6. If content is truncated, work with what's available and make reasonable assumptions
 7. ALWAYS provide the JSON immediately with the section IDs you can identify
 
+CRITICAL: When updating existing content:
+- Use "action": "update" with the existing section ID from the context
+- NEVER use "action": "create" with "id": "new" for existing content
+- Only use "action": "create" when adding genuinely new content that doesn't exist
+- For any content that already exists (quotes, titles, text, etc.), ALWAYS update the existing section
+
 MANDATORY JSON EXAMPLES:
 {"article": {"title": "New Article Title"}}
 {"article": {"subtitle": "Updated subtitle text"}}
@@ -231,6 +237,11 @@ MANDATORY JSON EXAMPLES:
 {"sections": [{"type": "text", "content": "New paragraph content", "id": "section1", "action": "update"}]}
 {"sections": [{"type": "title", "content": "New Section Title", "id": "new", "action": "create"}]}
 {"sections": [{"type": "code", "content": "console.log('Hello World');", "id": "section3", "action": "update"}]}
+
+// Content update examples (CRITICAL - use existing IDs):
+{"sections": [{"type": "quote", "content": "Updated quote text", "id": "68e7bbe8001f12708e76", "action": "update"}]}
+{"sections": [{"type": "text", "content": "Updated paragraph", "id": "68e70f170011c920957d", "action": "update"}]}
+{"sections": [{"type": "title", "content": "Updated Title", "id": "68e70f170011c691868c", "action": "update"}]}
 
 // Positioning examples:
 {"sections": [{"type": "text", "content": "Insert at beginning", "id": "new", "action": "create", "position": 0}]}
@@ -260,6 +271,8 @@ ABSOLUTELY FORBIDDEN:
 - NEVER say "I need the exact section IDs" or similar phrases
 - NEVER ask for clarification about which sections to modify
 - ALWAYS work with the section IDs provided in the context above
+- NEVER use "action": "create" with "id": "new" for existing content (quotes, titles, text)
+- NEVER duplicate existing content by creating new sections instead of updating
 
 REMEMBER: You MUST use the JSON format for ALL changes. Start with valid JSON, then add your explanation.`;
     }
@@ -1047,6 +1060,7 @@ export default async function ({ req, res, log, error }) {
 
         // Final update with complete content, revision ID, and truncated debug logs
         addDebugLog(`Final message update - revisionId: ${newRevisionId}`);
+        addDebugLog(`Updating message ${initialMessage.$id} with revisionId: ${newRevisionId}`);
         await serverDatabases.updateDocument(
           databaseId,
           'messages',
@@ -1080,6 +1094,15 @@ export default async function ({ req, res, log, error }) {
           }
         );
         addDebugLog(`Message updated with revisionId: ${newRevisionId}`);
+        
+        // Verify the message was updated correctly
+        try {
+          const updatedMessage = await serverDatabases.getDocument(databaseId, 'messages', initialMessage.$id);
+          addDebugLog(`Verification - Message revisionId: ${updatedMessage.revisionId}, Expected: ${newRevisionId}`);
+        } catch (verifyError) {
+          addDebugLog(`Failed to verify message update: ${verifyError.message}`);
+        }
+        
         addDebugLog(`Final cost summary - Input: ${inputTokens} tokens ($${((inputTokens / 1000) * 0.005).toFixed(6)}), Output: ${outputTokens} tokens ($${((outputTokens / 1000) * 0.015).toFixed(6)}), Total: $${estimatedCost.toFixed(6)}`);
 
         log(`Streaming completed. Final content length: ${fullContent.length}, chunks: ${chunkCount}`);
