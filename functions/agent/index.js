@@ -714,6 +714,8 @@ export default async function ({ req, res, log, error }) {
 
         // Parse LLM response for article updates and create new revision
         let newRevisionId = null;
+        addDebugLog(`Revision creation check - revisionId: ${revisionId}, articleId: ${articleId}, fullContent length: ${fullContent?.length || 0}`);
+        
         if (revisionId && articleId && fullContent) {
           try {
             addDebugLog('Parsing LLM response for article updates...');
@@ -869,11 +871,14 @@ export default async function ({ req, res, log, error }) {
               addDebugLog(`New revision ID to be saved in message: ${newRevisionId}`);
             } else {
               addDebugLog('No JSON found in LLM response, skipping revision creation');
+              addDebugLog(`Full content preview: ${fullContent.substring(0, 200)}...`);
             }
           } catch (parseError) {
             addDebugLog(`Error parsing LLM response or creating revision: ${parseError.message}`);
             // Continue without creating revision
           }
+        } else {
+          addDebugLog(`Skipping revision creation - missing required data: revisionId=${!!revisionId}, articleId=${!!articleId}, fullContent=${!!fullContent}`);
         }
 
         // Final update with complete content, revision ID, and truncated debug logs
