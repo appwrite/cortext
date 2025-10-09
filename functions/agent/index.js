@@ -85,7 +85,7 @@ Key guidelines:
 Context: You're assisting with professional blog content creation and editing.`;
 
 // Token-cache friendly article context builder
-function buildArticleContext(article, maxTokens = 50000) {
+function buildArticleContext(article, maxTokens = 150000) {
     if (!article) return '';
     
     const context = {
@@ -109,14 +109,14 @@ function buildArticleContext(article, maxTokens = 50000) {
             const sections = JSON.parse(article.body);
             context.sections = sections.map(section => ({
                 type: section.type,
-                content: section.content ? section.content.substring(0, 1000) : '', // Increased to 1000 chars for full content
+                content: section.content ? section.content.substring(0, 5000) : '', // Increased to 5000 chars for full content
                 id: section.id
             }));
         } catch (e) {
             // If parsing fails, treat as plain text
             context.sections = [{
                 type: 'text',
-                content: article.body.substring(0, 400), // Increased for better context
+                content: article.body.substring(0, 2000), // Increased for better context
                 id: 'legacy'
             }];
         }
@@ -149,6 +149,8 @@ function buildArticleContext(article, maxTokens = 50000) {
     
     // Truncate if too long - but prioritize showing all section IDs
     if (contextStr.length > maxTokens) {
+        console.log(`Article context too long: ${contextStr.length} chars (limit: ${maxTokens}), truncating...`);
+        
         // If we're over the limit, try a more aggressive approach
         // First, build a minimal context with just section IDs
         let minimalContext = `Article: "${context.title}"\n`;
@@ -159,12 +161,18 @@ function buildArticleContext(article, maxTokens = 50000) {
             });
         }
         
+        console.log(`Minimal context length: ${minimalContext.length} chars`);
+        
         // If even the minimal context is too long, truncate it
         if (minimalContext.length > maxTokens) {
             contextStr = minimalContext.substring(0, maxTokens - 50) + '...';
+            console.log(`Context truncated to ${contextStr.length} chars (was ${minimalContext.length})`);
         } else {
             contextStr = minimalContext;
+            console.log(`Using minimal context: ${contextStr.length} chars`);
         }
+    } else {
+        console.log(`Article context size: ${contextStr.length} chars (within limit: ${maxTokens})`);
     }
     
     return contextStr;
@@ -398,6 +406,7 @@ export default async function ({ req, res, log, error }) {
         }));
         articleContext = buildArticleContext(article);
         log('Article context loaded: ' + (articleContext ? 'Yes' : 'No'));
+        log('Article context size: ' + (articleContext ? articleContext.length : 0) + ' characters');
         log('Article context preview: ' + articleContext.substring(0, 200) + '...');
       } catch (error) {
         log('Failed to load article context: ' + error.message);
@@ -827,15 +836,29 @@ export default async function ({ req, res, log, error }) {
             addDebugLog('Parsing LLM response for article updates...');
             
             // Extract JSON from the response (look for JSON at the beginning)
-            const jsonMatch = fullContent.match(/^\{[\s\S]*?\}\n/);
+            // Try multiple patterns to find the JSON object
+            let jsonStr = null;
+            let jsonMatch = fullContent.match(/^\{[\s\S]*?\}\n/);
+            
+            if (!jsonMatch) {
+              // Try to find JSON without requiring newline after
+              jsonMatch = fullContent.match(/^\{[\s\S]*?\}(?=\n|$)/);
+            }
+            
+            if (!jsonMatch) {
+              // Try to find any JSON object at the start
+              jsonMatch = fullContent.match(/^\{[\s\S]*?\}/);
+            }
+            
             if (jsonMatch) {
-              const jsonStr = jsonMatch[0].trim();
+              jsonStr = jsonMatch[0].trim();
               addDebugLog(`Found JSON in response: ${jsonStr.substring(0, 200)}...`);
               
-              const updates = JSON.parse(jsonStr);
-              addDebugLog(`Parsed updates: ${JSON.stringify(updates)}`);
-              
-              // Get current article and revision
+              try {
+                const updates = JSON.parse(jsonStr);
+                addDebugLog(`Parsed updates: ${JSON.stringify(updates)}`);
+                
+                // Get current article and revision
               const currentArticle = await serverDatabases.getDocument(databaseId, 'articles', articleId);
               const currentRevision = await serverDatabases.getDocument(databaseId, 'revisions', revisionId);
               
@@ -1004,6 +1027,11 @@ export default async function ({ req, res, log, error }) {
               
               addDebugLog(`Updated article activeRevisionId to ${newRevisionId}`);
               addDebugLog(`New revision ID to be saved in message: ${newRevisionId}`);
+              } catch (jsonParseError) {
+                addDebugLog(`Error parsing JSON: ${jsonParseError.message}`);
+                addDebugLog(`JSON string that failed to parse: ${jsonStr}`);
+                // Continue without creating revision
+              }
             } else {
               addDebugLog('No JSON found in LLM response, skipping revision creation');
               addDebugLog(`Full content preview: ${fullContent.substring(0, 200)}...`);
