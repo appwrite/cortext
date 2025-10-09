@@ -270,6 +270,7 @@ const COLLECTIONS = {
       { key: 'userId', type: 'string', size: 255, required: false, array: false, default: null },
       { key: 'agentId', type: 'string', size: 255, required: false, array: false, default: null },
       { key: 'blogId', type: 'string', size: 255, required: true, array: false, default: null },
+      { key: 'revisionId', type: 'string', size: 255, required: false, array: false, default: null }, // Reference to revision ID
       { key: 'metadata', type: 'string', size: 2000, required: false, array: false, default: null }, // JSON string for additional metadata
       { key: 'tokens', type: 'integer', required: false, array: false, default: null },
       { key: 'tokenCount', type: 'integer', required: false, array: false, default: null }, // Number of tokens in the message
@@ -283,11 +284,13 @@ const COLLECTIONS = {
       { key: 'userId', type: 'key', attributes: ['userId'] },
       { key: 'agentId', type: 'key', attributes: ['agentId'] },
       { key: 'blogId', type: 'key', attributes: ['blogId'] },
+      { key: 'revisionId', type: 'key', attributes: ['revisionId'] },
       { key: 'isEdited', type: 'key', attributes: ['isEdited'] },
       { key: 'parentMessageId', type: 'key', attributes: ['parentMessageId'] },
       { key: 'conversationId_role', type: 'key', attributes: ['conversationId', 'role'] },
       { key: 'conversationId_createdAt', type: 'key', attributes: ['conversationId', '$createdAt'] },
       { key: 'blogId_conversationId', type: 'key', attributes: ['blogId', 'conversationId'] },
+      { key: 'revisionId_blogId', type: 'key', attributes: ['revisionId', 'blogId'] },
     ],
   },
   comments: {
