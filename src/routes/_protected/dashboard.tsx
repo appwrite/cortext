@@ -757,15 +757,7 @@ function ArticleEditor({ articleId, userId, user, onBack }: { articleId: string;
 
     // Debug latest revision data
     useEffect(() => {
-        console.log('🔍 Latest revision data:', {
-            latestRevisionId: latestRevision?.$id,
-            latestRevisionVersion: latestRevision?.version,
-            formDataRevisionId: latestFormData?.activeRevisionId,
-            formDataTitle: latestFormData?.title,
-            formDataSubtitle: latestFormData?.subtitle,
-            formDataBodyLength: latestFormData?.body?.length,
-            isLoadingRevision
-        })
+        // Debug information removed for production
     }, [latestRevision, latestFormData, isLoadingRevision])
 
     // User preferences for hide comments
@@ -1203,44 +1195,16 @@ function ArticleEditor({ articleId, userId, user, onBack }: { articleId: string;
     
     // Load sections from server data (but skip if we've recovered from backup)
     useEffect(() => {
-        console.log('🔄 Sections loading effect triggered:', {
-            hasLatestFormData: !!latestFormData?.body,
-            hasRecoveredFromBackup,
-            shouldLoad: latestFormData?.body && !hasRecoveredFromBackup,
-            revisionId: latestFormData?.activeRevisionId,
-            lastProcessedRevisionId,
-            bodyLength: latestFormData?.body?.length
-        })
-        
         // Allow updates if this is a new revision (revision ID changed)
         const isNewRevision = latestFormData?.activeRevisionId && latestFormData.activeRevisionId !== lastProcessedRevisionId
-        
-        console.log('🔍 Sections revision check:', {
-            currentRevisionId: latestFormData?.activeRevisionId,
-            lastProcessedRevisionId,
-            isNewRevision,
-            hasRecoveredFromBackup,
-            willUpdate: latestFormData?.body && (!hasRecoveredFromBackup || isNewRevision)
-        })
         
         if (latestFormData?.body && (!hasRecoveredFromBackup || isNewRevision || !isDataLoaded)) {
             try {
                 const sections = JSON.parse(latestFormData.body)
                 const parsedSections = Array.isArray(sections) ? sections : []
-                console.log('📥 Loading sections from server:', {
-                    sectionsCount: parsedSections.length,
-                    sections: parsedSections,
-                    isNewRevision,
-                    firstSectionTitle: parsedSections[0]?.content?.substring(0, 50)
-                })
                 
-                // Alert when loading a new revision
+                // Clear backup data when loading a new revision to prevent interference
                 if (isNewRevision) {
-                    const revisionVersion = latestFormData && '_revisionVersion' in latestFormData ? (latestFormData as any)._revisionVersion : latestRevision?.version || 'Unknown'
-                    window.alert(`🔄 Form loaded with NEW REVISION!\n\nRevision Version: ${revisionVersion}\nRevision ID: ${latestFormData?.activeRevisionId}\nSections Count: ${parsedSections.length}`)
-                    
-                    // Clear backup data when loading a new revision to prevent interference
-                    console.log('🧹 Clearing backup data for new revision')
                     removeBackup(articleId)
                     setHasRecoveredFromBackup(false)
                 }
@@ -1256,19 +1220,11 @@ function ArticleEditor({ articleId, userId, user, onBack }: { articleId: string;
                     setLastProcessedRevisionId(latestFormData.activeRevisionId)
                 }
             } catch (error) {
-                console.log('❌ Failed to parse server sections:', error)
                 setLocalSections([])
                 setInitialSections([])
             }
             // Mark data as loaded after sections are loaded
             setIsDataLoaded(true)
-        } else {
-            console.log('⏭️ Skipping sections update:', {
-                hasLatestFormData: !!latestFormData?.body,
-                hasRecoveredFromBackup,
-                isNewRevision,
-                reason: !latestFormData?.body ? 'No body data' : hasRecoveredFromBackup && !isNewRevision ? 'Recovered from backup and not new revision' : 'Unknown'
-            })
         }
     }, [latestFormData?.$id, latestFormData?.body, latestFormData?.$updatedAt, latestFormData?.activeRevisionId, hasRecoveredFromBackup, lastProcessedRevisionId, isDataLoaded]) // Update when revision ID changes
 
@@ -1923,11 +1879,9 @@ function ArticleEditor({ articleId, userId, user, onBack }: { articleId: string;
     }
 
     const handleRevertToRevision = async (revisionId: string) => {
-        console.log('handleRevertToRevision called with:', revisionId)
         try {
             setIsReverting(true)
             isRevertingRef.current = true
-            console.log('Starting revert process...')
             
             // Get the revision data
             const revision = await db.revisions.get(revisionId)
@@ -1967,12 +1921,10 @@ function ArticleEditor({ articleId, userId, user, onBack }: { articleId: string;
                 currentTeam?.$id,
                 `Reverted to version ${revision.version}`
             )
-            console.log('New revision created:', newRevision)
             
             if (newRevision) {
                 // Don't update the article's activeRevisionId - that only happens on deploy
                 // The form will show the reverted data, but the article stays pointing to the published version
-                console.log('Revert revision created successfully')
                 
                 // Update form state with reverted data
                 setTitle(revisionAttributes.title ?? article?.title ?? '')
@@ -2121,6 +2073,7 @@ function ArticleEditor({ articleId, userId, user, onBack }: { articleId: string;
                 articleId={articleId}
                 blogId={currentBlog?.$id}
                 onApplyAIRevision={handleApplyAIRevision}
+                debugMode={showDebug}
             />
             <div className="px-6 pt-2 pb-2 ml-0 md:ml-[18rem] lg:ml-[20rem] xl:ml-[24rem]">
                 <div className="flex items-center justify-between">
@@ -2242,9 +2195,7 @@ function ArticleEditor({ articleId, userId, user, onBack }: { articleId: string;
                             revisionTitle={`Version ${revertFormData.version} - ${revertFormData.title}`}
                             revisionDate={revertFormData.timestamp}
                             onConfirm={() => {
-                                console.log('Revert button clicked, selectedRevisionId:', selectedRevisionId)
                                 if (selectedRevisionId) {
-                                    console.log('Calling handleRevertToRevision with:', selectedRevisionId)
                                     handleRevertToRevision(selectedRevisionId)
                                 } else {
                                     console.error('No selectedRevisionId when clicking revert')
@@ -3177,6 +3128,14 @@ const TitleEditor = memo(({ section, onLocalChange, disabled = false }: { sectio
 })
 
 const QuoteEditor = memo(({ section, onLocalChange, disabled = false }: { section: any; onLocalChange: (data: Partial<any>) => void; disabled?: boolean }) => {
+    console.log('🎭 QuoteEditor rendered with section:', {
+        id: section.id,
+        type: section.type,
+        content: section.content,
+        speaker: section.speaker,
+        fullSection: section
+    })
+    
     const [quote, setQuote] = useState(section.content ?? '')
     const [speaker, setSpeaker] = useState(section.speaker ?? '')
     const onLocalChangeRef = useRef(onLocalChange)
@@ -3192,10 +3151,22 @@ const QuoteEditor = memo(({ section, onLocalChange, disabled = false }: { sectio
 
     // Sync external changes to local state (when section content changes externally)
     useEffect(() => {
+        console.log('🔄 QuoteEditor sync effect triggered:', {
+            sectionId: section.id,
+            sectionContent: section.content,
+            currentQuote: quote,
+            sectionSpeaker: section.speaker,
+            currentSpeaker: speaker,
+            contentChanged: section.content !== quote,
+            speakerChanged: section.speaker !== speaker
+        })
+        
         if (section.content !== quote) {
+            console.log('📝 Updating quote from', quote, 'to', section.content)
             setQuote(section.content ?? '')
         }
         if (section.speaker !== speaker) {
+            console.log('👤 Updating speaker from', speaker, 'to', section.speaker)
             setSpeaker(section.speaker ?? '')
         }
     }, [section.content, section.speaker])

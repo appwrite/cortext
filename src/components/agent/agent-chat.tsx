@@ -4,8 +4,9 @@ import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { Drawer, DrawerContent, DrawerHeader, DrawerTitle } from '@/components/ui/drawer'
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { MarkdownRenderer } from '@/components/ui/markdown-renderer'
-import { Brain, Sparkles, Send, MessageCircle, CornerDownLeft } from 'lucide-react'
+import { Brain, Sparkles, Send, MessageCircle, CornerDownLeft, Code } from 'lucide-react'
 import { useIsMobile } from '@/hooks/use-mobile'
 import { useConversationManager, useMessagesWithNotifications } from '@/hooks/use-conversations'
 import { ConversationSelector } from './conversation-selector'
@@ -44,6 +45,7 @@ export function AgentChat({
     articleId,
     blogId,
     onApplyAIRevision,
+    debugMode = false,
 }: {
     title: string
     subtitle: string
@@ -52,6 +54,7 @@ export function AgentChat({
     articleId: string
     blogId?: string
     onApplyAIRevision?: (revisionId: string) => void
+    debugMode?: boolean
 }) {
     const { user } = useAuth()
     const { latestRevision } = useLatestRevision(articleId)
@@ -76,6 +79,8 @@ export function AgentChat({
     const [totalTokens, setTotalTokens] = useState<number>(0)
     const [totalInputTokens, setTotalInputTokens] = useState<number>(0)
     const [totalOutputTokens, setTotalOutputTokens] = useState<number>(0)
+    const [rawMessageModalOpen, setRawMessageModalOpen] = useState<boolean>(false)
+    const [selectedMessageForRaw, setSelectedMessageForRaw] = useState<Message | null>(null)
     const isMobile = useIsMobile()
     const inputRef = useRef<HTMLTextAreaElement>(null)
     const currentConversationIdRef = useRef<string | null>(currentConversationId)
@@ -132,6 +137,12 @@ export function AgentChat({
         })
 
         return { totalCost, totalTokens, totalInputTokens, totalOutputTokens }
+    }, [])
+
+    // Handle viewing raw message data
+    const handleViewRawMessage = useCallback((message: Message) => {
+        setSelectedMessageForRaw(message)
+        setRawMessageModalOpen(true)
     }, [])
 
 
@@ -826,6 +837,22 @@ export function AgentChat({
                                         isStreaming={m.metadata?.streaming && m.metadata?.status === 'generating'} 
                                     />
                                 )}
+                                
+                                {/* Debug Mode: Purple button to view raw message */}
+                                {debugMode && (
+                                    <div className={`mt-1 ${m.role === 'assistant' ? 'ml-6' : 'flex justify-end'}`}>
+                                        <Button
+                                            variant="ghost"
+                                            size="sm"
+                                            className="h-6 px-2 text-purple-600 bg-purple-100 hover:bg-purple-200 dark:text-purple-400 dark:bg-purple-900 dark:hover:bg-purple-800 text-xs"
+                                            onClick={() => handleViewRawMessage(m)}
+                                            title="View raw message data"
+                                        >
+                                            <Code className="h-3 w-3 mr-1" />
+                                            Raw
+                                        </Button>
+                                    </div>
+                                )}
                             </div>
                         ))}
                         
@@ -1032,6 +1059,88 @@ export function AgentChat({
                 />
             </header>
             {chatContent}
+            
+            {/* Raw Message Modal */}
+            <Dialog open={rawMessageModalOpen} onOpenChange={setRawMessageModalOpen}>
+                <DialogContent className="max-w-4xl max-h-[80vh] overflow-hidden">
+                    <DialogHeader>
+                        <DialogTitle className="flex items-center gap-2">
+                            <Code className="h-4 w-4" />
+                            Raw Message Data
+                        </DialogTitle>
+                    </DialogHeader>
+                    <div className="flex flex-col h-full overflow-hidden">
+                        {selectedMessageForRaw && (
+                            <div className="space-y-4 flex-1 overflow-hidden">
+                                {/* Message Info */}
+                                <div className="grid grid-cols-2 gap-4 text-sm">
+                                    <div>
+                                        <span className="font-medium text-muted-foreground">Role:</span>
+                                        <span className="ml-2 font-mono">{selectedMessageForRaw.role}</span>
+                                    </div>
+                                    <div>
+                                        <span className="font-medium text-muted-foreground">ID:</span>
+                                        <span className="ml-2 font-mono text-xs">{selectedMessageForRaw.id}</span>
+                                    </div>
+                                    <div>
+                                        <span className="font-medium text-muted-foreground">Created:</span>
+                                        <span className="ml-2">{new Date(selectedMessageForRaw.createdAt).toLocaleString()}</span>
+                                    </div>
+                                    {selectedMessageForRaw.revisionId && (
+                                        <div>
+                                            <span className="font-medium text-muted-foreground">Revision ID:</span>
+                                            <span className="ml-2 font-mono text-xs">{selectedMessageForRaw.revisionId}</span>
+                                        </div>
+                                    )}
+                                </div>
+                                
+                                {/* Content */}
+                                <div className="space-y-2">
+                                    <h4 className="font-medium text-sm">Content:</h4>
+                                    <ScrollArea className="h-32 border rounded-md p-3 bg-muted/50">
+                                        <pre className="text-xs whitespace-pre-wrap font-mono">
+                                            {selectedMessageForRaw.content}
+                                        </pre>
+                                    </ScrollArea>
+                                </div>
+                                
+                                {/* Metadata */}
+                                {selectedMessageForRaw.metadata && (
+                                    <div className="space-y-2">
+                                        <h4 className="font-medium text-sm">Metadata:</h4>
+                                        <ScrollArea className="h-32 border rounded-md p-3 bg-muted/50">
+                                            <pre className="text-xs whitespace-pre-wrap font-mono">
+                                                {JSON.stringify(selectedMessageForRaw.metadata, null, 2)}
+                                            </pre>
+                                        </ScrollArea>
+                                    </div>
+                                )}
+                                
+                                {/* Token Info */}
+                                {(selectedMessageForRaw.tokenCount || selectedMessageForRaw.generationTimeMs) && (
+                                    <div className="space-y-2">
+                                        <h4 className="font-medium text-sm">Performance:</h4>
+                                        <div className="grid grid-cols-2 gap-4 text-sm">
+                                            {selectedMessageForRaw.tokenCount && (
+                                                <div>
+                                                    <span className="font-medium text-muted-foreground">Tokens:</span>
+                                                    <span className="ml-2">{selectedMessageForRaw.tokenCount}</span>
+                                                </div>
+                                            )}
+                                            {selectedMessageForRaw.generationTimeMs && (
+                                                <div>
+                                                    <span className="font-medium text-muted-foreground">Generation Time:</span>
+                                                    <span className="ml-2">{formatDuration(selectedMessageForRaw.generationTimeMs)}</span>
+                                                </div>
+                                            )}
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
+                        )}
+                    </div>
+                </DialogContent>
+            </Dialog>
         </aside>
     )
 }
