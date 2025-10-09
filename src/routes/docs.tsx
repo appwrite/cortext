@@ -24,7 +24,7 @@ const docsNavigation = [
         items: [
             { title: "Blocks & Content", href: "/docs/blocks", icon: Code2 },
             { title: "AI Co-author", href: "/docs/ai-coauthor", icon: Brain },
-            { title: "Team Collaboration", href: "/docs/collaboration", icon: Users },
+            { title: "Team Collab", href: "/docs/collaboration", icon: Users },
         ]
     },
     {
