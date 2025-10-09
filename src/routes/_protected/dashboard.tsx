@@ -1477,6 +1477,47 @@ function ArticleEditor({ articleId, userId, user, onBack }: { articleId: string;
                 setLastProcessedRevisionId(latestFormData.activeRevisionId)
             }
             
+            // Update the entire article to match the latest revision if it's not in publish state
+            // This ensures the article is in sync with the latest revision data
+            if (latestFormData.activeRevisionId && article && article.status !== 'publish') {
+                console.log('🔄 Updating entire article to match latest revision:', latestFormData.activeRevisionId)
+                
+                // Prepare the updated article data with all the revision data
+                const updatedArticleData = {
+                    title: latestFormData.title,
+                    subtitle: latestFormData.subtitle,
+                    trailer: latestFormData.trailer,
+                    status: latestFormData.status,
+                    live: latestFormData.live,
+                    pinned: latestFormData.pinned,
+                    redirect: latestFormData.redirect,
+                    slug: latestFormData.slug,
+                    authors: latestFormData.authors,
+                    categories: latestFormData.categories,
+                    images: latestFormData.images,
+                    blogId: latestFormData.blogId,
+                    body: latestFormData.body,
+                    activeRevisionId: latestFormData.activeRevisionId
+                }
+                
+                // Update the article directly
+                db.articles.update(articleId, updatedArticleData).then(() => {
+                    console.log('✅ Article updated to match latest revision')
+                    
+                    // Update the article cache to reflect all the changes
+                    qc.setQueryData(['article', articleId], (oldData: any) => {
+                        if (!oldData) return oldData
+                        return {
+                            ...oldData,
+                            ...updatedArticleData,
+                            $updatedAt: new Date().toISOString()
+                        }
+                    })
+                }).catch((error) => {
+                    console.error('❌ Error updating article to match revision:', error)
+                })
+            }
+            
             // Reset flag after a short delay to allow form state to settle
             setTimeout(() => {
                 isRevertingRef.current = false
