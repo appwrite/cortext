@@ -1270,7 +1270,7 @@ function ArticleEditor({ articleId, userId, user, onBack }: { articleId: string;
                 reason: !latestFormData?.body ? 'No body data' : hasRecoveredFromBackup && !isNewRevision ? 'Recovered from backup and not new revision' : 'Unknown'
             })
         }
-    }, [latestFormData?.body, latestFormData?.$updatedAt, latestFormData?.activeRevisionId, hasRecoveredFromBackup, lastProcessedRevisionId, isDataLoaded]) // Update when revision ID changes
+    }, [latestFormData?.$id, latestFormData?.body, latestFormData?.$updatedAt, latestFormData?.activeRevisionId, hasRecoveredFromBackup, lastProcessedRevisionId, isDataLoaded]) // Update when revision ID changes
 
     // Auto-save functionality with optimized debounce for faster response
     const { isAutoSaving, lastSaved, hasUnsavedChanges, showSaved, showBackupRestored, triggerAutoSave, trackInteraction, recoverFromBackup, triggerBackup, triggerBackupRestored, queueLength } = useAutoSave({
@@ -3149,6 +3149,13 @@ const TitleEditor = memo(({ section, onLocalChange, disabled = false }: { sectio
         setValue(e.target.value)
     }, [])
 
+    // Sync external changes to local state (when section content changes externally)
+    useEffect(() => {
+        if (section.content !== value) {
+            setValue(section.content ?? '')
+        }
+    }, [section.content])
+
     useEffect(() => {
         onLocalChangeRef.current({ content: value, type: 'title' })
     }, [value])
@@ -3180,6 +3187,16 @@ const QuoteEditor = memo(({ section, onLocalChange, disabled = false }: { sectio
     const handleSpeakerChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
         setSpeaker(e.target.value)
     }, [])
+
+    // Sync external changes to local state (when section content changes externally)
+    useEffect(() => {
+        if (section.content !== quote) {
+            setQuote(section.content ?? '')
+        }
+        if (section.speaker !== speaker) {
+            setSpeaker(section.speaker ?? '')
+        }
+    }, [section.content, section.speaker])
 
     useEffect(() => {
         onLocalChangeRef.current({ content: quote, speaker, type: 'quote' })
@@ -3317,6 +3334,13 @@ function VideoEditor({ section, onLocalChange, disabled = false }: { section: an
     const isValidUrl = isValidYouTubeUrl(url)
     const showError = hasUserTyped && url.length > 0 && !isValidUrl
 
+    // Sync external changes to local state (when section content changes externally)
+    useEffect(() => {
+        if (section.embedUrl !== url) {
+            setUrl(section.embedUrl ?? '')
+        }
+    }, [section.embedUrl])
+
     useEffect(() => {
         onLocalChange({ embedUrl: url })
     }, [url])
@@ -3392,6 +3416,19 @@ function MapEditor({ section, onLocalChange, disabled = false }: { section: any;
     const nlng = typeof lng === 'number' ? lng : parseFloat(lng)
     const iframe = toOSMEmbed(nlat, nlng)
 
+    // Sync external changes to local state (when section data changes externally)
+    useEffect(() => {
+        const newData = parseSectionData(section.data)
+        if (newData) {
+            if (newData.lat !== lat) {
+                setLat(newData.lat)
+            }
+            if (newData.lng !== lng) {
+                setLng(newData.lng)
+            }
+        }
+    }, [section.data])
+
     useEffect(() => {
         if (!Number.isNaN(nlat) && !Number.isNaN(nlng)) {
             onLocalChange({ data: JSON.stringify({ lat: Number(nlat), lng: Number(nlng) }) })
@@ -3441,6 +3478,13 @@ const CodeSectionEditor = memo(({ section, onLocalChange, isDragging = false, di
             setLanguage(section.language ?? 'javascript')
         }
     }, [section.data, section.language])
+
+    // Sync external changes to local state (when section content changes externally)
+    useEffect(() => {
+        if (section.content !== code) {
+            setCode(section.content ?? '')
+        }
+    }, [section.content])
 
     const handleCodeChange = useCallback((newCode: string) => {
         setCode(newCode)
