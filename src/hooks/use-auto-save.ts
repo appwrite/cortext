@@ -184,8 +184,9 @@ export function useAutoSave({
       )
 
       if (revision) {
-        // If article hasn't been published, also update the article directly
-        if (article.status !== 'published') {
+        // Only update the article directly if it's in draft status
+        // For published articles, keep the activeRevisionId unchanged to show unpublished changes
+        if (article.status !== 'publish') {
           const updatedArticleData = {
             ...currentFormData,
             activeRevisionId: revision.$id,
@@ -193,7 +194,6 @@ export function useAutoSave({
           await updateArticle.mutateAsync(updatedArticleData)
           
           // Update the article cache to reflect the new activeRevisionId
-          // This prevents the "unpublished changes" banner from showing incorrectly
           queryClient.setQueryData(['article', articleId], (oldData: any) => {
             if (!oldData) return oldData
             return {

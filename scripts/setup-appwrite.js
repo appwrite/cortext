@@ -71,7 +71,7 @@ const COLLECTIONS = {
     attributes: [
       { key: 'trailer', type: 'string', size: 512, required: false, array: false, default: null },
       { key: 'title', type: 'string', size: 1024, required: false, array: false, default: null },
-      { key: 'status', type: 'string', size: 50, required: false, array: false, default: 'unpublished' },
+      { key: 'status', type: 'string', size: 50, required: false, array: false, default: 'draft' },
       { key: 'subtitle', type: 'string', size: 2048, required: false, array: false, default: null },
       { key: 'images', type: 'string', size: 512, required: false, array: true, default: null },
       { key: 'body', type: 'string', size: 200000, required: false, array: false, default: null },

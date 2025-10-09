@@ -45,7 +45,7 @@ Your response must start with a JSON object containing the changes, then a newli
 EXAMPLES:
 - User: "Change the title to X" → You: '{"article": {"title": "X"}}\n\nUpdated the title to X.'
 - User: "Update the subtitle" → You: '{"article": {"subtitle": "New Subtitle"}}\n\nUpdated the subtitle.'
-- User: "Make it published" → You: '{"article": {"status": "published"}}\n\nStatus changed to published.'
+- User: "Make it publish" → You: '{"article": {"status": "publish"}}\n\nStatus changed to publish.'
 - User: "Add a new section" → You: '{"sections": [{"type": "text", "content": "Your new content here", "id": "new"}]}\n\nAdded new text section.'
 
 JSON STRUCTURE:
@@ -69,7 +69,7 @@ ARTICLES COLLECTION:
 - title: Article title (string, max 1024 chars) - Main headline
 - trailer: Article trailer/teaser (string, max 512 chars) - Short preview text
 - subtitle: Article subtitle/description (string, max 2048 chars) - Longer description
-- status: Article status (string, max 50 chars) - Values: 'draft', 'unpublished', 'published'
+- status: Article status (string, max 50 chars) - Values: 'draft', 'archive', 'publish'
 - live: Live status (boolean) - Whether article is publicly visible
 - pinned: Pinned status (boolean) - Whether article is pinned/featured
 - redirect: Redirect URL (string, max 500 chars) - URL to redirect to instead of article
@@ -202,7 +202,7 @@ function buildArticleContext(article, maxTokens = 150000) {
         title: article.title || 'Untitled',
         trailer: article.trailer || '',
         subtitle: article.subtitle || '',
-        status: article.status || 'unpublished',
+        status: article.status || 'draft',
         live: article.live || false,
         pinned: article.pinned || false,
         redirect: article.redirect || '',
@@ -371,7 +371,7 @@ Available article fields for JSON:
 - title: Article title (string, max 1024 chars) - Main headline
 - trailer: Article trailer/teaser (string, max 512 chars) - Short preview text
 - subtitle: Article subtitle/description (string, max 2048 chars) - Longer description
-- status: Article status (string, max 50 chars) - Values: 'draft', 'unpublished', 'published'
+- status: Article status (string, max 50 chars) - Values: 'draft', 'archive', 'publish'
 - live: Live status (boolean) - Whether article is publicly visible
 - pinned: Pinned status (boolean) - Whether article is pinned/featured
 - redirect: Redirect URL (string, max 500 chars) - URL to redirect to instead of article
@@ -412,7 +412,7 @@ CRITICAL: When updating existing content:
 MANDATORY JSON EXAMPLES:
 {"article": {"title": "New Article Title"}}
 {"article": {"subtitle": "Updated subtitle text"}}
-{"article": {"status": "published"}}
+{"article": {"status": "publish"}}
 {"article": {"authors": ["author1", "author2"]}}
 
 // Section examples:
@@ -471,7 +471,7 @@ Available article fields for JSON:
 - title: Article title (string, max 1024 chars) - Main headline
 - trailer: Article trailer/teaser (string, max 512 chars) - Short preview text
 - subtitle: Article subtitle/description (string, max 2048 chars) - Longer description
-- status: Article status (string, max 50 chars) - Values: 'draft', 'unpublished', 'published'
+- status: Article status (string, max 50 chars) - Values: 'draft', 'archive', 'publish'
 - live: Live status (boolean) - Whether article is publicly visible
 - pinned: Pinned status (boolean) - Whether article is pinned/featured
 - redirect: Redirect URL (string, max 500 chars) - URL to redirect to instead of article

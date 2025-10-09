@@ -13,7 +13,7 @@ export function UnpublishedChangesBanner({ onSave, isSaving = false }: Unpublish
         <div className="flex items-center gap-3">
           <Clock className="h-5 w-5 text-blue-600 dark:text-blue-400 flex-shrink-0" />
           <span className="text-sm font-medium text-blue-800 dark:text-blue-200">
-            You have unpublished changes. Deploy to update the article.
+            You have unreleased changes. Release to update the article.
           </span>
         </div>
         {onSave && (
@@ -24,7 +24,7 @@ export function UnpublishedChangesBanner({ onSave, isSaving = false }: Unpublish
             disabled={isSaving}
             className="ml-3 h-8 px-4 text-sm bg-blue-600 text-white hover:bg-blue-700 dark:bg-blue-600 dark:text-white dark:hover:bg-blue-700"
           >
-            {isSaving ? 'Deploying...' : 'Deploy'}
+            {isSaving ? 'Releasing...' : 'Release'}
           </Button>
         )}
       </div>

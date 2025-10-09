@@ -187,7 +187,7 @@ function EmptyArticlesState({ currentBlog, userId }: { currentBlog: any; userId:
                             const payload: Omit<Articles, keyof Models.Document> = {
                                 trailer: null,
                                 title: 'Untitled',
-                                status: 'unpublished',
+                                status: 'draft',
                                 subtitle: null,
                                 images: null,
                                 body: null,
@@ -375,9 +375,14 @@ function ArticlesList({ userId }: { userId: string }) {
                                     <Link to="/dashboard" search={{ articleId: a.$id }} className="hover:underline">
                                         {a.title || 'Untitled'}
                                     </Link>
-                                    {a.status === 'unpublished' && (
+                                    {a.status === 'draft' && (
                                         <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-white text-black border border-black/20">
                                             Draft
+                                        </span>
+                                    )}
+                                    {a.status === 'archive' && (
+                                        <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-white text-black border border-black/20">
+                                            Archive
                                         </span>
                                     )}
                                 </div>
@@ -402,7 +407,7 @@ function ArticlesList({ userId }: { userId: string }) {
                       const payload: Omit<Articles, keyof Models.Document> = {
                         trailer: null,
                         title: 'Untitled',
-                        status: 'unpublished',
+                        status: 'draft',
                         subtitle: null,
                         images: null,
                         body: null,
@@ -461,7 +466,7 @@ function ArticlesList({ userId }: { userId: string }) {
                                 const payload: Omit<Articles, keyof Models.Document> = {
                                     trailer: null,
                                     title: 'Untitled',
-                                    status: 'unpublished',
+                                    status: 'draft',
                                     subtitle: null,
                                     images: null,
                                     body: null,
@@ -601,7 +606,7 @@ function CreateArticleView({ userId, onDone, onCancel }: { userId: string; onDon
             const payload: Omit<Articles, keyof Models.Document> = {
                 trailer: trailer.trim() || null,
                 title: title.trim() || 'Untitled',
-                status: 'unpublished',
+                status: 'draft',
                 subtitle: null,
                 images: null,
                 body: null,
@@ -706,6 +711,7 @@ function ArticleEditor({ articleId, userId, user, onBack }: { articleId: string;
     const { currentBlog, currentTeam } = useTeamBlogContext()
     const [isMenuOpen, setIsMenuOpen] = useState(false)
     const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
+    const [showReleaseConfirm, setShowReleaseConfirm] = useState(false)
     const menuRef = useRef<HTMLDivElement>(null)
 
     // Close menu when clicking outside
@@ -988,7 +994,7 @@ function ArticleEditor({ articleId, userId, user, onBack }: { articleId: string;
             const duplicateData: Omit<Articles, keyof Models.Document> = {
                 trailer: current.trailer,
                 title: `${current.title} (Copy)`,
-                status: 'unpublished', // Always create as unpublished
+                status: 'draft', // Always create as draft
                 subtitle: current.subtitle,
                 images: current.images,
                 body: current.body, // Copy all sections
@@ -1193,7 +1199,7 @@ function ArticleEditor({ articleId, userId, user, onBack }: { articleId: string;
     const [redirect, setRedirect] = useState('')
     const [authors, setAuthors] = useState<string[]>([])
     const [categories, setCategories] = useState<string[]>([])
-    const [status, setStatus] = useState('unpublished')
+    const [status, setStatus] = useState('draft')
     const [saving, setSaving] = useState(false)
     const { isDebugMode: showDebug, setDebugMode: setShowDebug, toggleDebugMode } = useDebugMode()
     const [bannerWasVisible, setBannerWasVisible] = useState(false)
@@ -1458,7 +1464,7 @@ function ArticleEditor({ articleId, userId, user, onBack }: { articleId: string;
             setRedirect(latestFormData.redirect ?? '')
             setAuthors(latestFormData.authors ?? [])
             setCategories(latestFormData.categories ?? [])
-            setStatus(latestFormData.status ?? 'unpublished')
+            setStatus(latestFormData.status ?? 'draft')
             
             console.log('✅ Form state updated with:', {
                 title: latestFormData.title,
@@ -1599,7 +1605,7 @@ function ArticleEditor({ articleId, userId, user, onBack }: { articleId: string;
                     authors: latestFormData.authors ?? [],
                     categories: latestFormData.categories ?? [],
                     body: latestFormData.body ?? '[]',
-                    status: latestFormData.status ?? 'unpublished',
+                    status: latestFormData.status ?? 'draft',
                     pinned: latestFormData.pinned ?? false,
                     images: latestFormData.images ?? null,
                     blogId: latestFormData.blogId ?? null,
@@ -1638,7 +1644,7 @@ function ArticleEditor({ articleId, userId, user, onBack }: { articleId: string;
                 authors: latestFormData.authors ?? [],
                 categories: latestFormData.categories ?? [],
                 body: latestFormData.body ?? '[]',
-                status: latestFormData.status ?? 'unpublished',
+                status: latestFormData.status ?? 'draft',
                 pinned: latestFormData.pinned ?? false,
                 images: latestFormData.images ?? null,
                 blogId: latestFormData.blogId ?? null,
@@ -1716,7 +1722,7 @@ function ArticleEditor({ articleId, userId, user, onBack }: { articleId: string;
                 authors: backupData.authors || [],
                 categories: backupData.categories || [],
                 body: backupData.body || '[]',
-                status: backupData.status || 'unpublished',
+                status: backupData.status || 'draft',
                 pinned: article?.pinned || false,
                 images: article?.images || null,
                 blogId: article?.blogId || null,
@@ -1741,7 +1747,7 @@ function ArticleEditor({ articleId, userId, user, onBack }: { articleId: string;
                     authors: backupData.authors || [],
                     categories: backupData.categories || [],
                     body: backupData.body || '[]',
-                    status: backupData.status || 'unpublished',
+                    status: backupData.status || 'draft',
                     pinned: article?.pinned || false,
                     images: article?.images || null,
                     blogId: article?.blogId || null,
@@ -1773,9 +1779,18 @@ function ArticleEditor({ articleId, userId, user, onBack }: { articleId: string;
 
 
 
-    const handleDeploy = async () => {
+    const handleDeploy = () => {
+        // Show confirmation dialog first
+        setShowReleaseConfirm(true)
+    }
+
+    const confirmRelease = async () => {
         try {
             setSaving(true)
+            setShowReleaseConfirm(false)
+            
+            // Update status to publish before releasing
+            setStatus('publish')
             
             // First, save current changes as a revision
             const currentFormData = {
@@ -1788,7 +1803,7 @@ function ArticleEditor({ articleId, userId, user, onBack }: { articleId: string;
                 authors,
                 categories,
                 body: JSON.stringify(localSections),
-                status: status,
+                status: 'publish', // Use publish status
                 pinned: article?.pinned || false,
                 images: article?.images || null,
                 blogId: article?.blogId || null,
@@ -1815,13 +1830,13 @@ function ArticleEditor({ articleId, userId, user, onBack }: { articleId: string;
                     authors,
                     categories,
                     body: JSON.stringify(localSections),
-                    status: status,
+                    status: 'publish', // Use publish status
                     activeRevisionId: revision.$id
                 })
                 
                 // Mark the revision as deployed
                 await db.revisions.update(revision.$id, { 
-                    status: 'published'
+                    status: 'publish'
                 })
                 
                 // Invalidate queries to refresh the data
@@ -1829,14 +1844,14 @@ function ArticleEditor({ articleId, userId, user, onBack }: { articleId: string;
                 qc.invalidateQueries({ queryKey: ['latest-revision', articleId] })
                 qc.invalidateQueries({ queryKey: ['revisions', articleId] })
                 
-                toast({ title: 'Article deployed successfully' })
+                toast({ title: 'Article released successfully' })
             } else {
-                toast({ title: 'No changes to deploy' })
+                toast({ title: 'No changes to release' })
             }
         } catch (e) {
-            console.error('Deploy error:', e)
+            console.error('Release error:', e)
             toast({ 
-                title: 'Failed to deploy article', 
+                title: 'Failed to release article', 
                 description: e instanceof Error ? e.message : 'Unknown error',
                 variant: 'destructive'
             })
@@ -2542,32 +2557,25 @@ function ArticleEditor({ articleId, userId, user, onBack }: { articleId: string;
                             <SelectTrigger>
                                 <div className="flex items-center gap-2">
                                     <div className={`w-3 h-3 rounded-full ${
-                                        status === 'unpublished' ? 'bg-gray-400' :
-                                        status === 'published' ? 'bg-green-500' :
+                                        status === 'unpublish' ? 'bg-gray-400' :
+                                        status === 'publish' ? 'bg-green-500' :
                                         status === 'draft' ? 'bg-blue-500' :
-                                        status === 'archived' ? 'bg-orange-500' :
+                                        status === 'archive' ? 'bg-orange-500' :
                                         'bg-gray-300'
                                     }`} />
                                     <span className="text-sm">
-                                        {status === 'unpublished' ? 'Unpublished' :
-                                         status === 'published' ? 'Published' :
+                                        {status === 'publish' ? 'Publish' :
                                          status === 'draft' ? 'Draft' :
-                                         status === 'archived' ? 'Archived' :
+                                         status === 'archived' ? 'Archive' :
                                          'Select status'}
                                     </span>
                                 </div>
                             </SelectTrigger>
                             <SelectContent>
-                                <SelectItem value="unpublished">
-                                    <div className="flex items-center gap-2">
-                                        <div className="w-3 h-3 rounded-full bg-gray-400" />
-                                        <span>Unpublished</span>
-                                    </div>
-                                </SelectItem>
-                                <SelectItem value="published">
+                                <SelectItem value="publish">
                                     <div className="flex items-center gap-2">
                                         <div className="w-3 h-3 rounded-full bg-green-500" />
-                                        <span>Deployed</span>
+                                        <span>Publish</span>
                                     </div>
                                 </SelectItem>
                                 <SelectItem value="draft">
@@ -2576,10 +2584,10 @@ function ArticleEditor({ articleId, userId, user, onBack }: { articleId: string;
                                         <span>Draft</span>
                                     </div>
                                 </SelectItem>
-                                <SelectItem value="archived">
+                                <SelectItem value="archive">
                                     <div className="flex items-center gap-2">
                                         <div className="w-3 h-3 rounded-full bg-orange-500" />
-                                        <span>Archived</span>
+                                        <span>Archive</span>
                                     </div>
                                 </SelectItem>
                             </SelectContent>
@@ -2860,7 +2868,7 @@ function ArticleEditor({ articleId, userId, user, onBack }: { articleId: string;
                                 onClick={handleDeploy}
                                 disabled={saving || isInRevertMode}
                             >
-                                {saving ? 'Deploying...' : 'Deploy'}
+                                {saving ? 'Releasing...' : 'Release'}
                             </Button>
                         </div>
                     </div>
@@ -2900,6 +2908,40 @@ function ArticleEditor({ articleId, userId, user, onBack }: { articleId: string;
                                 </>
                             ) : (
                                 'Yes, Delete Article'
+                            )}
+                        </AlertDialogAction>
+                    </AlertDialogFooter>
+                </AlertDialogContent>
+            </AlertDialog>
+
+            {/* Release Confirmation Dialog */}
+            <AlertDialog open={showReleaseConfirm} onOpenChange={setShowReleaseConfirm}>
+                <AlertDialogContent className="max-w-md">
+                    <AlertDialogHeader>
+                        <AlertDialogTitle className="text-left">
+                            Release Article
+                        </AlertDialogTitle>
+                        <AlertDialogDescription className="text-left">
+                            Are you sure you want to release <strong>"{title || 'Untitled'}"</strong>? 
+                            This will update the article status to "Publish" and make it live to your audience.
+                        </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter className="gap-2 sm:gap-0">
+                        <AlertDialogCancel className="order-2 sm:order-1">
+                            Cancel
+                        </AlertDialogCancel>
+                        <AlertDialogAction
+                            onClick={confirmRelease}
+                            className="order-1 sm:order-2 bg-green-600 text-white hover:bg-green-700 focus:ring-green-500 cursor-pointer"
+                            disabled={saving}
+                        >
+                            {saving ? (
+                                <>
+                                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                                    Releasing...
+                                </>
+                            ) : (
+                                'Yes, Release Article'
                             )}
                         </AlertDialogAction>
                     </AlertDialogFooter>
