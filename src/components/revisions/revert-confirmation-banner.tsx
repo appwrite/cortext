@@ -18,15 +18,15 @@ export function RevertConfirmationBanner({
   isReverting = false
 }: RevertConfirmationBannerProps) {
   return (
-    <div className="bg-red-50 dark:bg-red-950/30 rounded-md px-3 py-2">
+    <div className="bg-red-50/90 dark:bg-red-950/50 backdrop-blur-sm rounded-lg px-4 py-3">
       <div className="flex items-start justify-between">
-        <div className="flex items-start gap-2">
-          <History className="h-4 w-4 text-red-600 dark:text-red-400 flex-shrink-0 mt-0.5" />
+        <div className="flex items-start gap-3">
+          <History className="h-5 w-5 text-red-600 dark:text-red-400 flex-shrink-0 mt-0.5" />
           <div className="text-sm">
-            <span className="text-red-800 dark:text-red-200 font-medium">
+            <span className="text-red-800 dark:text-red-200 font-semibold">
               Reverting to revision:
             </span>
-            <div className="text-red-700 dark:text-red-300 text-xs mt-0.5">
+            <div className="text-red-700 dark:text-red-300 text-xs mt-1 font-medium">
               {revisionTitle} • {formatDateRelative(revisionDate)}
             </div>
           </div>
@@ -37,7 +37,7 @@ export function RevertConfirmationBanner({
             variant="ghost"
             onClick={onCancel}
             disabled={isReverting}
-            className="h-7 px-3 text-xs text-red-700 hover:bg-red-100 dark:text-red-300 dark:hover:bg-red-900/20"
+            className="h-8 px-4 text-sm text-red-700 hover:bg-red-100 dark:text-red-300 dark:hover:bg-red-900/20"
           >
             Cancel
           </Button>
@@ -46,7 +46,7 @@ export function RevertConfirmationBanner({
             variant="ghost"
             onClick={onConfirm}
             disabled={isReverting}
-            className="h-7 px-3 text-xs bg-red-600 text-white hover:bg-red-700 dark:bg-red-600 dark:hover:bg-red-700"
+            className="h-8 px-4 text-sm bg-red-600 text-white hover:bg-red-700 dark:bg-red-600 dark:hover:bg-red-700"
           >
             {isReverting ? 'Reverting...' : 'Revert'}
           </Button>

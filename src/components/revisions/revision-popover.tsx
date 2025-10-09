@@ -226,8 +226,6 @@ export function RevisionPopover({
                           onSelectRevision(revision.$id)
                         }
                         setIsOpen(false)
-                        // Scroll to top when revision is selected
-                        onScrollToTop?.()
                       }}
                     >
                       <div className="flex-1 min-w-0">

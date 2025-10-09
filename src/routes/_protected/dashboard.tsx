@@ -2000,9 +2000,6 @@ function ArticleEditor({ articleId, userId, user, onBack }: { articleId: string;
                 
                 console.log('Revert completed successfully')
                 toast({ title: `Reverted to version ${revision.version}` })
-                
-                // Scroll to top after successful revert
-                scrollToTop()
             } else {
                 console.error('Failed to create new revision')
             }
@@ -2221,6 +2218,45 @@ function ArticleEditor({ articleId, userId, user, onBack }: { articleId: string;
                     </div>
                 </div>
             </div>
+
+            {/* Sticky banners at the top */}
+            <div className="sticky top-16 z-10 px-6 py-3 ml-0 md:ml-[18rem] lg:ml-[20rem] xl:ml-[24rem]">
+                {/* Unpublished changes banner */}
+                {!isInRevertMode && (
+                    <div className={`transition-all duration-500 ease-out ${
+                        ((hasUnpublishedChanges && !saving) || (bannerWasVisible && saving)) 
+                            ? 'opacity-100 translate-y-0 mb-3' 
+                            : 'opacity-0 -translate-y-2 h-0 mb-0 overflow-hidden'
+                    }`}>
+                        <UnpublishedChangesBanner 
+                            onSave={handleDeploy}
+                            isSaving={saving}
+                        />
+                    </div>
+                )}
+
+                {/* Revert confirmation banner */}
+                {showRevertConfirmation && revertFormData && (
+                    <div className="mb-3 transition-all duration-500 ease-out">
+                        <RevertConfirmationBanner
+                            revisionTitle={`Version ${revertFormData.version} - ${revertFormData.title}`}
+                            revisionDate={revertFormData.timestamp}
+                            onConfirm={() => {
+                                console.log('Revert button clicked, selectedRevisionId:', selectedRevisionId)
+                                if (selectedRevisionId) {
+                                    console.log('Calling handleRevertToRevision with:', selectedRevisionId)
+                                    handleRevertToRevision(selectedRevisionId)
+                                } else {
+                                    console.error('No selectedRevisionId when clicking revert')
+                                }
+                            }}
+                            onCancel={handleCancelRevert}
+                            isReverting={isReverting}
+                        />
+                    </div>
+                )}
+            </div>
+
             <div className="flex justify-center px-6 py-6 pb-24 ml-0 md:ml-[18rem] lg:ml-[20rem] xl:ml-[24rem]">
                 <div className="w-full max-w-3xl space-y-8">
 
@@ -2614,40 +2650,6 @@ function ArticleEditor({ articleId, userId, user, onBack }: { articleId: string;
                     </div>
                 )}
 
-                {/* Unpublished changes banner */}
-                {!isInRevertMode && (
-                    <div className={`mb-6 transition-all duration-500 ease-out ${
-                        ((hasUnpublishedChanges && !saving) || (bannerWasVisible && saving)) 
-                            ? 'opacity-100 translate-y-0' 
-                            : 'opacity-0 -translate-y-2 h-0 mb-0 overflow-hidden'
-                    }`}>
-                        <UnpublishedChangesBanner 
-                            onSave={handleDeploy}
-                            isSaving={saving}
-                        />
-                    </div>
-                )}
-
-                {/* Revert confirmation banner */}
-                {showRevertConfirmation && revertFormData && (
-                    <div className="mb-6 transition-all duration-500 ease-out">
-                        <RevertConfirmationBanner
-                            revisionTitle={`Version ${revertFormData.version} - ${revertFormData.title}`}
-                            revisionDate={revertFormData.timestamp}
-                            onConfirm={() => {
-                                console.log('Revert button clicked, selectedRevisionId:', selectedRevisionId)
-                                if (selectedRevisionId) {
-                                    console.log('Calling handleRevertToRevision with:', selectedRevisionId)
-                                    handleRevertToRevision(selectedRevisionId)
-                                } else {
-                                    console.error('No selectedRevisionId when clicking revert')
-                                }
-                            }}
-                            onCancel={handleCancelRevert}
-                            isReverting={isReverting}
-                        />
-                    </div>
-                )}
 
 
                 {/* Article meta form */}
