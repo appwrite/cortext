@@ -8,6 +8,7 @@ import { Mastra, OpenAICompatibleModel } from '@mastra/core';
  * - Uses server SDK with dynamic API key for all database write operations
  * - This provides better security by separating authentication from data operations
  * - Dynamic API key allows fine-grained permissions for server-side operations
+ * 
  */
 
 // Initialize Appwrite client for JWT authentication
