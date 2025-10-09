@@ -81,7 +81,7 @@ Key guidelines:
 Context: You're assisting with professional blog content creation and editing.`;
 
 // Token-cache friendly article context builder
-function buildArticleContext(article, maxTokens = 4000) {
+function buildArticleContext(article, maxTokens = 20000) {
     if (!article) return '';
     
     const context = {
@@ -105,7 +105,7 @@ function buildArticleContext(article, maxTokens = 4000) {
             const sections = JSON.parse(article.body);
             context.sections = sections.map(section => ({
                 type: section.type,
-                content: section.content ? section.content.substring(0, 300) : '', // Reduced to 300 chars to fit more sections
+                content: section.content ? section.content.substring(0, 150) : '', // Further reduced to 150 chars to fit ALL sections
                 id: section.id
             }));
         } catch (e) {
@@ -130,23 +130,37 @@ function buildArticleContext(article, maxTokens = 4000) {
     if (context.images.length > 0) contextStr += `Images: ${context.images.length} image(s)\n`;
     
     if (context.sections.length > 0) {
-        contextStr += `Sections:\n`;
+        // First, show ALL section IDs and types for reference
+        contextStr += `ALL SECTIONS (${context.sections.length} total):\n`;
+        context.sections.forEach((section, i) => {
+            contextStr += `${i + 1}. ${section.type} - ID: ${section.id}\n`;
+        });
+        
+        // Then show detailed content for each section
+        contextStr += `\nDETAILED SECTION CONTENT:\n`;
         context.sections.forEach((section, i) => {
             contextStr += `${i + 1}. ${section.type} (ID: ${section.id}): ${section.content}\n`;
         });
-        
-        // If we have many sections, also provide a summary of all section types and IDs
-        if (context.sections.length > 10) {
-            contextStr += `\nAll Section IDs for reference:\n`;
-            context.sections.forEach((section, i) => {
-                contextStr += `${i + 1}. ${section.type} - ID: ${section.id}\n`;
-            });
-        }
     }
     
-    // Truncate if too long
+    // Truncate if too long - but prioritize showing all section IDs
     if (contextStr.length > maxTokens) {
-        contextStr = contextStr.substring(0, maxTokens - 50) + '...';
+        // If we're over the limit, try a more aggressive approach
+        // First, build a minimal context with just section IDs
+        let minimalContext = `Article: "${context.title}"\n`;
+        if (context.sections.length > 0) {
+            minimalContext += `ALL SECTIONS (${context.sections.length} total):\n`;
+            context.sections.forEach((section, i) => {
+                minimalContext += `${i + 1}. ${section.type} - ID: ${section.id}\n`;
+            });
+        }
+        
+        // If even the minimal context is too long, truncate it
+        if (minimalContext.length > maxTokens) {
+            contextStr = minimalContext.substring(0, maxTokens - 50) + '...';
+        } else {
+            contextStr = minimalContext;
+        }
     }
     
     return contextStr;
@@ -186,11 +200,12 @@ Available section types for JSON:
 IMPORTANT: When deleting or updating sections, you MUST use the exact section IDs provided in the context above. Do not make up or guess section IDs.
 
 For deletion requests:
-1. Look through the sections list in the context to find sections that match the user's request
-2. Search for keywords like "FAQ", "Q:", "A:", "question", "answer" to identify FAQ sections
+1. Look through ALL sections in the context to find sections that match the user's request
+2. Search for keywords like "FAQ", "Q:", "A:", "question", "answer", "English" to identify FAQ sections
 3. Use the exact section IDs shown in the context (format: "ID: xxxxx")
-4. If you can't identify the specific sections, ask the user to clarify which sections they want to delete
+4. If you can't identify the specific sections from the visible content, ask the user to provide the section numbers or IDs
 5. Always provide the JSON with the correct section IDs for deletion
+6. IMPORTANT: If you see "t..." or truncated content, it means there are more sections - ask the user to specify which sections to delete
 
 MANDATORY JSON EXAMPLES:
 {"article": {"title": "New Article Title"}}
