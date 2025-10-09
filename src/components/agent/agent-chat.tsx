@@ -807,6 +807,18 @@ export function AgentChat({
                                     </div>
                                 </div>
                                 
+                                {/* Debug Mode: Show revision ID for each message */}
+                                {showDebugPanel && m.revisionId && (
+                                    <div className={`mt-1 ${m.role === 'assistant' ? 'ml-6' : 'flex justify-end'}`}>
+                                        <div className="inline-flex items-center gap-1 px-2 py-1 bg-purple-100 dark:bg-purple-900 rounded-md text-xs">
+                                            <span className="text-purple-700 dark:text-purple-300 font-medium">Revision:</span>
+                                            <span className="text-purple-600 dark:text-purple-400 font-mono">
+                                                {m.revisionId}
+                                            </span>
+                                        </div>
+                                    </div>
+                                )}
+                                
                                 {/* Show change indicators for assistant messages */}
                                 {m.role === 'assistant' && (
                                     <AIChangeIndicators 

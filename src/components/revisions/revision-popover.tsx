@@ -340,6 +340,9 @@ export function RevisionPopover({
             <DialogTitle className="text-purple-800 dark:text-purple-200">
               Revision JSON Data - Version {selectedRevisionForJson?.version}
             </DialogTitle>
+            <div className="text-sm text-purple-600 dark:text-purple-400 font-mono">
+              ID: {selectedRevisionForJson?.$id}
+            </div>
           </DialogHeader>
           <div className="flex-1 overflow-hidden">
             <ScrollArea className="h-[60vh] w-full">
