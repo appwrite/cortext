@@ -866,6 +866,7 @@ export default async function ({ req, res, log, error }) {
               });
               
               addDebugLog(`Updated article activeRevisionId to ${newRevisionId}`);
+              addDebugLog(`New revision ID to be saved in message: ${newRevisionId}`);
             } else {
               addDebugLog('No JSON found in LLM response, skipping revision creation');
             }
@@ -876,13 +877,14 @@ export default async function ({ req, res, log, error }) {
         }
 
         // Final update with complete content, revision ID, and truncated debug logs
+        addDebugLog(`Final message update - revisionId: ${newRevisionId}`);
         await serverDatabases.updateDocument(
           databaseId,
           'messages',
           initialMessage.$id,
           {
             content: fullContent,
-            revisionId: newRevisionId,
+            revisionId: newRevisionId, // This will be null if no revision was created
             generationTimeMs: generationTimeMs,
             metadata: createMetadata({
               model: 'gpt-5',
@@ -894,11 +896,11 @@ export default async function ({ req, res, log, error }) {
               tokensUsed: fullContent.length,
               completedAt: new Date().toISOString(),
               generationTimeMs: generationTimeMs,
-              cached: true,
-              newRevisionId: newRevisionId
+              cached: true
             }, 10, 80)
           }
         );
+        addDebugLog(`Message updated with revisionId: ${newRevisionId}`);
 
         log(`Streaming completed. Final content length: ${fullContent.length}, chunks: ${chunkCount}`);
 
