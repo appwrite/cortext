@@ -546,6 +546,31 @@ export default async function ({ req, res, log, error }) {
         let streamCompleted = false;
         let lastChunkTime = Date.now();
         let inactivityTimeout;
+        
+        // Cost tracking variables
+        let inputTokens = 0;
+        let outputTokens = 0;
+        let totalTokens = 0;
+        let estimatedCost = 0;
+        
+        // Function to calculate cost based on token usage
+        const calculateCost = (inputTokens, outputTokens) => {
+          // GPT-5 pricing (as of 2024, these are estimated rates)
+          const INPUT_COST_PER_1K_TOKENS = 0.005; // $0.005 per 1K input tokens
+          const OUTPUT_COST_PER_1K_TOKENS = 0.015; // $0.015 per 1K output tokens
+          
+          const inputCost = (inputTokens / 1000) * INPUT_COST_PER_1K_TOKENS;
+          const outputCost = (outputTokens / 1000) * OUTPUT_COST_PER_1K_TOKENS;
+          
+          return {
+            inputCost: inputCost,
+            outputCost: outputCost,
+            totalCost: inputCost + outputCost,
+            inputTokens: inputTokens,
+            outputTokens: outputTokens,
+            totalTokens: inputTokens + outputTokens
+          };
+        };
 
         // Set a timeout for the streaming operation (5 minutes total)
         // This is generous enough for complex content generation
@@ -699,6 +724,20 @@ export default async function ({ req, res, log, error }) {
               break;
             } else if (chunk.type === 'finish') {
               addDebugLog('Stream finished normally - waiting for final content');
+              
+              // Extract usage information if available
+              if (chunk.usage) {
+                inputTokens = chunk.usage.inputTokens || 0;
+                outputTokens = chunk.usage.outputTokens || 0;
+                totalTokens = chunk.usage.totalTokens || (inputTokens + outputTokens);
+                
+                const costInfo = calculateCost(inputTokens, outputTokens);
+                estimatedCost = costInfo.totalCost;
+                
+                addDebugLog(`Token usage - Input: ${inputTokens}, Output: ${outputTokens}, Total: ${totalTokens}`);
+                addDebugLog(`Estimated cost - Input: $${costInfo.inputCost.toFixed(6)}, Output: $${costInfo.outputCost.toFixed(6)}, Total: $${costInfo.totalCost.toFixed(6)}`);
+              }
+              
               // Don't break immediately, wait for potential final content
               // Set a short timeout to allow for final content
               setTimeout(() => {
@@ -741,6 +780,23 @@ export default async function ({ req, res, log, error }) {
         // Calculate total generation time
         const generationTimeMs = Date.now() - generationStartTime;
         addDebugLog(`Total generation time: ${generationTimeMs}ms`);
+        
+        // If no usage information was provided, estimate based on content length
+        if (totalTokens === 0) {
+          // Rough estimation: 1 token ≈ 4 characters for English text
+          const estimatedInputTokens = Math.ceil(JSON.stringify(messagesWithSystem).length / 4);
+          const estimatedOutputTokens = Math.ceil(fullContent.length / 4);
+          
+          inputTokens = estimatedInputTokens;
+          outputTokens = estimatedOutputTokens;
+          totalTokens = inputTokens + outputTokens;
+          
+          const costInfo = calculateCost(inputTokens, outputTokens);
+          estimatedCost = costInfo.totalCost;
+          
+          addDebugLog(`Estimated token usage (no usage data) - Input: ${inputTokens}, Output: ${outputTokens}, Total: ${totalTokens}`);
+          addDebugLog(`Estimated cost - Input: $${costInfo.inputCost.toFixed(6)}, Output: $${costInfo.outputCost.toFixed(6)}, Total: $${costInfo.totalCost.toFixed(6)}`);
+        }
 
         // Add a small delay to ensure all content is processed
         await new Promise(resolve => setTimeout(resolve, 500));
@@ -963,13 +1019,25 @@ export default async function ({ req, res, log, error }) {
               tokensUsed: fullContent.length,
               completedAt: new Date().toISOString(),
               generationTimeMs: generationTimeMs,
-              cached: true
+              cached: true,
+              // Cost information
+              inputTokens: inputTokens,
+              outputTokens: outputTokens,
+              totalTokens: totalTokens,
+              estimatedCost: estimatedCost,
+              costBreakdown: {
+                inputCost: (inputTokens / 1000) * 0.005,
+                outputCost: (outputTokens / 1000) * 0.015,
+                totalCost: estimatedCost
+              }
             }, 10, 80)
           }
         );
         addDebugLog(`Message updated with revisionId: ${newRevisionId}`);
+        addDebugLog(`Final cost summary - Input: ${inputTokens} tokens ($${((inputTokens / 1000) * 0.005).toFixed(6)}), Output: ${outputTokens} tokens ($${((outputTokens / 1000) * 0.015).toFixed(6)}), Total: $${estimatedCost.toFixed(6)}`);
 
         log(`Streaming completed. Final content length: ${fullContent.length}, chunks: ${chunkCount}`);
+        log(`Cost: $${estimatedCost.toFixed(6)} (${totalTokens} tokens: ${inputTokens} input + ${outputTokens} output)`);
 
         return {
           messageId: initialMessage.$id,
