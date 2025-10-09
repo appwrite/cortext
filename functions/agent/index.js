@@ -105,7 +105,7 @@ function buildArticleContext(article, maxTokens = 2000) {
             const sections = JSON.parse(article.body);
             context.sections = sections.map(section => ({
                 type: section.type,
-                content: section.content ? section.content.substring(0, 200) : '', // Truncate for token efficiency
+                content: section.content ? section.content.substring(0, 500) : '', // Increased to 500 chars for better identification
                 id: section.id
             }));
         } catch (e) {
@@ -177,6 +177,12 @@ Available section types for JSON:
 
 IMPORTANT: When deleting or updating sections, you MUST use the exact section IDs provided in the context above. Do not make up or guess section IDs.
 
+For deletion requests:
+1. Look through the sections list in the context to find sections that match the user's request
+2. Use the exact section IDs shown in the context (format: "ID: xxxxx")
+3. If you can't identify the specific sections, ask the user to clarify which sections they want to delete
+4. Always provide the JSON with the correct section IDs for deletion
+
 MANDATORY JSON EXAMPLES:
 {"article": {"title": "New Article Title"}}
 {"article": {"subtitle": "Updated subtitle text"}}
@@ -194,6 +200,7 @@ MANDATORY JSON EXAMPLES:
 {"sections": [{"type": "text", "id": "section1", "action": "move", "position": 0}]}
 {"sections": [{"type": "text", "id": "section1", "action": "move", "targetId": "section3"}]}
 {"sections": [{"type": "text", "id": "section1", "action": "delete"}]}
+{"sections": [{"type": "title", "id": "68e70f170011c30c6c1c", "action": "delete"}, {"type": "text", "id": "68e70f170011c920957d", "action": "delete"}]}
 
 // Multiple changes:
 {"article": {"title": "New Title"}, "sections": [{"type": "text", "content": "New content", "id": "new", "action": "create"}]}
