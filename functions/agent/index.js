@@ -366,7 +366,7 @@ export default async function ({ req, res, log, error }) {
     }
 
     // Function to generate streaming LLM response and update database in real-time
-    async function generateStreamingLLMResponse(messages, agentId, blogId, messageUserId, articleContext) {
+    async function generateStreamingLLMResponse(messages, agentId, blogId, messageUserId, articleContext, revisionId, articleId) {
       // Track generation start time
       const generationStartTime = Date.now();
       
@@ -712,13 +712,177 @@ export default async function ({ req, res, log, error }) {
         // Add a small delay to ensure all content is processed
         await new Promise(resolve => setTimeout(resolve, 500));
 
-        // Final update with complete content and truncated debug logs
+        // Parse LLM response for article updates and create new revision
+        let newRevisionId = null;
+        if (revisionId && articleId && fullContent) {
+          try {
+            addDebugLog('Parsing LLM response for article updates...');
+            
+            // Extract JSON from the response (look for JSON at the beginning)
+            const jsonMatch = fullContent.match(/^\{[\s\S]*?\}\n/);
+            if (jsonMatch) {
+              const jsonStr = jsonMatch[0].trim();
+              addDebugLog(`Found JSON in response: ${jsonStr.substring(0, 200)}...`);
+              
+              const updates = JSON.parse(jsonStr);
+              addDebugLog(`Parsed updates: ${JSON.stringify(updates)}`);
+              
+              // Get current article and revision
+              const currentArticle = await serverDatabases.getDocument(databaseId, 'articles', articleId);
+              const currentRevision = await serverDatabases.getDocument(databaseId, 'revisions', revisionId);
+              
+              addDebugLog(`Current article: ${currentArticle.title}`);
+              addDebugLog(`Current revision version: ${currentRevision.version}`);
+              
+              // Parse current revision data
+              const currentRevisionData = currentRevision.data ? JSON.parse(currentRevision.data) : {};
+              const currentAttributes = currentRevisionData.attributes || currentRevisionData;
+              
+              // Create updated article data
+              const updatedArticle = { ...currentArticle };
+              
+              // Apply article-level updates
+              if (updates.article) {
+                Object.keys(updates.article).forEach(key => {
+                  updatedArticle[key] = updates.article[key];
+                });
+                addDebugLog(`Applied article updates: ${JSON.stringify(updates.article)}`);
+              }
+              
+              // Apply section updates
+              if (updates.sections) {
+                let sections = currentAttributes.sections || [];
+                
+                updates.sections.forEach(update => {
+                  switch (update.action) {
+                    case 'create':
+                      const newId = update.id === 'new' ? ServerID.unique() : update.id;
+                      const newSection = {
+                        type: update.type,
+                        content: update.content,
+                        id: newId
+                      };
+                      
+                      if (update.position !== undefined) {
+                        sections.splice(update.position, 0, newSection);
+                      } else {
+                        sections.push(newSection);
+                      }
+                      addDebugLog(`Created new section: ${update.type} at position ${update.position || 'end'}`);
+                      break;
+                      
+                    case 'update':
+                      const updateIndex = sections.findIndex(s => s.id === update.id);
+                      if (updateIndex !== -1) {
+                        sections[updateIndex] = { ...sections[updateIndex], ...update };
+                        addDebugLog(`Updated section ${update.id}`);
+                      }
+                      break;
+                      
+                    case 'delete':
+                      sections = sections.filter(s => s.id !== update.id);
+                      addDebugLog(`Deleted section ${update.id}`);
+                      break;
+                      
+                    case 'move':
+                      const moveIndex = sections.findIndex(s => s.id === update.id);
+                      if (moveIndex !== -1) {
+                        const [movedSection] = sections.splice(moveIndex, 1);
+                        if (update.position !== undefined) {
+                          sections.splice(update.position, 0, movedSection);
+                        } else if (update.targetId) {
+                          const targetIndex = sections.findIndex(s => s.id === update.targetId);
+                          sections.splice(targetIndex, 0, movedSection);
+                        }
+                        addDebugLog(`Moved section ${update.id}`);
+                      }
+                      break;
+                  }
+                });
+                
+                updatedArticle.body = JSON.stringify(sections);
+                addDebugLog(`Updated sections, new count: ${sections.length}`);
+              }
+              
+              // Create new revision
+              const currentRevisions = await serverDatabases.listDocuments(
+                databaseId,
+                'revisions',
+                [
+                  ServerQuery.equal('articleId', articleId),
+                  ServerQuery.orderDesc('version'),
+                  ServerQuery.limit(1)
+                ]
+              );
+              
+              const nextVersion = currentRevisions.documents.length > 0 
+                ? currentRevisions.documents[0].version + 1 
+                : 1;
+              
+              const newRevisionData = {
+                articleId: articleId,
+                version: nextVersion,
+                status: 'draft',
+                createdBy: agentId || 'cortext-agent',
+                userId: agentId || 'cortext-agent',
+                userName: 'Cortext AI Agent',
+                userEmail: 'ai@cortext.app',
+                messageId: initialMessage.$id,
+                data: JSON.stringify({
+                  initial: false,
+                  title: updatedArticle.title,
+                  subtitle: updatedArticle.subtitle,
+                  trailer: updatedArticle.trailer,
+                  status: updatedArticle.status,
+                  live: updatedArticle.live,
+                  pinned: updatedArticle.pinned,
+                  redirect: updatedArticle.redirect,
+                  slug: updatedArticle.slug,
+                  authors: updatedArticle.authors,
+                  categories: updatedArticle.categories,
+                  images: updatedArticle.images,
+                  blogId: updatedArticle.blogId,
+                  sections: sections,
+                  changedAttributes: updates.article || {},
+                  timestamp: new Date().toISOString()
+                }),
+                changes: [`AI-generated updates via message ${initialMessage.$id}`],
+                parentRevisionId: revisionId
+              };
+              
+              const newRevision = await serverDatabases.createDocument(
+                databaseId,
+                'revisions',
+                ServerID.unique(),
+                newRevisionData
+              );
+              
+              newRevisionId = newRevision.$id;
+              addDebugLog(`Created new revision ${newRevisionId} (version ${nextVersion})`);
+              
+              // Update article's active revision ID
+              await serverDatabases.updateDocument(databaseId, 'articles', articleId, {
+                activeRevisionId: newRevisionId
+              });
+              
+              addDebugLog(`Updated article activeRevisionId to ${newRevisionId}`);
+            } else {
+              addDebugLog('No JSON found in LLM response, skipping revision creation');
+            }
+          } catch (parseError) {
+            addDebugLog(`Error parsing LLM response or creating revision: ${parseError.message}`);
+            // Continue without creating revision
+          }
+        }
+
+        // Final update with complete content, revision ID, and truncated debug logs
         await serverDatabases.updateDocument(
           databaseId,
           'messages',
           initialMessage.$id,
           {
             content: fullContent,
+            revisionId: newRevisionId,
             generationTimeMs: generationTimeMs,
             metadata: createMetadata({
               model: 'gpt-5',
@@ -730,7 +894,8 @@ export default async function ({ req, res, log, error }) {
               tokensUsed: fullContent.length,
               completedAt: new Date().toISOString(),
               generationTimeMs: generationTimeMs,
-              cached: true
+              cached: true,
+              newRevisionId: newRevisionId
             }, 10, 80)
           }
         );
@@ -767,6 +932,7 @@ export default async function ({ req, res, log, error }) {
             userId: messageUserId || null,
             agentId: agentId || 'cortext-agent',
             blogId,
+            revisionId: null, // No revision created for error cases
             generationTimeMs: generationTimeMs,
             metadata: createMetadata({
               model: 'gpt-5',
@@ -808,13 +974,23 @@ export default async function ({ req, res, log, error }) {
 
     log(`Found ${conversationMessages.total} messages in conversation`);
 
+    // Get revisionId from the latest user message
+    const latestUserMessage = conversationMessages.documents
+      .filter(msg => msg.role === 'user')
+      .pop(); // Get the last user message
+    const revisionId = latestUserMessage?.revisionId || null;
+    
+    log(`Revision ID from latest user message: ${revisionId || 'None'}`);
+
     // Generate streaming LLM response and update database in real-time
     const streamingResult = await generateStreamingLLMResponse(
       conversationMessages.documents, 
       agentId, 
       blogId, 
       messageUserId,
-      articleContext
+      articleContext,
+      revisionId,
+      articleId
     );
     
     log(`Streaming completed. Message ID: ${streamingResult.messageId}, Content length: ${streamingResult.content.length}, Chunks: ${streamingResult.chunkCount}`);
