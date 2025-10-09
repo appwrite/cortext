@@ -67,7 +67,7 @@ DATA STRUCTURE KNOWLEDGE:
 
 ARTICLES COLLECTION:
 - title: Article title (string, max 1024 chars) - Main headline
-- trailer: Article trailer/teaser (string, max 512 chars) - Short preview text
+- trailer: Article trailer/teaser (string, max 512 chars) - Short, punchy label (e.g., "Breaking news", "Exclusive", "Company announcement", "Featured", "Trending") - NOT a description or summary
 - subtitle: Article subtitle/description (string, max 2048 chars) - Longer description
 - status: Article status (string, max 50 chars) - Values: 'draft', 'archive', 'publish'
 - live: Live status (boolean) - Whether article is publicly visible
@@ -100,8 +100,9 @@ SECTION TYPES AND THEIR PROPERTIES:
 
 1. TITLE SECTION:
    - type: 'title'
-   - content: The title text (string)
-   - Properties: Simple text input for section headings
+   - content: The subheading text (string) - for H2, H3, H4, etc. within article content
+   - Properties: Simple text input for section subheadings (NOT the main article title)
+   - NOTE: Main article title is stored in the 'title' field, not in sections
 
 2. TEXT SECTION:
    - type: 'text' or 'paragraph'
@@ -164,7 +165,7 @@ RELATIONSHIPS:
 FIELD CONSTRAINTS TO REMEMBER:
 - Title: Max 1024 characters
 - Subtitle: Max 2048 characters
-- Trailer: Max 512 characters
+- Trailer: Max 512 characters - MUST be short, punchy labels like "Breaking news", "Exclusive", "Company announcement", "Featured", "Trending" - NOT descriptions or summaries
 - Slug: Max 255 characters (must be URL-friendly)
 - Redirect: Max 500 characters
 - Author/Category/Image IDs: Max 512 characters each
@@ -191,6 +192,33 @@ Key guidelines:
 - Make reasonable assumptions based on available context to provide seamless user experience
 - Respect field size limits and data constraints
 - Understand the revision system - changes create new revisions automatically
+- For trailer field: Use ONLY short, punchy labels (1-3 words) like "Breaking news", "Exclusive", "Company announcement" - NEVER use descriptive text or summaries
+
+CONTENT STRUCTURING RULES:
+- NEVER put all content in a single text section - break it down properly
+- Use 'title' sections for subheadings (H2, H3, H4, etc.) within article content - NOT the main article title
+- Use 'text' sections for paragraphs and body content
+- Use 'quote' sections for quoted text with proper speaker attribution
+- Use 'code' sections for code blocks with appropriate language specification
+- Use 'image' sections for images and visual content
+- Use 'video' sections for embedded videos
+- Use 'map' sections for location-based content
+- Structure content logically: text → title → text → quote → text → title → text, etc.
+- Each section should contain focused, single-purpose content
+- Break long paragraphs into multiple text sections for better readability
+- REMEMBER: Main article title goes in the 'title' field, not in a title section
+
+CONTENT CREATION BEST PRACTICES:
+- When creating new articles, structure them with proper sections from the start
+- Start with text sections for introduction paragraphs (main title is in the 'title' field)
+- Use title sections for subheadings (H2, H3, H4) to break up content within the article
+- Use quote sections for any quoted material with proper attribution
+- Use code sections for any code examples with appropriate language tags
+- Use image sections for visual content that enhances the article
+- End with title sections for conclusion headings and text sections for final thoughts
+- NEVER create a single massive text section containing everything
+- Each section should be focused and serve a specific purpose in the article structure
+- NEVER use title sections for the main article title - that belongs in the 'title' field
 
 Context: You're assisting with professional blog content creation and editing.`;
 
@@ -369,7 +397,7 @@ You can help edit this article by providing specific instructions. When you want
 
 Available article fields for JSON:
 - title: Article title (string, max 1024 chars) - Main headline
-- trailer: Article trailer/teaser (string, max 512 chars) - Short preview text
+- trailer: Article trailer/teaser (string, max 512 chars) - Short, punchy label (e.g., "Breaking news", "Exclusive", "Company announcement", "Featured", "Trending") - NOT a description or summary
 - subtitle: Article subtitle/description (string, max 2048 chars) - Longer description
 - status: Article status (string, max 50 chars) - Values: 'draft', 'archive', 'publish'
 - live: Live status (boolean) - Whether article is publicly visible
@@ -385,7 +413,7 @@ Available article fields for JSON:
 
 Available section types for JSON:
 - text: Plain text content (supports markdown formatting)
-- title: Section title/heading
+- title: Section subheading (H2, H3, H4, etc.) - NOT the main article title
 - quote: Quoted text with optional speaker attribution
 - code: Code block with syntax highlighting
 - image: Image gallery with multiple image support
@@ -415,14 +443,20 @@ MANDATORY JSON EXAMPLES:
 {"article": {"status": "publish"}}
 {"article": {"authors": ["author1", "author2"]}}
 
-// Section examples:
-{"sections": [{"type": "text", "content": "New paragraph content", "id": "section1", "action": "update"}]}
-{"sections": [{"type": "title", "content": "New Section Title", "id": "new", "action": "create"}]}
-{"sections": [{"type": "code", "content": "console.log('Hello World');", "id": "section3", "action": "update"}]}
-{"sections": [{"type": "quote", "content": "This is an inspiring quote", "speaker": "Author Name", "id": "new", "action": "create"}]}
-{"sections": [{"type": "image", "imageIds": ["img1", "img2"], "id": "new", "action": "create"}]}
-{"sections": [{"type": "video", "embedUrl": "https://youtube.com/watch?v=example", "id": "new", "action": "create"}]}
-{"sections": [{"type": "map", "data": "{\"lat\": 40.7128, \"lng\": -74.0060}", "id": "new", "action": "create"}]}
+// Section examples - PROPER CONTENT STRUCTURING:
+// Main article title goes in the 'title' field, not in sections
+{"article": {"title": "How to Build Better Web Applications"}}
+{"sections": [{"type": "text", "content": "This is the opening paragraph that introduces the topic.", "id": "new", "action": "create"}]}
+{"sections": [{"type": "title", "content": "Key Benefits", "id": "new", "action": "create"}]}
+{"sections": [{"type": "text", "content": "Here are the main benefits of this approach.", "id": "new", "action": "create"}]}
+{"sections": [{"type": "quote", "content": "This is an inspiring quote from an expert", "speaker": "Dr. Jane Smith", "id": "new", "action": "create"}]}
+{"sections": [{"type": "text", "content": "Following the quote, we continue with more analysis.", "id": "new", "action": "create"}]}
+{"sections": [{"type": "code", "content": "function example() {\n  return 'Hello World';\n}", "language": "javascript", "id": "new", "action": "create"}]}
+{"sections": [{"type": "title", "content": "Conclusion", "id": "new", "action": "create"}]}
+{"sections": [{"type": "text", "content": "In summary, this approach provides significant value.", "id": "new", "action": "create"}]}
+
+// WRONG - Don't do this:
+// {"sections": [{"type": "text", "content": "Introduction\n\nThis is the opening paragraph...\n\nKey Benefits\n\nHere are the main benefits...\n\nQuote: 'This is inspiring' - Dr. Jane Smith\n\nFollowing the quote...\n\nCode:\nfunction example() {\n  return 'Hello World';\n}\n\nConclusion\n\nIn summary...", "id": "new", "action": "create"}]}
 
 // Content update examples (CRITICAL - use existing IDs):
 {"sections": [{"type": "quote", "content": "Updated quote text", "id": "68e7bbe8001f12708e76", "action": "update"}]}
@@ -459,6 +493,8 @@ ABSOLUTELY FORBIDDEN:
 - ALWAYS work with the section IDs provided in the context above
 - NEVER use "action": "create" with "id": "new" for existing content (quotes, titles, text)
 - NEVER duplicate existing content by creating new sections instead of updating
+- NEVER put all article content in a single text section - always break it down into proper section types
+- NEVER create monolithic content blocks that should be structured sections
 
 REMEMBER: You MUST use the JSON format for ALL changes. Start with valid JSON, then add your explanation.`;
     }
@@ -469,7 +505,7 @@ You can help edit articles by providing specific instructions. When you want to 
 
 Available article fields for JSON:
 - title: Article title (string, max 1024 chars) - Main headline
-- trailer: Article trailer/teaser (string, max 512 chars) - Short preview text
+- trailer: Article trailer/teaser (string, max 512 chars) - Short, punchy label (e.g., "Breaking news", "Exclusive", "Company announcement", "Featured", "Trending") - NOT a description or summary
 - subtitle: Article subtitle/description (string, max 2048 chars) - Longer description
 - status: Article status (string, max 50 chars) - Values: 'draft', 'archive', 'publish'
 - live: Live status (boolean) - Whether article is publicly visible
