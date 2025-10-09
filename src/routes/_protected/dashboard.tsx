@@ -4,8 +4,6 @@ import { useEffect, useMemo, useRef, useState, useCallback, memo } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { db, createInitialRevision, createUpdateRevision, createRevertRevision } from '@/lib/appwrite/db'
 import { useLatestRevision } from '@/hooks/use-latest-revision'
-import { useAutoSave } from '@/hooks/use-auto-save'
-import { getBackupDebugInfo, getDetailedBackupInfo, forceCleanupAllBackups, removeBackup } from '@/lib/local-storage-backup'
 import { files } from '@/lib/appwrite/storage'
 import { getAccountClient } from '@/lib/appwrite'
 import type { Articles } from '@/lib/appwrite/appwrite.types'
@@ -731,17 +729,6 @@ function ArticleEditor({ articleId, userId, user, onBack }: { articleId: string;
     const { article, formData: latestFormData, hasUnpublishedChanges, latestRevision, isLoading: isLoadingRevision } = useLatestRevision(articleId)
     const isPending = isLoadingRevision
 
-    // Helper function to get backup data by key
-    const getBackupDataByKey = (key: string) => {
-        try {
-            const backupStr = localStorage.getItem(key)
-            if (!backupStr) return null
-            return JSON.parse(backupStr)
-        } catch (error) {
-            console.error('Failed to get backup data:', error)
-            return null
-        }
-    }
 
     // Helper function to get descriptive version name
     const getRevisionVersionName = (revision: any) => {
@@ -1203,33 +1190,24 @@ function ArticleEditor({ articleId, userId, user, onBack }: { articleId: string;
     const [saving, setSaving] = useState(false)
     const { isDebugMode: showDebug, setDebugMode: setShowDebug, toggleDebugMode } = useDebugMode()
     const [bannerWasVisible, setBannerWasVisible] = useState(false)
-    const [backupDataDialogOpen, setBackupDataDialogOpen] = useState(false)
-    const [selectedBackupData, setSelectedBackupData] = useState<any>(null)
     const [isInitialLoad, setIsInitialLoad] = useState(true)
     const [hasUserInteracted, setHasUserInteracted] = useState(false)
     const [isDataLoaded, setIsDataLoaded] = useState(false)
     const [isFullyLoaded, setIsFullyLoaded] = useState(false)
     const [initialSections, setInitialSections] = useState<any[]>([])
-    const [hasRecoveredFromBackup, setHasRecoveredFromBackup] = useState(false)
 
     // Track the last processed revision ID to detect new revisions
     const [lastProcessedRevisionId, setLastProcessedRevisionId] = useState<string | null>(null)
     
-    // Load sections from server data (but skip if we've recovered from backup)
+    // Load sections from server data
     useEffect(() => {
         // Allow updates if this is a new revision (revision ID changed)
         const isNewRevision = latestFormData?.activeRevisionId && latestFormData.activeRevisionId !== lastProcessedRevisionId
         
-        if (latestFormData?.body && (!hasRecoveredFromBackup || isNewRevision || !isDataLoaded)) {
+        if (latestFormData?.body && (isNewRevision || !isDataLoaded)) {
             try {
                 const sections = JSON.parse(latestFormData.body)
                 const parsedSections = Array.isArray(sections) ? sections : []
-                
-                // Clear backup data when loading a new revision to prevent interference
-                if (isNewRevision) {
-                    removeBackup(articleId)
-                    setHasRecoveredFromBackup(false)
-                }
                 
                 setLocalSections(parsedSections)
                 // Store initial sections for comparison
@@ -1248,22 +1226,8 @@ function ArticleEditor({ articleId, userId, user, onBack }: { articleId: string;
             // Mark data as loaded after sections are loaded
             setIsDataLoaded(true)
         }
-    }, [latestFormData?.$id, latestFormData?.body, latestFormData?.$updatedAt, latestFormData?.activeRevisionId, hasRecoveredFromBackup, lastProcessedRevisionId, isDataLoaded]) // Update when revision ID changes
+    }, [latestFormData?.$id, latestFormData?.body, latestFormData?.$updatedAt, latestFormData?.activeRevisionId, lastProcessedRevisionId, isDataLoaded]) // Update when revision ID changes
 
-    // Auto-save functionality with optimized debounce for faster response
-    const { isAutoSaving, lastSaved, hasUnsavedChanges, showSaved, showBackupRestored, triggerAutoSave, trackInteraction, recoverFromBackup, triggerBackup, triggerBackupRestored, queueLength } = useAutoSave({
-        articleId,
-        article,
-        teamId: currentTeam?.$id,
-        userId,
-        userInfo: user ? {
-            userId: user.$id,
-            userName: user.name || user.email || 'Unknown User',
-            userEmail: user.email || ''
-        } : undefined,
-        debounceMs: 1000, // Reduced to 1 second for faster auto-save
-        interactionDelayMs: 3000 // 3 second delay while user is actively interacting
-    })
 
     // Section management functions
     const createSection = (type: string) => {
@@ -1280,8 +1244,6 @@ function ArticleEditor({ articleId, userId, user, onBack }: { articleId: string;
         // Only set hasUserInteracted if we're not in initial load
         if (isFullyLoaded) {
             setHasUserInteracted(true)
-            // Track this as a user interaction to delay auto-save
-            trackInteraction()
         }
         // Focus the first input after the component re-renders
         focusTargetRef.current = { id: newSection.id, type: String(type) }
@@ -1294,10 +1256,8 @@ function ArticleEditor({ articleId, userId, user, onBack }: { articleId: string;
         // Only set hasUserInteracted if we're not in initial load
         if (isFullyLoaded) {
             setHasUserInteracted(true)
-            // Track this as a user interaction to delay auto-save
-            trackInteraction()
         }
-    }, [isFullyLoaded, trackInteraction])
+    }, [isFullyLoaded])
 
     // Create onLocalChange handler that doesn't depend on localSections
     const createOnLocalChangeHandler = useCallback((sectionId: string) => {
@@ -1310,13 +1270,6 @@ function ArticleEditor({ articleId, userId, user, onBack }: { articleId: string;
         // Only set hasUserInteracted if we're not in initial load
         if (isFullyLoaded) {
             setHasUserInteracted(true)
-            // Track this as a user interaction to delay auto-save
-            trackInteraction()
-            // Clear any pending auto-save timeout to prevent stale data from being saved
-            if (autoSaveTimeoutRef.current) {
-                clearTimeout(autoSaveTimeoutRef.current)
-                autoSaveTimeoutRef.current = null
-            }
         }
     }
 
@@ -1326,28 +1279,9 @@ function ArticleEditor({ articleId, userId, user, onBack }: { articleId: string;
         // Only set hasUserInteracted if we're not in initial load
         if (isFullyLoaded) {
             setHasUserInteracted(true)
-            // Track this as a user interaction to delay auto-save
-            trackInteraction()
-            // Clear any pending auto-save timeout to prevent stale data from being saved
-            if (autoSaveTimeoutRef.current) {
-                clearTimeout(autoSaveTimeoutRef.current)
-                autoSaveTimeoutRef.current = null
-            }
         }
     }
 
-    // Use ref to avoid dependency issues
-    const triggerAutoSaveRef = useRef(triggerAutoSave)
-    triggerAutoSaveRef.current = triggerAutoSave
-    
-    // Ref to prevent auto-save during initial data loading
-    const isInitialLoadRef = useRef(true)
-    
-    // Ref to track last saved form data to prevent unnecessary auto-saves
-    const lastSavedFormDataRef = useRef<string | null>(null)
-    
-    // Ref for auto-save debounce timeout
-    const autoSaveTimeoutRef = useRef<NodeJS.Timeout | null>(null)
 
 
     const handleStatusChange = useCallback((newStatus: string) => {
@@ -1391,7 +1325,7 @@ function ArticleEditor({ articleId, userId, user, onBack }: { articleId: string;
         setHasUserInteracted(true)
     }, [])
 
-    // Memoized selectors to prevent unnecessary re-renders during auto-save
+    // Memoized selectors to prevent unnecessary re-renders
     const memoizedAuthorSelector = useMemo(() => (
         <AuthorSelector 
             selectedAuthorIds={authors}
@@ -1422,7 +1356,6 @@ function ArticleEditor({ articleId, userId, user, onBack }: { articleId: string;
     useEffect(() => {
         console.log('🔄 Form data loading effect triggered:', {
             hasLatestFormData: !!latestFormData,
-            hasRecoveredFromBackup,
             isDataLoaded,
             revisionId: latestFormData?.activeRevisionId,
             revisionUpdatedAt: latestFormData?.$updatedAt,
@@ -1439,13 +1372,12 @@ function ArticleEditor({ articleId, userId, user, onBack }: { articleId: string;
             currentRevisionId: latestFormData?.activeRevisionId,
             lastProcessedRevisionId,
             isNewRevision,
-            hasRecoveredFromBackup,
             isDataLoaded,
-            willUpdate: latestFormData?.body && (!hasRecoveredFromBackup || isNewRevision || !isDataLoaded)
+            willUpdate: latestFormData?.body && (isNewRevision || !isDataLoaded)
         })
         
-        if (latestFormData && (!hasRecoveredFromBackup || isNewRevision || !isDataLoaded)) {
-            // Set flag to prevent auto-save during data loading
+        if (latestFormData && (isNewRevision || !isDataLoaded)) {
+            // Set flag to prevent data loading conflicts
             isRevertingRef.current = true
             
             console.log('📥 Loading form data from server:', {
@@ -1525,105 +1457,12 @@ function ArticleEditor({ articleId, userId, user, onBack }: { articleId: string;
         } else {
             console.log('⏭️ Skipping form update:', {
                 hasLatestFormData: !!latestFormData,
-                hasRecoveredFromBackup,
                 isNewRevision,
-                reason: !latestFormData ? 'No form data' : hasRecoveredFromBackup && !isNewRevision ? 'Recovered from backup and not new revision' : 'Unknown'
+                reason: !latestFormData ? 'No form data' : 'Unknown'
             })
         }
-    }, [latestFormData?.$id, latestFormData?.$updatedAt, latestFormData?.body, latestFormData?.title, latestFormData?.subtitle, latestFormData?.activeRevisionId, hasRecoveredFromBackup, lastProcessedRevisionId, isDataLoaded]) // Update when revision ID changes
+    }, [latestFormData?.$id, latestFormData?.$updatedAt, latestFormData?.body, latestFormData?.title, latestFormData?.subtitle, latestFormData?.activeRevisionId, lastProcessedRevisionId, isDataLoaded]) // Update when revision ID changes
 
-    // Auto-save when form data changes (only after user interaction and fully loaded)
-    useEffect(() => {
-        if (article && isFullyLoaded && !isInitialLoadRef.current && !isRevertingRef.current) {
-            // Check if sections have actually changed from initial state
-            const sectionsChanged = JSON.stringify(localSections) !== JSON.stringify(initialSections)
-            
-            // Only trigger auto-save if there are actual changes
-            const hasFormChanges = (title || trailer || subtitle || live || redirect || authors.length > 0 || categories.length > 0)
-            
-            console.log('🔍 Auto-save check:', {
-                hasUserInteracted,
-                isFullyLoaded,
-                isInitialLoad: isInitialLoadRef.current,
-                isReverting: isRevertingRef.current,
-                sectionsChanged,
-                hasFormChanges,
-                localSectionsCount: localSections.length,
-                initialSectionsCount: initialSections.length,
-                lastSavedFormDataRef: lastSavedFormDataRef.current ? 'exists' : 'null'
-            })
-            
-            // Only auto-save if user has interacted OR if there are significant changes
-            const shouldAutoSave = hasUserInteracted || (sectionsChanged && localSections.length > 0)
-            
-            if (shouldAutoSave && (hasFormChanges || sectionsChanged)) {
-                const formData = {
-                    trailer,
-                    title,
-                    slug: title ? slugify(title) : '',
-                    subtitle,
-                    live,
-                    redirect,
-                    authors,
-                    categories,
-                    body: JSON.stringify(localSections),
-                    status,
-                    pinned: article.pinned || false,
-                    images: article.images || null,
-                    blogId: article.blogId || null,
-                    createdBy: article.createdBy || userId,
-                }
-                
-                // Check if form data has actually changed from last saved
-                const currentFormDataString = JSON.stringify(formData)
-                console.log('🔍 Auto-save condition check:', {
-                    shouldAutoSave,
-                    hasFormChanges,
-                    sectionsChanged,
-                    currentFormDataString: currentFormDataString.substring(0, 100) + '...',
-                    lastSavedFormDataRef: lastSavedFormDataRef.current ? lastSavedFormDataRef.current.substring(0, 100) + '...' : 'null',
-                    areEqual: lastSavedFormDataRef.current === currentFormDataString
-                })
-                
-                if (lastSavedFormDataRef.current !== currentFormDataString) {
-                    console.log('🔄 Auto-save triggered:', {
-                        hasFormChanges,
-                        sectionsChanged,
-                        shouldAutoSave,
-                        currentFormDataString: currentFormDataString.substring(0, 100) + '...',
-                        lastSaved: lastSavedFormDataRef.current ? lastSavedFormDataRef.current.substring(0, 100) + '...' : 'null'
-                    })
-                    
-                    // Clear existing timeout
-                    if (autoSaveTimeoutRef.current) {
-                        clearTimeout(autoSaveTimeoutRef.current)
-                    }
-                    
-                    // Set new timeout for debounced auto-save
-                    autoSaveTimeoutRef.current = setTimeout(() => {
-                        lastSavedFormDataRef.current = currentFormDataString
-                        
-                        // Determine the reason for the save
-                        let reason = 'Auto-save triggered'
-                        if (hasFormChanges && sectionsChanged) {
-                            reason = 'Content and metadata changes detected'
-                        } else if (hasFormChanges) {
-                            reason = 'Metadata changes detected (title, authors, categories, etc.)'
-                        } else if (sectionsChanged) {
-                            reason = 'Content changes detected (sections added, modified, or deleted)'
-                        }
-                        
-                        // Trigger auto-save directly
-                        triggerAutoSaveRef.current(formData)
-                    }, 300) // 300ms debounce for very fast response
-                } else {
-                    console.log('⏭️ Auto-save skipped - no changes detected')
-                }
-            } else {
-                console.log('⏭️ Auto-save skipped - no user interaction or no significant changes')
-            }
-        }
-    }, [hasUserInteracted, trailer, title, subtitle, live, redirect, authors, categories, status, article, userId, isFullyLoaded, localSections, initialSections])
 
     // Set fully loaded state after all data is loaded and settled
     useEffect(() => {
@@ -1631,177 +1470,13 @@ function ArticleEditor({ articleId, userId, user, onBack }: { articleId: string;
             // Add a small delay to ensure all data is settled
             const timer = setTimeout(() => {
                 setIsFullyLoaded(true)
-                // Mark initial load as complete to enable auto-save
-                isInitialLoadRef.current = false
-                
-                // Initialize the last saved form data ref with the latest revision data
-                // This prevents auto-save from triggering during initial load
-                const initialFormData = {
-                    trailer: latestFormData.trailer ?? '',
-                    title: latestFormData.title ?? '',
-                    slug: latestFormData.slug ?? '',
-                    subtitle: latestFormData.subtitle ?? '',
-                    live: latestFormData.live ?? false,
-                    redirect: latestFormData.redirect ?? '',
-                    authors: latestFormData.authors ?? [],
-                    categories: latestFormData.categories ?? [],
-                    body: latestFormData.body ?? '[]',
-                    status: latestFormData.status ?? 'draft',
-                    pinned: latestFormData.pinned ?? false,
-                    images: latestFormData.images ?? null,
-                    blogId: latestFormData.blogId ?? null,
-                    createdBy: latestFormData.createdBy ?? userId,
-                }
-                lastSavedFormDataRef.current = JSON.stringify(initialFormData)
-                console.log('🚀 Initialized lastSavedFormDataRef with latest revision data:', {
-                    initialFormDataString: JSON.stringify(initialFormData).substring(0, 100) + '...',
-                    hasUserInteracted: false,
-                    latestFormDataTitle: latestFormData.title,
-                    latestFormDataSubtitle: latestFormData.subtitle
-                })
-                
-                // Mark as user interacted after initialization to enable auto-save for future changes
-                // Use setTimeout to ensure lastSavedFormDataRef is set before the effect runs
-                setTimeout(() => {
-                    console.log('🔄 Setting hasUserInteracted to true after initialization')
                     setHasUserInteracted(true)
-                }, 50)
-            }, 200) // Reduced delay for faster auto-save activation
+            }, 200)
             return () => clearTimeout(timer)
         }
-    }, [isDataLoaded, latestFormData]) // Removed dependencies to prevent re-initialization
+    }, [isDataLoaded, latestFormData])
 
-    // Separate effect to re-initialize lastSavedFormDataRef when latestFormData changes
-    useEffect(() => {
-        if (isFullyLoaded && !isInitialLoadRef.current && lastSavedFormDataRef.current && latestFormData) {
-            // Re-initialize with latest revision data to prevent false positives
-            const currentFormData = {
-                trailer: latestFormData.trailer ?? '',
-                title: latestFormData.title ?? '',
-                slug: latestFormData.slug ?? '',
-                subtitle: latestFormData.subtitle ?? '',
-                live: latestFormData.live ?? false,
-                redirect: latestFormData.redirect ?? '',
-                authors: latestFormData.authors ?? [],
-                categories: latestFormData.categories ?? [],
-                body: latestFormData.body ?? '[]',
-                status: latestFormData.status ?? 'draft',
-                pinned: latestFormData.pinned ?? false,
-                images: latestFormData.images ?? null,
-                blogId: latestFormData.blogId ?? null,
-                createdBy: latestFormData.createdBy ?? userId,
-            }
-            
-            const currentFormDataString = JSON.stringify(currentFormData)
-            if (lastSavedFormDataRef.current !== currentFormDataString) {
-                console.log('🔄 Re-initializing lastSavedFormDataRef due to latestFormData changes:', {
-                    oldData: lastSavedFormDataRef.current.substring(0, 100) + '...',
-                    newData: currentFormDataString.substring(0, 100) + '...',
-                    latestFormDataTitle: latestFormData.title
-                })
-                lastSavedFormDataRef.current = currentFormDataString
-            }
-        }
-    }, [latestFormData, isFullyLoaded, userId])
 
-    // Check for backup data immediately on component mount - before any server data loads
-    useEffect(() => {
-        const backupData = recoverFromBackup()
-        if (backupData) {
-            console.log('🔄 Recovering from backup:', {
-                hasBody: !!backupData.body,
-                bodyType: typeof backupData.body,
-                bodyLength: backupData.body?.length || 0,
-                bodyPreview: backupData.body?.substring(0, 100) + '...'
-            })
-            
-            // Restore form data from backup immediately
-            if (backupData.trailer !== undefined) setTrailer(backupData.trailer)
-            if (backupData.title !== undefined) setTitle(backupData.title)
-            if (backupData.subtitle !== undefined) setExcerpt(backupData.subtitle)
-            if (backupData.live !== undefined) setLive(backupData.live)
-            if (backupData.redirect !== undefined) setRedirect(backupData.redirect)
-            if (backupData.authors !== undefined) setAuthors(backupData.authors)
-            if (backupData.categories !== undefined) setCategories(backupData.categories)
-            if (backupData.status !== undefined) setStatus(backupData.status)
-            
-            // Restore sections
-            if (backupData.body) {
-                try {
-                    const sections = typeof backupData.body === 'string' 
-                        ? JSON.parse(backupData.body) 
-                        : backupData.body
-                    console.log('📝 Restoring sections:', {
-                        sectionsCount: sections?.length || 0,
-                        sections: sections
-                    })
-                    setLocalSections(sections)
-                    setInitialSections(sections)
-                } catch (error) {
-                    console.error('Failed to parse backup sections:', error)
-                }
-            } else {
-                console.log('⚠️ No body data in backup')
-            }
-            
-            // Mark as user interacted to trigger auto-save
-            setHasUserInteracted(true)
-            // Set flag to prevent server data from overwriting backup data
-            setHasRecoveredFromBackup(true)
-            // Mark data as loaded since we've restored from backup
-            setIsDataLoaded(true)
-            
-            // Update lastSavedFormDataRef to reflect the restored data
-            // This prevents auto-save from thinking there are no changes
-            const restoredFormData = {
-                trailer: backupData.trailer || '',
-                title: backupData.title || '',
-                slug: backupData.title ? slugify(backupData.title) : '',
-                subtitle: backupData.subtitle || '',
-                live: backupData.live || false,
-                redirect: backupData.redirect || '',
-                authors: backupData.authors || [],
-                categories: backupData.categories || [],
-                body: backupData.body || '[]',
-                status: backupData.status || 'draft',
-                pinned: article?.pinned || false,
-                images: article?.images || null,
-                blogId: article?.blogId || null,
-                createdBy: article?.createdBy || userId,
-            }
-            lastSavedFormDataRef.current = JSON.stringify(restoredFormData)
-            console.log('🔄 Updated lastSavedFormDataRef with restored data')
-            
-            // Show backup restored indicator
-            triggerBackupRestored()
-            
-            // Trigger auto-save after a short delay to ensure all state is updated
-            setTimeout(() => {
-                console.log('🔄 Triggering auto-save after backup restoration')
-                const formData = {
-                    trailer: backupData.trailer || '',
-                    title: backupData.title || '',
-                    slug: backupData.title ? slugify(backupData.title) : '',
-                    subtitle: backupData.subtitle || '',
-                    live: backupData.live || false,
-                    redirect: backupData.redirect || '',
-                    authors: backupData.authors || [],
-                    categories: backupData.categories || [],
-                    body: backupData.body || '[]',
-                    status: backupData.status || 'draft',
-                    pinned: article?.pinned || false,
-                    images: article?.images || null,
-                    blogId: article?.blogId || null,
-                    createdBy: article?.createdBy || userId,
-                }
-                
-                // Trigger auto-save for backup recovery
-                triggerAutoSaveRef.current(formData)
-            }, 500) // Small delay to ensure all state is updated
-        } else {
-            console.log('ℹ️ No backup data found')
-        }
-    }, [recoverFromBackup, triggerBackupRestored, article, userId]) // Only depend on recoverFromBackup, not on article or isFullyLoaded
 
 
 
@@ -1809,14 +1484,6 @@ function ArticleEditor({ articleId, userId, user, onBack }: { articleId: string;
     // Set document title based on article title
     useDocumentTitle(title || 'Editor')
     
-    // Cleanup timeout on unmount
-    useEffect(() => {
-        return () => {
-            if (autoSaveTimeoutRef.current) {
-                clearTimeout(autoSaveTimeoutRef.current)
-            }
-        }
-    }, [])
 
 
 
@@ -1902,12 +1569,12 @@ function ArticleEditor({ articleId, userId, user, onBack }: { articleId: string;
     }
 
     // Handle reverting to a specific revision
-    // Handle AI revision application without triggering auto-save
+    // Handle AI revision application
     const handleApplyAIRevision = async (revisionId: string) => {
         console.log('🤖 Applying AI revision:', revisionId)
         
         try {
-            // Disable auto-save temporarily during AI revision application
+            // Disable data loading temporarily during AI revision application
             isRevertingRef.current = true
             
             // Force refetch of all related queries to ensure we get the latest data
@@ -1921,17 +1588,15 @@ function ArticleEditor({ articleId, userId, user, onBack }: { articleId: string;
             setIsDataLoaded(false)
             setLastProcessedRevisionId(null) // Reset to force detection of new revision
             
-            // Clear backup data when LLM creates new revision to prevent interference
-            console.log('🧹 Clearing backup data for AI revision')
-            removeBackup(articleId)
-            setHasRecoveredFromBackup(false)
+            // Clear any cached data when LLM creates new revision
+            console.log('🧹 Clearing cached data for AI revision')
             
             console.log('✅ AI revision queries refetched and form reload triggered')
             
         } catch (error) {
             console.error('❌ Error applying AI revision:', error)
         } finally {
-            // Re-enable auto-save after a short delay
+            // Re-enable data loading after a short delay
             setTimeout(() => {
                 isRevertingRef.current = false
             }, 1000)
@@ -2027,10 +1692,8 @@ function ArticleEditor({ articleId, userId, user, onBack }: { articleId: string;
             setIsReverting(false)
             isRevertingRef.current = false
             
-            // Clear backup data when reverting to prevent interference
-            console.log('🧹 Clearing backup data for revert')
-            removeBackup(articleId)
-            setHasRecoveredFromBackup(false)
+            // Clear any cached data when reverting to prevent interference
+            console.log('🧹 Clearing cached data for revert')
         }
     }
 
@@ -2071,7 +1734,7 @@ function ArticleEditor({ articleId, userId, user, onBack }: { articleId: string;
                 setLocalSections(revisionAttributes.sections)
             }
             
-            // Disable auto-save by setting the revert flag
+            // Disable data loading by setting the revert flag
             isRevertingRef.current = true
             setIsInRevertMode(true)
             
@@ -2115,7 +1778,7 @@ function ArticleEditor({ articleId, userId, user, onBack }: { articleId: string;
         setRevertFormData(null)
         setIsInRevertMode(false)
         
-        // Re-enable auto-save
+        // Re-enable data loading
         isRevertingRef.current = false
     }
 
@@ -2318,8 +1981,8 @@ function ArticleEditor({ articleId, userId, user, onBack }: { articleId: string;
                                                 </div>
                                             </div>
                                         </span>
-                                        <span className={isAutoSaving ? 'text-yellow-600 dark:text-yellow-400' : hasUnsavedChanges ? 'text-orange-600 dark:text-orange-400' : 'text-green-600 dark:text-green-400'}>
-                                            {isAutoSaving ? 'Saving...' : hasUnsavedChanges ? 'Unsaved' : 'Saved'}
+                                        <span className="text-green-600 dark:text-green-400">
+                                            Saved
                                         </span>
                                     </div>
                                     <div className="flex justify-between items-center">
@@ -2389,44 +2052,6 @@ function ArticleEditor({ articleId, userId, user, onBack }: { articleId: string;
                         <div className="mt-3 pt-2">
                             <div className="flex items-center justify-between text-xs">
                                 <div className="flex items-center gap-4">
-                                    <span className="text-purple-600 dark:text-purple-400 flex items-center gap-1">
-                                        Queue
-                                        <div className="group relative">
-                                            <span className="text-purple-500 dark:text-purple-400 cursor-help text-xs w-3 h-3 rounded-full border border-current flex items-center justify-center text-[8px]">i</span>
-                                            <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-2 py-1 bg-gray-900 dark:bg-gray-100 text-white dark:text-gray-900 text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none whitespace-nowrap z-10">
-                                                Number of pending changes waiting to be auto-saved to the server
-                                            </div>
-                                        </div>
-                                        : <span className={queueLength > 0 ? 'text-yellow-600 dark:text-yellow-400' : 'text-purple-500 dark:text-purple-400'}>{queueLength}</span>
-                                    </span>
-                                    <span className="text-purple-600 dark:text-purple-400 flex items-center gap-1">
-                                        Last saved
-                                        <div className="group relative">
-                                            <span className="text-purple-500 dark:text-purple-400 cursor-help text-xs w-3 h-3 rounded-full border border-current flex items-center justify-center text-[8px]">i</span>
-                                            <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-2 py-1 bg-gray-900 dark:bg-gray-100 text-white dark:text-gray-900 text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none whitespace-nowrap z-10">
-                                                When the article was last successfully saved to the server
-                                            </div>
-                                        </div>
-                                        : {lastSaved ? (
-                                            <span className="flex items-center gap-1">
-                                                <span>{lastSaved.toLocaleTimeString()}</span>
-                                                <span className="text-purple-500 dark:text-purple-400 text-xs">
-                                                    ({(() => {
-                                                        const now = new Date()
-                                                        const diffMs = now.getTime() - lastSaved.getTime()
-                                                        const diffMins = Math.floor(diffMs / (1000 * 60))
-                                                        const diffHours = Math.floor(diffMs / (1000 * 60 * 60))
-                                                        const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24))
-                                                        
-                                                        if (diffMins < 1) return 'just now'
-                                                        if (diffMins < 60) return `${diffMins}m ago`
-                                                        if (diffHours < 24) return `${diffHours}h ago`
-                                                        return `${diffDays}d ago`
-                                                    })()})
-                                                </span>
-                                            </span>
-                                        ) : 'Never'}
-                                    </span>
                                 </div>
                             </div>
                         </div>
@@ -2439,83 +2064,12 @@ function ArticleEditor({ articleId, userId, user, onBack }: { articleId: string;
                                         <div className="group relative">
                                             <span className="text-purple-500 dark:text-purple-400 cursor-help text-xs w-3 h-3 rounded-full border border-current flex items-center justify-center text-[8px]">i</span>
                                             <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-2 py-1 bg-gray-900 dark:bg-gray-100 text-white dark:text-gray-900 text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none whitespace-nowrap z-10">
-                                                Local backups stored in your browser for data recovery
+                                                Local data stored in your browser for data recovery
                                             </div>
                                         </div>
                                     </div>
-                                    {(() => {
-                                        const backupDebug = getBackupDebugInfo(articleId)
-                                        const detailedBackup = getDetailedBackupInfo(articleId)
-                                        return (
-                                            <div className="flex items-center gap-4">
-                                                <span className="text-purple-600 dark:text-purple-400 flex items-center gap-1">
-                                                    Status
-                                                    <div className="group relative">
-                                                        <span className="text-purple-500 dark:text-purple-400 cursor-help text-xs w-3 h-3 rounded-full border border-current flex items-center justify-center text-[8px]">i</span>
-                                                        <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-2 py-1 bg-gray-900 dark:bg-gray-100 text-white dark:text-gray-900 text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none whitespace-nowrap z-10">
-                                                            Whether there's actual backup data with content
                                                         </div>
                                                     </div>
-                                                    : <span className={backupDebug.hasBackup ? 'text-green-600 dark:text-green-400' : 'text-gray-500 dark:text-gray-400'}>
-                                                        {backupDebug.hasBackup ? 'Has Data' : 'Empty'}
-                                                    </span>
-                                                </span>
-                                                {detailedBackup && (
-                                                    <span className="text-purple-600 dark:text-purple-400 flex items-center gap-1">
-                                                        Size
-                                                        <div className="group relative">
-                                                            <span className="text-purple-500 dark:text-purple-400 cursor-help text-xs w-3 h-3 rounded-full border border-current flex items-center justify-center text-[8px]">i</span>
-                                                            <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-2 py-1 bg-gray-900 dark:bg-gray-100 text-white dark:text-gray-900 text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none whitespace-nowrap z-10">
-                                                                Total size of backup data in KB
-                                                            </div>
-                                                        </div>
-                                                        : <span className="text-blue-600 dark:text-blue-400">
-                                                            {(detailedBackup.totalSize / 1024).toFixed(1)} KB
-                                                        </span>
-                                                    </span>
-                                                )}
-                                            </div>
-                                        )
-                                    })()}
-                                </div>
-                                <div className="flex gap-1">
-                                    <button
-                                        onClick={() => {
-                                            const formData = {
-                                                trailer,
-                                                title,
-                                                slug: title ? slugify(title) : '',
-                                                subtitle,
-                                                live,
-                                                redirect,
-                                                authors,
-                                                categories,
-                                                body: JSON.stringify(localSections),
-                                                status,
-                                                pinned: article?.pinned || false,
-                                                images: article?.images || null,
-                                                blogId: article?.blogId || null,
-                                                createdBy: article?.createdBy || userId,
-                                            }
-                                            triggerBackup(formData)
-                                        }}
-                                        className="px-2 py-1 text-xs bg-purple-200 text-purple-800 dark:bg-purple-800 dark:text-purple-200 rounded hover:bg-purple-300 dark:hover:bg-purple-700"
-                                        title="Create a manual backup of current form data"
-                                    >
-                                        Save Backup
-                                    </button>
-                                    <button
-                                        onClick={() => {
-                                            const cleaned = forceCleanupAllBackups()
-                                            console.log(`Cleaned up ${cleaned} backup entries`)
-                                        }}
-                                        className="px-2 py-1 text-xs bg-red-200 text-red-800 dark:bg-red-800 dark:text-red-200 rounded hover:bg-red-300 dark:hover:bg-red-700"
-                                        title="Remove all backup data from localStorage"
-                                    >
-                                        Clear Backups
-                                    </button>
-                                </div>
-                            </div>
                         </div>
                     </div>
                 )}
@@ -2843,7 +2397,7 @@ function ArticleEditor({ articleId, userId, user, onBack }: { articleId: string;
                                 onScrollToTop={scrollToTop}
                                 onDeleteRevision={async (revisionId) => {
                                     try {
-                                        // Disable auto-save temporarily during deletion
+                                        // Disable data loading temporarily during deletion
                                         isRevertingRef.current = true
                                         
                                         await db.revisions.delete(revisionId)
@@ -2857,14 +2411,14 @@ function ArticleEditor({ articleId, userId, user, onBack }: { articleId: string;
                                             }
                                         })
                                         
-                                        // Re-enable auto-save after a short delay
+                                        // Re-enable data loading after a short delay
                                         setTimeout(() => {
                                             isRevertingRef.current = false
                                         }, 1000)
                                         
                                         toast({ title: 'Revision deleted' })
                                     } catch (error) {
-                                        // Re-enable auto-save on error
+                                        // Re-enable data loading on error
                                         isRevertingRef.current = false
                                         
                                         toast({ 
@@ -2875,31 +2429,6 @@ function ArticleEditor({ articleId, userId, user, onBack }: { articleId: string;
                                     }
                                 }}
                             />
-                            <div className={`flex items-center gap-1.5 transition-all duration-500 ease-in-out ${
-                                isAutoSaving || hasUnsavedChanges || showSaved || showBackupRestored ? 'opacity-100 animate-in fade-in' : 'opacity-0 animate-out fade-out'
-                            }`}>
-                                {isAutoSaving ? (
-                                    <div className="flex items-center gap-1.5 animate-in fade-in duration-300">
-                                        <Loader2 className="h-3 w-3 animate-spin text-muted-foreground" />
-                                        <span className="text-xs text-muted-foreground">Saving...</span>
-                                    </div>
-                                ) : hasUnsavedChanges ? (
-                                    <div className="flex items-center gap-1.5 animate-in fade-in duration-300">
-                                        <div className="w-1.5 h-1.5 bg-amber-400 rounded-full animate-pulse" />
-                                        <span className="text-xs text-muted-foreground">...</span>
-                                    </div>
-                                ) : showBackupRestored ? (
-                                    <div className="flex items-center gap-1.5 animate-in fade-in duration-500">
-                                        <div className="w-1.5 h-1.5 bg-blue-400 rounded-full" />
-                                        <span className="text-xs text-muted-foreground">Backup restored</span>
-                                    </div>
-                                ) : showSaved ? (
-                                    <div className="flex items-center gap-1.5 animate-in fade-in duration-500">
-                                        <div className="w-1.5 h-1.5 bg-emerald-400 rounded-full" />
-                                        <span className="text-xs text-muted-foreground">Saved {lastSaved ? formatDateRelative(lastSaved) : ''}</span>
-                                    </div>
-                                ) : null}
-                            </div>
                         </div>
                         <div className="flex items-center gap-2">
                             <Button
@@ -2989,26 +2518,6 @@ function ArticleEditor({ articleId, userId, user, onBack }: { articleId: string;
                 </AlertDialogContent>
             </AlertDialog>
 
-            {/* Backup Data Dialog */}
-            <Dialog open={backupDataDialogOpen} onOpenChange={setBackupDataDialogOpen}>
-                <DialogContent className="max-w-4xl max-h-[80vh] overflow-hidden bg-purple-50 dark:bg-purple-950 border-purple-200 dark:border-purple-800">
-                    <DialogHeader>
-                        <DialogTitle className="text-purple-800 dark:text-purple-200">
-                            Backup Data
-                        </DialogTitle>
-                        <div className="text-sm text-purple-600 dark:text-purple-400 font-mono">
-                            {selectedBackupData?.articleId && `Article ID: ${selectedBackupData.articleId}`}
-                        </div>
-                    </DialogHeader>
-                    <div className="flex-1 overflow-hidden">
-                        <ScrollArea className="h-[60vh] w-full">
-                            <pre className="text-xs bg-purple-100 dark:bg-purple-900 p-4 rounded-md overflow-auto text-purple-800 dark:text-purple-200">
-                                {selectedBackupData ? JSON.stringify(selectedBackupData, null, 2) : ''}
-                            </pre>
-                        </ScrollArea>
-                    </div>
-                </DialogContent>
-            </Dialog>
 
         </>
     )

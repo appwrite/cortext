@@ -9,7 +9,6 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { queryClient } from "./lib/react-query";
 import { ThemeProvider } from "./contexts/theme-context";
 import { DebugProvider } from "./contexts/debug-context";
-import { cleanupOldBackups } from "./lib/local-storage-backup";
 
 export interface RouterContext {
   queryClient: QueryClient;
@@ -23,10 +22,6 @@ export function App() {
     queryClient,
   };
 
-  // Clean up old backups on app startup
-  useEffect(() => {
-    cleanupOldBackups();
-  }, []);
 
   return (
     <ThemeProvider>

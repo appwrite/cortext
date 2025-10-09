@@ -355,7 +355,7 @@ export function AgentChat({
             if (newRevisionId !== lastProcessedRevisionId) {
                 console.log('🔄 New AI revision detected:', newRevisionId)
                 
-                // Apply AI revision without triggering auto-save
+                // Apply AI revision
                 applyAIRevision(newRevisionId)
                 
                 // Update the last processed revision ID
@@ -370,7 +370,7 @@ export function AgentChat({
         }
     }, [messages, lastProcessedRevisionId, articleId, queryClient])
 
-    // Function to apply AI revision without triggering auto-save
+    // Function to apply AI revision
     const applyAIRevision = useCallback(async (revisionId: string) => {
         try {
             console.log('🤖 Applying AI revision:', revisionId)
@@ -379,7 +379,7 @@ export function AgentChat({
                 // Use the parent callback to apply the revision
                 onApplyAIRevision(revisionId)
             } else {
-                // Fallback: invalidate queries (may trigger auto-save)
+                // Fallback: invalidate queries
                 console.warn('⚠️ No onApplyAIRevision callback provided, using fallback')
                 queryClient.invalidateQueries({ queryKey: ['revisions', articleId] })
                 queryClient.invalidateQueries({ queryKey: ['article', articleId] })
