@@ -217,11 +217,41 @@ function buildArticleContext(article, maxTokens = 150000) {
     if (article.body) {
         try {
             const sections = JSON.parse(article.body);
-            context.sections = sections.map(section => ({
-                type: section.type,
-                content: section.content ? section.content.substring(0, 5000) : '', // Increased to 5000 chars for full content
-                id: section.id
-            }));
+            context.sections = sections.map(section => {
+                const sectionData = {
+                    type: section.type,
+                    content: section.content ? section.content.substring(0, 5000) : '', // Increased to 5000 chars for full content
+                    id: section.id
+                };
+                
+                // Include additional fields based on section type
+                if (section.type === 'quote' && section.speaker) {
+                    sectionData.speaker = section.speaker;
+                }
+                
+                if (section.type === 'code' && section.language) {
+                    sectionData.language = section.language;
+                }
+                
+                if (section.type === 'image') {
+                    if (section.imageIds && section.imageIds.length > 0) {
+                        sectionData.imageIds = section.imageIds;
+                    }
+                    if (section.mediaId) {
+                        sectionData.mediaId = section.mediaId;
+                    }
+                }
+                
+                if (section.type === 'video' && section.embedUrl) {
+                    sectionData.embedUrl = section.embedUrl;
+                }
+                
+                if (section.type === 'map' && section.data) {
+                    sectionData.data = section.data;
+                }
+                
+                return sectionData;
+            });
         } catch (e) {
             // If parsing fails, treat as plain text
             context.sections = [{
@@ -253,7 +283,34 @@ function buildArticleContext(article, maxTokens = 150000) {
         // Then show detailed content for each section
         contextStr += `\nDETAILED SECTION CONTENT:\n`;
         context.sections.forEach((section, i) => {
-            contextStr += `${i + 1}. ${section.type} (ID: ${section.id}): ${section.content}\n`;
+            let sectionDisplay = `${i + 1}. ${section.type} (ID: ${section.id}): ${section.content}`;
+            
+            // Add additional info based on section type
+            if (section.type === 'quote' && section.speaker) {
+                sectionDisplay += ` [Speaker: ${section.speaker}]`;
+            }
+            
+            if (section.type === 'code' && section.language) {
+                sectionDisplay += ` [Language: ${section.language}]`;
+            }
+            
+            if (section.type === 'image') {
+                if (section.imageIds && section.imageIds.length > 0) {
+                    sectionDisplay += ` [Images: ${section.imageIds.join(', ')}]`;
+                } else if (section.mediaId) {
+                    sectionDisplay += ` [Image: ${section.mediaId}]`;
+                }
+            }
+            
+            if (section.type === 'video' && section.embedUrl) {
+                sectionDisplay += ` [URL: ${section.embedUrl}]`;
+            }
+            
+            if (section.type === 'map' && section.data) {
+                sectionDisplay += ` [Map Data: ${section.data}]`;
+            }
+            
+            contextStr += sectionDisplay + '\n';
         });
     }
     
@@ -1044,6 +1101,31 @@ export default async function ({ req, res, log, error }) {
                         content: update.content,
                         id: newId
                       };
+                      
+                      // Include additional fields based on section type
+                      if (update.speaker) {
+                        newSection.speaker = update.speaker;
+                      }
+                      
+                      if (update.language) {
+                        newSection.language = update.language;
+                      }
+                      
+                      if (update.imageIds) {
+                        newSection.imageIds = update.imageIds;
+                      }
+                      
+                      if (update.mediaId) {
+                        newSection.mediaId = update.mediaId;
+                      }
+                      
+                      if (update.embedUrl) {
+                        newSection.embedUrl = update.embedUrl;
+                      }
+                      
+                      if (update.data) {
+                        newSection.data = update.data;
+                      }
                       
                       if (update.position !== undefined) {
                         sections.splice(update.position, 0, newSection);
