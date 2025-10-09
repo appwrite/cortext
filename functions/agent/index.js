@@ -743,6 +743,9 @@ export default async function ({ req, res, log, error }) {
               // Create updated article data
               const updatedArticle = { ...currentArticle };
               
+              // Initialize sections from current revision data
+              let sections = currentAttributes.sections || [];
+              
               // Apply article-level updates
               if (updates.article) {
                 Object.keys(updates.article).forEach(key => {
@@ -753,8 +756,6 @@ export default async function ({ req, res, log, error }) {
               
               // Apply section updates
               if (updates.sections) {
-                let sections = currentAttributes.sections || [];
-                
                 updates.sections.forEach(update => {
                   switch (update.action) {
                     case 'create':
