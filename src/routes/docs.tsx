@@ -142,7 +142,7 @@ function DocsLayoutContent() {
 
                     {/* Table of Contents - Right Sidebar */}
                     <aside className="hidden xl:block w-40 flex-shrink-0">
-                        <div className="sticky top-24 mt-8">
+                        <div className="sticky top-24 mt-4">
                             {items.length > 0 && <TableOfContents items={items} />}
                         </div>
                     </aside>

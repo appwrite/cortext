@@ -51,7 +51,7 @@ export function TableOfContents({ items }: TableOfContentsProps) {
                     <button
                         key={item.id}
                         onClick={() => scrollToSection(item.id)}
-                        className={`w-full text-left py-1 text-xs transition-colors ${
+                        className={`w-full text-left py-1 text-xs transition-colors cursor-pointer ${
                             activeSection === item.id
                                 ? 'text-foreground font-semibold'
                                 : 'text-foreground/70 hover:text-foreground'

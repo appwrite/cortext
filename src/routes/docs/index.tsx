@@ -19,7 +19,6 @@ function DocsIndex() {
         { id: 'welcome', title: 'Welcome to Cortext', level: 1 },
         { id: 'get-started', title: 'Get Started', level: 1 },
         { id: 'core-features', title: 'Core Features', level: 1 },
-        { id: 'api-overview', title: 'API Overview', level: 1 },
         { id: 'ready-to-start', title: 'Ready to get started?', level: 1 },
     ];
 
@@ -100,66 +99,84 @@ function DocsIndex() {
                         <PageActions />
                     </div>
                 </div>
-                <h1 className="text-2xl font-bold tracking-tight mb-2">
+                <h1 className="text-2xl font-medium tracking-tight mb-2">
                     Welcome to Cortext
                 </h1>
-                <p className="text-base text-foreground/70 max-w-2xl">
-                    The complete guide to building modern content management systems with AI-powered collaboration.
-                </p>
+                <div className="text-base text-foreground/70 max-w-2xl space-y-5 leading-relaxed">
+                    <p className="font-normal">
+                        Documentation for building content management systems with AI-powered collaboration features. 
+                        This guide covers content creation, management, and optimization using Cortext's AI features, 
+                        team collaboration tools, and API integrations.
+                    </p>
+                    <p className="font-normal">
+                        Cortext combines artificial intelligence with content management capabilities. The platform 
+                        supports content generation, workflow management, and consistency across digital assets. 
+                        It serves individual creators and organizations of various sizes.
+                    </p>
+                    <p className="font-normal">
+                        Features include automated content suggestions, SEO optimization, real-time collaboration, 
+                        and version control. The platform offers a RESTful API and documentation for integration 
+                        with existing tools and workflows.
+                    </p>
+                </div>
             </div>
 
 
             {/* Quick Links */}
             <section id="get-started">
-                <h2 className="text-lg font-semibold mb-3">Get started</h2>
+                <h2 className="text-lg font-medium mb-3">Get started</h2>
+                <p className="text-sm text-foreground/70 mb-6 max-w-2xl">
+                    Choose your path to begin working with Cortext. Whether you're looking for a quick setup 
+                    or comprehensive API documentation, we have the resources to get you up and running.
+                </p>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div className="p-4 rounded-lg border border-border bg-card dark:bg-transparent hover:border-primary/50 transition-all duration-200">
+                    <Link to="/docs/quick-start" className="block p-4 rounded-lg border border-border bg-card dark:bg-transparent hover:border-primary/50 transition-all duration-200 cursor-pointer">
                         <div className="flex items-start gap-3">
                             <div className="flex-shrink-0 w-8 h-8 rounded-full bg-muted text-muted-foreground flex items-center justify-center">
                                 <Zap className="w-4 h-4" />
                             </div>
                             <div className="flex-1 min-w-0">
-                                <h3 className="font-medium text-sm text-foreground mb-1">Quick start</h3>
+                                <h3 className="font-normal text-sm text-foreground mb-1">Quick start</h3>
                                 <p className="text-xs text-muted-foreground mb-2">Get up and running with Cortext in under 5 minutes.</p>
                                 <div className="mt-3 h-7 flex items-center">
-                                    <Button asChild size="sm" variant="outline" className="h-7 text-xs">
-                                        <Link to="/docs/quick-start">
-                                            Start building
-                                            <ArrowRight className="w-3 h-3 ml-1" />
-                                        </Link>
-                                    </Button>
+                                    <span className="text-xs text-primary font-medium">
+                                        Start building
+                                        <ArrowRight className="w-3 h-3 ml-1 inline" />
+                                    </span>
                                 </div>
                             </div>
                         </div>
-                    </div>
-                    <div className="p-4 rounded-lg border border-border bg-card dark:bg-transparent hover:border-primary/50 transition-all duration-200">
+                    </Link>
+                    <Link to="/docs/api" className="block p-4 rounded-lg border border-border bg-card dark:bg-transparent hover:border-primary/50 transition-all duration-200 cursor-pointer">
                         <div className="flex items-start gap-3">
                             <div className="flex-shrink-0 w-8 h-8 rounded-full bg-muted text-muted-foreground flex items-center justify-center">
                                 <Code2 className="w-4 h-4" />
                             </div>
                             <div className="flex-1 min-w-0">
-                                <h3 className="font-medium text-sm text-foreground mb-1">API reference</h3>
+                                <h3 className="font-normal text-sm text-foreground mb-1">API reference</h3>
                                 <p className="text-xs text-muted-foreground mb-2">Complete API documentation with examples and guides.</p>
                                 <div className="mt-3 h-7 flex items-center">
-                                    <Button asChild size="sm" variant="outline" className="h-7 text-xs">
-                                        <Link to="/docs/api">
-                                            View API docs
-                                            <ArrowRight className="w-3 h-3 ml-1" />
-                                        </Link>
-                                    </Button>
+                                    <span className="text-xs text-primary font-medium">
+                                        View API docs
+                                        <ArrowRight className="w-3 h-3 ml-1 inline" />
+                                    </span>
                                 </div>
                             </div>
                         </div>
-                    </div>
+                    </Link>
                 </div>
             </section>
 
             {/* Features Overview */}
             <section id="core-features">
-                <h2 className="text-lg font-semibold mb-3">Core features</h2>
+                <h2 className="text-lg font-medium mb-3">Core features</h2>
+                <p className="text-sm text-foreground/70 mb-6 max-w-2xl">
+                    Discover the key capabilities that make Cortext a powerful content management solution. 
+                    Each feature is designed to enhance your content creation workflow and improve team productivity.
+                </p>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     {features.map((feature, index) => (
-                        <div key={index} className="p-4 rounded-lg border border-border bg-card dark:bg-transparent hover:border-primary/50 transition-all duration-200">
+                        <div key={index} className="p-4 rounded-lg border border-border bg-card dark:bg-transparent hover:border-primary/50 transition-all duration-200 cursor-pointer">
                             <div className="flex items-start gap-3">
                                 <div className="flex-shrink-0 w-8 h-8 rounded-full bg-muted text-muted-foreground flex items-center justify-center">
                                     {typeof feature.icon === 'string' ? (
@@ -169,7 +186,7 @@ function DocsIndex() {
                                     )}
                                 </div>
                                 <div className="flex-1 min-w-0">
-                                    <h3 className="font-medium text-sm text-foreground mb-1">{feature.title}</h3>
+                                    <h3 className="font-normal text-sm text-foreground mb-1">{feature.title}</h3>
                                     <p className="text-xs text-muted-foreground mb-2">{feature.description}</p>
                                 </div>
                             </div>
@@ -179,73 +196,13 @@ function DocsIndex() {
             </section>
 
 
-            {/* API Overview */}
-            <section id="api-overview">
-                <h2 className="text-lg font-semibold mb-3">API overview</h2>
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-                    <div className="p-4 rounded-lg border border-border bg-card dark:bg-transparent hover:border-primary/50 transition-all duration-200">
-                        <h3 className="font-medium text-sm text-foreground mb-1">RESTful design</h3>
-                        <p className="text-muted-foreground text-xs mb-3">
-                            Clean, predictable endpoints that follow REST conventions for easy integration.
-                        </p>
-                        <div className="space-y-1 text-xs">
-                            <div className="flex justify-between">
-                                <span className="text-muted-foreground">Base URL:</span>
-                                <code className="text-foreground font-mono">https://api.cortext.com</code>
-                            </div>
-                            <div className="flex justify-between">
-                                <span className="text-muted-foreground">Auth:</span>
-                                <code className="text-foreground font-mono">Bearer Token</code>
-                            </div>
-                            <div className="flex justify-between">
-                                <span className="text-muted-foreground">Rate Limit:</span>
-                                <code className="text-foreground font-mono">1000 req/min</code>
-                            </div>
-                        </div>
-                    </div>
-                    <div className="p-4 rounded-lg border border-border bg-card dark:bg-transparent hover:border-primary/50 transition-all duration-200">
-                        <h3 className="font-medium text-sm text-foreground mb-1">Endpoints</h3>
-                        <div className="space-y-2">
-                            <div className="flex items-center gap-2">
-                                <span className="px-2 py-1 rounded text-xs font-mono bg-muted text-muted-foreground">
-                                    GET
-                                </span>
-                                <code className="text-xs text-foreground">/articles</code>
-                                <span className="text-muted-foreground text-xs">List</span>
-                            </div>
-                            <div className="flex items-center gap-2">
-                                <span className="px-2 py-1 rounded text-xs font-mono bg-muted text-muted-foreground">
-                                    POST
-                                </span>
-                                <code className="text-xs text-foreground">/articles</code>
-                                <span className="text-muted-foreground text-xs">Create</span>
-                            </div>
-                            <div className="flex items-center gap-2">
-                                <span className="px-2 py-1 rounded text-xs font-mono bg-muted text-muted-foreground">
-                                    PUT
-                                </span>
-                                <code className="text-xs text-foreground">/articles/:id</code>
-                                <span className="text-muted-foreground text-xs">Update</span>
-                            </div>
-                            <div className="flex items-center gap-2">
-                                <span className="px-2 py-1 rounded text-xs font-mono bg-muted text-muted-foreground">
-                                    DELETE
-                                </span>
-                                <code className="text-xs text-foreground">/articles/:id</code>
-                                <span className="text-muted-foreground text-xs">Delete</span>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </section>
-
             {/* Next Steps */}
-            <section id="ready-to-start" className="py-3 bg-foreground/5 rounded-lg text-center">
-                <h2 className="text-sm font-semibold mb-2">Ready to get started?</h2>
-                <p className="text-foreground/70 text-xs mb-3 max-w-2xl mx-auto">
+            <section id="ready-to-start" className="p-4 rounded-lg border border-border bg-card dark:bg-transparent">
+                <h2 className="text-lg font-medium mb-3">Ready to get started?</h2>
+                <p className="text-foreground/70 text-sm mb-4 max-w-2xl">
                     Explore our comprehensive guides and start building your content management system today.
                 </p>
-                <div className="flex flex-col sm:flex-row gap-2 justify-center">
+                <div className="flex flex-col sm:flex-row gap-3">
                     <Button asChild size="sm" className="h-8 px-3 text-xs font-semibold bg-black hover:bg-gray-800 text-white dark:bg-white dark:text-black dark:hover:bg-gray-200">
                         <Link to="/docs/quick-start">
                             Quick Start Guide
