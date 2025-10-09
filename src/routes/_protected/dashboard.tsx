@@ -5,7 +5,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { db, createInitialRevision, createUpdateRevision, createRevertRevision } from '@/lib/appwrite/db'
 import { useLatestRevision } from '@/hooks/use-latest-revision'
 import { useAutoSave } from '@/hooks/use-auto-save'
-import { getBackupDebugInfo, getDetailedBackupInfo, forceCleanupAllBackups } from '@/lib/local-storage-backup'
+import { getBackupDebugInfo, getDetailedBackupInfo, forceCleanupAllBackups, removeBackup } from '@/lib/local-storage-backup'
 import { files } from '@/lib/appwrite/storage'
 import { getAccountClient } from '@/lib/appwrite'
 import type { Articles } from '@/lib/appwrite/appwrite.types'
@@ -19,6 +19,8 @@ import { Checkbox } from '@/components/ui/checkbox'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Switch } from '@/components/ui/switch'
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog'
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
+import { ScrollArea } from '@/components/ui/scroll-area'
 import { Separator } from '@/components/ui/separator'
 import { toast } from '@/hooks/use-toast'
 import { Image as ImageIcon, Plus, Trash2, Save, Video, MapPin, Type as TypeIcon, Upload, ArrowLeft, LogOut, GripVertical, Brain, Loader2, Heading1, Quote, Pin as PinIcon, FileText, Quote as QuoteIcon, Code, ChevronLeft, ChevronRight, MoreHorizontal, Copy, MessageCircle, Eye, EyeOff, Archive, BookOpen } from 'lucide-react'
@@ -707,6 +709,18 @@ function ArticleEditor({ articleId, userId, user, onBack }: { articleId: string;
     const { article, formData: latestFormData, hasUnpublishedChanges, latestRevision, isLoading: isLoadingRevision } = useLatestRevision(articleId)
     const isPending = isLoadingRevision
 
+    // Helper function to get backup data by key
+    const getBackupDataByKey = (key: string) => {
+        try {
+            const backupStr = localStorage.getItem(key)
+            if (!backupStr) return null
+            return JSON.parse(backupStr)
+        } catch (error) {
+            console.error('Failed to get backup data:', error)
+            return null
+        }
+    }
+
     // Helper function to get descriptive version name
     const getRevisionVersionName = (revision: any) => {
         if (!revision) return 'Unknown'
@@ -1175,6 +1189,8 @@ function ArticleEditor({ articleId, userId, user, onBack }: { articleId: string;
     const [saving, setSaving] = useState(false)
     const [showDebug, setShowDebug] = useState(false)
     const [bannerWasVisible, setBannerWasVisible] = useState(false)
+    const [backupDataDialogOpen, setBackupDataDialogOpen] = useState(false)
+    const [selectedBackupData, setSelectedBackupData] = useState<any>(null)
     const [isInitialLoad, setIsInitialLoad] = useState(true)
     const [hasUserInteracted, setHasUserInteracted] = useState(false)
     const [isDataLoaded, setIsDataLoaded] = useState(false)
@@ -1207,7 +1223,7 @@ function ArticleEditor({ articleId, userId, user, onBack }: { articleId: string;
             willUpdate: latestFormData?.body && (!hasRecoveredFromBackup || isNewRevision)
         })
         
-        if (latestFormData?.body && (!hasRecoveredFromBackup || isNewRevision)) {
+        if (latestFormData?.body && (!hasRecoveredFromBackup || isNewRevision || !isDataLoaded)) {
             try {
                 const sections = JSON.parse(latestFormData.body)
                 const parsedSections = Array.isArray(sections) ? sections : []
@@ -1217,6 +1233,18 @@ function ArticleEditor({ articleId, userId, user, onBack }: { articleId: string;
                     isNewRevision,
                     firstSectionTitle: parsedSections[0]?.content?.substring(0, 50)
                 })
+                
+                // Alert when loading a new revision
+                if (isNewRevision) {
+                    const revisionVersion = latestFormData && '_revisionVersion' in latestFormData ? (latestFormData as any)._revisionVersion : latestRevision?.version || 'Unknown'
+                    window.alert(`🔄 Form loaded with NEW REVISION!\n\nRevision Version: ${revisionVersion}\nRevision ID: ${latestFormData?.activeRevisionId}\nSections Count: ${parsedSections.length}`)
+                    
+                    // Clear backup data when loading a new revision to prevent interference
+                    console.log('🧹 Clearing backup data for new revision')
+                    removeBackup(articleId)
+                    setHasRecoveredFromBackup(false)
+                }
+                
                 setLocalSections(parsedSections)
                 // Store initial sections for comparison
                 setInitialSections(parsedSections)
@@ -1242,7 +1270,7 @@ function ArticleEditor({ articleId, userId, user, onBack }: { articleId: string;
                 reason: !latestFormData?.body ? 'No body data' : hasRecoveredFromBackup && !isNewRevision ? 'Recovered from backup and not new revision' : 'Unknown'
             })
         }
-    }, [latestFormData?.body, latestFormData?.$updatedAt, latestFormData?.activeRevisionId, hasRecoveredFromBackup, lastProcessedRevisionId]) // Update when revision ID changes
+    }, [latestFormData?.body, latestFormData?.$updatedAt, latestFormData?.activeRevisionId, hasRecoveredFromBackup, lastProcessedRevisionId, isDataLoaded]) // Update when revision ID changes
 
     // Auto-save functionality with optimized debounce for faster response
     const { isAutoSaving, lastSaved, hasUnsavedChanges, showSaved, showBackupRestored, triggerAutoSave, trackInteraction, recoverFromBackup, triggerBackup, triggerBackupRestored, queueLength } = useAutoSave({
@@ -1417,7 +1445,7 @@ function ArticleEditor({ articleId, userId, user, onBack }: { articleId: string;
         console.log('🔄 Form data loading effect triggered:', {
             hasLatestFormData: !!latestFormData,
             hasRecoveredFromBackup,
-            shouldLoad: latestFormData && !hasRecoveredFromBackup,
+            isDataLoaded,
             revisionId: latestFormData?.activeRevisionId,
             revisionUpdatedAt: latestFormData?.$updatedAt,
             bodyLength: latestFormData?.body?.length,
@@ -1426,7 +1454,7 @@ function ArticleEditor({ articleId, userId, user, onBack }: { articleId: string;
             formDataSubtitle: latestFormData?.subtitle
         })
         
-        // Allow updates if this is a new revision (revision ID changed)
+        // Allow updates if this is a new revision (revision ID changed) OR if data hasn't been loaded yet
         const isNewRevision = latestFormData?.activeRevisionId && latestFormData.activeRevisionId !== lastProcessedRevisionId
         
         console.log('🔍 Revision check:', {
@@ -1434,10 +1462,11 @@ function ArticleEditor({ articleId, userId, user, onBack }: { articleId: string;
             lastProcessedRevisionId,
             isNewRevision,
             hasRecoveredFromBackup,
-            willUpdate: latestFormData && (!hasRecoveredFromBackup || isNewRevision)
+            isDataLoaded,
+            willUpdate: latestFormData?.body && (!hasRecoveredFromBackup || isNewRevision || !isDataLoaded)
         })
         
-        if (latestFormData && (!hasRecoveredFromBackup || isNewRevision)) {
+        if (latestFormData && (!hasRecoveredFromBackup || isNewRevision || !isDataLoaded)) {
             // Set flag to prevent auto-save during data loading
             isRevertingRef.current = true
             
@@ -1482,7 +1511,7 @@ function ArticleEditor({ articleId, userId, user, onBack }: { articleId: string;
                 reason: !latestFormData ? 'No form data' : hasRecoveredFromBackup && !isNewRevision ? 'Recovered from backup and not new revision' : 'Unknown'
             })
         }
-    }, [latestFormData?.$id, latestFormData?.$updatedAt, latestFormData?.body, latestFormData?.title, latestFormData?.subtitle, latestFormData?.activeRevisionId, hasRecoveredFromBackup, lastProcessedRevisionId]) // Update when revision ID changes
+    }, [latestFormData?.$id, latestFormData?.$updatedAt, latestFormData?.body, latestFormData?.title, latestFormData?.subtitle, latestFormData?.activeRevisionId, hasRecoveredFromBackup, lastProcessedRevisionId, isDataLoaded]) // Update when revision ID changes
 
     // Auto-save when form data changes (only after user interaction and fully loaded)
     useEffect(() => {
@@ -1872,7 +1901,16 @@ function ArticleEditor({ articleId, userId, user, onBack }: { articleId: string;
                 qc.refetchQueries({ queryKey: ['latestRevision', articleId] })
             ])
 
-            console.log('✅ AI revision queries refetched - form should load latest revision')
+            // Force form to reload by resetting the data loaded state
+            setIsDataLoaded(false)
+            setLastProcessedRevisionId(null) // Reset to force detection of new revision
+            
+            // Clear backup data when LLM creates new revision to prevent interference
+            console.log('🧹 Clearing backup data for AI revision')
+            removeBackup(articleId)
+            setHasRecoveredFromBackup(false)
+            
+            console.log('✅ AI revision queries refetched and form reload triggered')
             
         } catch (error) {
             console.error('❌ Error applying AI revision:', error)
@@ -1979,6 +2017,11 @@ function ArticleEditor({ articleId, userId, user, onBack }: { articleId: string;
             console.log('Revert process finished, resetting state')
             setIsReverting(false)
             isRevertingRef.current = false
+            
+            // Clear backup data when reverting to prevent interference
+            console.log('🧹 Clearing backup data for revert')
+            removeBackup(articleId)
+            setHasRecoveredFromBackup(false)
         }
     }
 
@@ -2217,6 +2260,14 @@ function ArticleEditor({ articleId, userId, user, onBack }: { articleId: string;
                                     <div>Updated: {latestRevision?.$updatedAt || 'None'}</div>
                                     <div>Version: {latestRevision?.version || 'None'}</div>
                                     <div>Status: {latestRevision?.status || 'Unknown'}</div>
+                                    <div className="mt-1 text-xs">
+                                        <span className="font-medium">Form Data Source:</span> Revision {latestRevision?.version || 'None'}
+                                        {latestFormData && '_revisionId' in latestFormData && (
+                                            <span className="ml-1 text-green-600 dark:text-green-400">
+                                                (✓ Data matches)
+                                            </span>
+                                        )}
+                                    </div>
                                 </div>
                             </div>
                             <div>
@@ -2243,6 +2294,15 @@ function ArticleEditor({ articleId, userId, user, onBack }: { articleId: string;
                                             <div className="flex items-center gap-2 text-gray-600 dark:text-gray-400">
                                                 <span>Latest Revision:</span>
                                                 <span className="font-mono text-xs">{latestRevision?.$id || 'None'}</span>
+                                            </div>
+                                            <div className="flex items-center gap-2 text-blue-600 dark:text-blue-400">
+                                                <span>Form Data Revision:</span>
+                                                <span className="font-mono text-xs">
+                                                    {latestFormData && '_revisionId' in latestFormData ? (latestFormData as any)._revisionId : 'None'}
+                                                </span>
+                                                <span className="text-xs">
+                                                    (v{latestFormData && '_revisionVersion' in latestFormData ? (latestFormData as any)._revisionVersion : '?'})
+                                                </span>
                                             </div>
                                         </div>
                                     </div>
@@ -2528,8 +2588,18 @@ function ArticleEditor({ articleId, userId, user, onBack }: { articleId: string;
                                                         <span className="font-medium">All Backup Keys:</span>
                                                         <div className="mt-1 space-y-1">
                                                             {backupDebug.allBackupKeys.map((key, index) => (
-                                                                <div key={index} className="text-gray-500 dark:text-gray-400 font-mono text-xs">
-                                                                    {key}
+                                                                <div key={index} className="flex items-center gap-2 text-gray-500 dark:text-gray-400 font-mono text-xs">
+                                                                    <span className="flex-1">{key}</span>
+                                                                    <button
+                                                                        onClick={() => {
+                                                                            const backupData = getBackupDataByKey(key)
+                                                                            setSelectedBackupData(backupData)
+                                                                            setBackupDataDialogOpen(true)
+                                                                        }}
+                                                                        className="px-2 py-1 text-xs bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200 rounded hover:bg-purple-200 dark:hover:bg-purple-800"
+                                                                    >
+                                                                        View
+                                                                    </button>
                                                                 </div>
                                                             ))}
                                                         </div>
@@ -3020,6 +3090,26 @@ function ArticleEditor({ articleId, userId, user, onBack }: { articleId: string;
                 </AlertDialogContent>
             </AlertDialog>
 
+            {/* Backup Data Dialog */}
+            <Dialog open={backupDataDialogOpen} onOpenChange={setBackupDataDialogOpen}>
+                <DialogContent className="max-w-4xl max-h-[80vh] overflow-hidden bg-purple-50 dark:bg-purple-950 border-purple-200 dark:border-purple-800">
+                    <DialogHeader>
+                        <DialogTitle className="text-purple-800 dark:text-purple-200">
+                            Backup Data
+                        </DialogTitle>
+                        <div className="text-sm text-purple-600 dark:text-purple-400 font-mono">
+                            {selectedBackupData?.articleId && `Article ID: ${selectedBackupData.articleId}`}
+                        </div>
+                    </DialogHeader>
+                    <div className="flex-1 overflow-hidden">
+                        <ScrollArea className="h-[60vh] w-full">
+                            <pre className="text-xs bg-purple-100 dark:bg-purple-900 p-4 rounded-md overflow-auto text-purple-800 dark:text-purple-200">
+                                {selectedBackupData ? JSON.stringify(selectedBackupData, null, 2) : ''}
+                            </pre>
+                        </ScrollArea>
+                    </div>
+                </DialogContent>
+            </Dialog>
 
         </>
     )

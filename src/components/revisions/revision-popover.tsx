@@ -287,10 +287,8 @@ export function RevisionPopover({
                       )}
                       
                       {onDeleteRevision && 
-                       !revision.isInitial && 
                        revision.$id !== currentRevisionId && 
-                       revision.$id !== formRevisionId && 
-                       revisionHistory.length > 1 && (
+                       revision.$id !== formRevisionId && (
                         <Button
                           variant="ghost"
                           size="sm"
