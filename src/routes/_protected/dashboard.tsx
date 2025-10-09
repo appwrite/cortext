@@ -36,6 +36,7 @@ import { UserAvatar } from '@/components/user-avatar'
 import { useTeamBlog } from '@/hooks/use-team-blog'
 import { OnboardingJourney } from '@/components/onboarding'
 import { TeamBlogProvider, useTeamBlogContext } from '@/contexts/team-blog-context'
+import { useDebugMode } from '@/contexts/debug-context'
 import { useDocumentTitle } from '@/hooks/use-document-title'
 import { formatDateForDisplay, formatDateCompact, formatDateRelative } from '@/lib/date-utils'
 import { cn } from '@/lib/utils'
@@ -90,6 +91,8 @@ function RouteComponent() {
 }
 
 function Header({ userId, onSignOut, user }: { userId: string; onSignOut: () => void; user: any }) {
+    const { isDebugMode, toggleDebugMode } = useDebugMode()
+    
     return (
         <header className="sticky top-0 z-20 border-b bg-background/80 backdrop-blur supports-[backdrop-filter]:bg-background/70">
             <div className="px-6 h-16 flex items-center justify-between">
@@ -110,6 +113,19 @@ function Header({ userId, onSignOut, user }: { userId: string; onSignOut: () => 
                 
                 {/* Right side - User actions */}
                 <div className="flex items-center gap-4">
+                    {import.meta.env.DEV && (
+                        <button
+                            onClick={toggleDebugMode}
+                            className={`p-2 rounded-md transition-colors ${
+                                isDebugMode 
+                                    ? 'bg-purple-100 text-purple-700 dark:bg-purple-900 dark:text-purple-300' 
+                                    : 'hover:bg-foreground/5'
+                            }`}
+                            title={`Debug Mode ${isDebugMode ? 'ON' : 'OFF'} (Cmd+. or Ctrl+.)`}
+                        >
+                            <Code className="h-4 w-4" />
+                        </button>
+                    )}
                     <Link 
                         to="/docs" 
                         className="p-2 rounded-md hover:bg-foreground/5 transition-colors"
@@ -1179,7 +1195,7 @@ function ArticleEditor({ articleId, userId, user, onBack }: { articleId: string;
     const [categories, setCategories] = useState<string[]>([])
     const [status, setStatus] = useState('unpublished')
     const [saving, setSaving] = useState(false)
-    const [showDebug, setShowDebug] = useState(false)
+    const { isDebugMode: showDebug, setDebugMode: setShowDebug, toggleDebugMode } = useDebugMode()
     const [bannerWasVisible, setBannerWasVisible] = useState(false)
     const [backupDataDialogOpen, setBackupDataDialogOpen] = useState(false)
     const [selectedBackupData, setSelectedBackupData] = useState<any>(null)
@@ -1755,18 +1771,6 @@ function ArticleEditor({ articleId, userId, user, onBack }: { articleId: string;
         }
     }, [])
 
-    // Debug mode toggle with Cmd+. or Ctrl+.
-    useEffect(() => {
-        const handleKeyDown = (e: KeyboardEvent) => {
-            if ((e.metaKey || e.ctrlKey) && e.key === '.') {
-                e.preventDefault()
-                setShowDebug(prev => !prev)
-            }
-        }
-
-        window.addEventListener('keydown', handleKeyDown)
-        return () => window.removeEventListener('keydown', handleKeyDown)
-    }, [])
 
 
     const handleDeploy = async () => {
@@ -2213,13 +2217,13 @@ function ArticleEditor({ articleId, userId, user, onBack }: { articleId: string;
 
                 {/* Debug panel */}
                 {showDebug && (
-                    <div className="mb-6 p-4 bg-purple-100 dark:bg-purple-900 rounded-lg border border-purple-200 dark:border-purple-700">
+                    <div className="mb-6 p-4 bg-purple-100 dark:bg-purple-900 rounded-lg">
                         <div className="flex items-center justify-between mb-3">
                             <h3 className="text-sm font-semibold text-purple-800 dark:text-purple-200">
-                                Debug Information
+                                Debug
                                 {latestRevision && (
                                     <span className="ml-2 text-xs font-normal text-purple-600 dark:text-purple-300">
-                                        ({getRevisionVersionName(latestRevision)})
+                                        v{latestRevision.version}
                                     </span>
                                 )}
                             </h3>
@@ -2227,374 +2231,233 @@ function ArticleEditor({ articleId, userId, user, onBack }: { articleId: string;
                                 onClick={() => setShowDebug(false)}
                                 className="text-xs text-purple-600 hover:text-purple-800 dark:text-purple-400 dark:hover:text-purple-200"
                             >
-                                Close
+                                ×
                             </button>
                         </div>
-                        <div className="space-y-3 text-xs">
+                        <div className="grid grid-cols-2 gap-4 text-xs">
                             <div>
-                                <strong>Article:</strong>
-                                <div className="ml-2 text-gray-600 dark:text-gray-400">
-                                    <div>ID: {article?.$id}</div>
-                                    <div>Updated: {article?.$updatedAt}</div>
-                                    <div>Status: {article?.status || 'Unknown'}</div>
-                                    <div>Active Revision ID: {article?.activeRevisionId || 'None'}</div>
-                                </div>
-                            </div>
-                            <div>
-                                <strong>Latest Revision:</strong>
-                                <div className="ml-2 text-gray-600 dark:text-gray-400">
-                                    <div>ID: {latestRevision?.$id || 'None'}</div>
-                                    <div>Updated: {latestRevision?.$updatedAt || 'None'}</div>
-                                    <div>Version: {latestRevision?.version || 'None'}</div>
-                                    <div>Status: {latestRevision?.status || 'Unknown'}</div>
-                                    <div className="mt-1 text-xs">
-                                        <span className="font-medium">Form Data Source:</span> Revision {latestRevision?.version || 'None'}
-                                        {latestFormData && '_revisionId' in latestFormData && (
-                                            <span className="ml-1 text-green-600 dark:text-green-400">
-                                                (✓ Data matches)
-                                            </span>
-                                        )}
-                                    </div>
-                                </div>
-                            </div>
-                            <div>
-                                <strong>Comparison:</strong>
-                                <div className="ml-2 text-gray-600 dark:text-gray-400">
-                                    <div>Has Unpublished Changes: {hasUnpublishedChanges ? 'Yes' : 'No'}</div>
-                                    <div className="mt-2">
-                                        <div className="font-medium mb-1">Revision ID Comparison:</div>
-                                        <div className="space-y-1">
-                                            <div className={`flex items-center gap-2 ${
-                                                article?.activeRevisionId === latestRevision?.$id 
-                                                    ? 'text-green-600 dark:text-green-400 font-semibold' 
-                                                    : 'text-orange-600 dark:text-orange-400 font-semibold'
-                                            }`}>
-                                                <span>Article Active Revision:</span>
-                                                <span className="font-mono text-xs">{article?.activeRevisionId || 'None'}</span>
-                                                {article?.activeRevisionId === latestRevision?.$id && (
-                                                    <span className="text-xs bg-green-100 dark:bg-green-900 px-1 rounded">CURRENT</span>
-                                                )}
-                                                {article?.activeRevisionId && latestRevision?.$id && article?.activeRevisionId !== latestRevision?.$id && (
-                                                    <span className="text-xs bg-orange-100 dark:bg-orange-900 px-1 rounded">OUTDATED</span>
-                                                )}
-                                            </div>
-                                            <div className="flex items-center gap-2 text-gray-600 dark:text-gray-400">
-                                                <span>Latest Revision:</span>
-                                                <span className="font-mono text-xs">{latestRevision?.$id || 'None'}</span>
-                                            </div>
-                                            <div className="flex items-center gap-2 text-blue-600 dark:text-blue-400">
-                                                <span>Form Data Revision:</span>
-                                                <span className="font-mono text-xs">
-                                                    {latestFormData && '_revisionId' in latestFormData ? (latestFormData as any)._revisionId : 'None'}
-                                                </span>
-                                                <span className="text-xs">
-                                                    (v{latestFormData && '_revisionVersion' in latestFormData ? (latestFormData as any)._revisionVersion : '?'})
-                                                </span>
-                                            </div>
-                                        </div>
-                                    </div>
-                                    {article && latestRevision && (
-                                        <div className="space-y-1">
-                                            <div className={`flex items-center gap-2 ${
-                                                new Date(article.$updatedAt) > new Date(latestRevision.$updatedAt) 
-                                                    ? 'text-green-600 dark:text-green-400 font-semibold' 
-                                                    : new Date(article.$updatedAt).getTime() === new Date(latestRevision.$updatedAt).getTime()
-                                                    ? 'text-blue-600 dark:text-blue-400 font-semibold'
-                                                    : 'text-gray-600 dark:text-gray-400'
-                                            }`}>
-                                                <span>Article Time:</span>
-                                                <span>{new Date(article.$updatedAt).toLocaleString(undefined, { 
-                                                    year: 'numeric', 
-                                                    month: '2-digit', 
-                                                    day: '2-digit', 
-                                                    hour: '2-digit', 
-                                                    minute: '2-digit', 
-                                                    second: '2-digit',
-                                                    hour12: false 
-                                                })}.{new Date(article.$updatedAt).getMilliseconds().toString().padStart(3, '0')}</span>
-                                                {new Date(article.$updatedAt) > new Date(latestRevision.$updatedAt) && (
-                                                    <span className="text-xs bg-green-100 dark:bg-green-900 px-1 rounded">NEWER</span>
-                                                )}
-                                                {new Date(article.$updatedAt).getTime() === new Date(latestRevision.$updatedAt).getTime() && (
-                                                    <span className="text-xs bg-blue-100 dark:bg-blue-900 px-1 rounded">SAME</span>
-                                                )}
-                                            </div>
-                                            <div className={`flex items-center gap-2 ${
-                                                new Date(latestRevision.$updatedAt) > new Date(article.$updatedAt) 
-                                                    ? 'text-green-600 dark:text-green-400 font-semibold' 
-                                                    : new Date(article.$updatedAt).getTime() === new Date(latestRevision.$updatedAt).getTime()
-                                                    ? 'text-blue-600 dark:text-blue-400 font-semibold'
-                                                    : 'text-gray-600 dark:text-gray-400'
-                                            }`}>
-                                                <span>Revision Time:</span>
-                                                <span>{new Date(latestRevision.$updatedAt).toLocaleString(undefined, { 
-                                                    year: 'numeric', 
-                                                    month: '2-digit', 
-                                                    day: '2-digit', 
-                                                    hour: '2-digit', 
-                                                    minute: '2-digit', 
-                                                    second: '2-digit',
-                                                    hour12: false 
-                                                })}.{new Date(latestRevision.$updatedAt).getMilliseconds().toString().padStart(3, '0')}</span>
-                                                {new Date(latestRevision.$updatedAt) > new Date(article.$updatedAt) && (
-                                                    <span className="text-xs bg-green-100 dark:bg-green-900 px-1 rounded">NEWER</span>
-                                                )}
-                                                {new Date(article.$updatedAt).getTime() === new Date(latestRevision.$updatedAt).getTime() && (
-                                                    <span className="text-xs bg-blue-100 dark:bg-blue-900 px-1 rounded">SAME</span>
-                                                )}
-                                            </div>
-                                        </div>
-                                    )}
-                                </div>
-                            </div>
-                            <div>
-                                <strong>Revert Mode State:</strong>
-                                <div className="ml-2 text-gray-600 dark:text-gray-400">
-                                    <div className="space-y-2 p-2 bg-white dark:bg-gray-900 rounded border">
-                                        <div className="text-xs">
-                                            <span className="font-medium">Selected Revision ID:</span>
-                                            <span className="ml-2 text-blue-600 dark:text-blue-400">
-                                                {selectedRevisionId || 'None'}
-                                                            </span>
-                                        </div>
-                                        <div className="text-xs">
-                                            <span className="font-medium">Show Revert Confirmation:</span>
-                                            <span className={`ml-2 px-2 py-1 rounded text-xs ${
-                                                showRevertConfirmation 
-                                                    ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200' 
-                                                    : 'bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-200'
-                                            }`}>
-                                                {showRevertConfirmation ? 'Yes' : 'No'}
-                                                            </span>
-                                                        </div>
-                                        <div className="text-xs">
-                                            <span className="font-medium">Is Reverting:</span>
-                                            <span className={`ml-2 px-2 py-1 rounded text-xs ${
-                                                isReverting 
-                                                    ? 'bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-200' 
-                                                    : 'bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-200'
-                                            }`}>
-                                                {isReverting ? 'Yes' : 'No'}
-                                            </span>
-                                                        </div>
-                                        <div className="text-xs">
-                                            <span className="font-medium">Revert Form Data:</span>
-                                            <span className="ml-2 text-blue-600 dark:text-blue-400">
-                                                {revertFormData ? 'Available' : 'None'}
-                                            </span>
-                                                            </div>
-                                        <div className="text-xs">
-                                            <span className="font-medium">Is Reverting Ref:</span>
-                                            <span className={`ml-2 px-2 py-1 rounded text-xs ${
-                                                isRevertingRef.current 
-                                                    ? 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200' 
-                                                    : 'bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-200'
-                                            }`}>
-                                                {isRevertingRef.current ? 'True' : 'False'}
-                                            </span>
-                                                    </div>
-                                        <div className="text-xs">
-                                            <span className="font-medium">Is In Revert Mode:</span>
-                                            <span className={`ml-2 px-2 py-1 rounded text-xs ${
-                                                isInRevertMode 
-                                                    ? 'bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200' 
-                                                    : 'bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-200'
-                                            }`}>
-                                                {isInRevertMode ? 'Yes' : 'No'}
-                                            </span>
-                                        </div>
-                                        <div className="text-xs">
-                                            <span className="font-medium">Auto-save Queue Length:</span>
-                                            <span className={`ml-2 px-2 py-1 rounded text-xs ${
-                                                queueLength > 0 
-                                                    ? 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200' 
-                                                    : 'bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-200'
-                                            }`}>
-                                                {queueLength}
-                                            </span>
-                                        </div>
-                                        {revertFormData && (
-                                            <div className="text-xs mt-2">
-                                                <span className="font-medium">Revision Details:</span>
-                                                <div className="mt-1 text-gray-500 dark:text-gray-400">
-                                                    <div>Version: {revertFormData.version}</div>
-                                                    <div>Title: {revertFormData.title}</div>
-                                                    <div>Timestamp: {new Date(revertFormData.timestamp).toLocaleString()}</div>
+                                <div className="font-medium text-purple-700 dark:text-purple-300 mb-1">Status</div>
+                                <div className="space-y-1">
+                                    <div className="flex justify-between items-center">
+                                        <span className="flex items-center gap-1">
+                                            Unpublished Changes
+                                            <div className="group relative">
+                                                <span className="text-purple-500 dark:text-purple-400 cursor-help text-xs w-3 h-3 rounded-full border border-current flex items-center justify-center text-[8px]">i</span>
+                                                <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-2 py-1 bg-gray-900 dark:bg-gray-100 text-white dark:text-gray-900 text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none whitespace-nowrap z-10">
+                                                    Changes that haven't been published to the live article yet
                                                 </div>
                                             </div>
-                                        )}
+                                        </span>
+                                        <span className={hasUnpublishedChanges ? 'text-orange-600 dark:text-orange-400' : 'text-green-600 dark:text-green-400'}>
+                                            {hasUnpublishedChanges ? 'Yes' : 'No'}
+                                        </span>
+                                    </div>
+                                    <div className="flex justify-between items-center">
+                                        <span className="flex items-center gap-1">
+                                            Auto-save
+                                            <div className="group relative">
+                                                <span className="text-purple-500 dark:text-purple-400 cursor-help text-xs w-3 h-3 rounded-full border border-current flex items-center justify-center text-[8px]">i</span>
+                                                <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-2 py-1 bg-gray-900 dark:bg-gray-100 text-white dark:text-gray-900 text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none whitespace-nowrap z-10">
+                                                    Current state of automatic saving to the server
+                                                </div>
+                                            </div>
+                                        </span>
+                                        <span className={isAutoSaving ? 'text-yellow-600 dark:text-yellow-400' : hasUnsavedChanges ? 'text-orange-600 dark:text-orange-400' : 'text-green-600 dark:text-green-400'}>
+                                            {isAutoSaving ? 'Saving...' : hasUnsavedChanges ? 'Unsaved' : 'Saved'}
+                                        </span>
+                                    </div>
+                                    <div className="flex justify-between items-center">
+                                        <span className="flex items-center gap-1">
+                                            Revert Mode
+                                            <div className="group relative">
+                                                <span className="text-purple-500 dark:text-purple-400 cursor-help text-xs w-3 h-3 rounded-full border border-current flex items-center justify-center text-[8px]">i</span>
+                                                <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-2 py-1 bg-gray-900 dark:bg-gray-100 text-white dark:text-gray-900 text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none whitespace-nowrap z-10">
+                                                    Whether you're currently viewing a previous version of the article
+                                                </div>
+                                            </div>
+                                        </span>
+                                        <span className={isInRevertMode ? 'text-purple-600 dark:text-purple-400' : 'text-gray-500 dark:text-gray-400'}>
+                                            {isInRevertMode ? 'Active' : 'Inactive'}
+                                        </span>
                                     </div>
                                 </div>
                             </div>
                             <div>
-                                <strong>Backup System:</strong>
-                                <div className="ml-2 text-gray-600 dark:text-gray-400">
+                                <div className="font-medium text-purple-700 dark:text-purple-300 mb-1">Revisions</div>
+                                <div className="space-y-1">
+                                    <div className="flex justify-between items-center">
+                                        <span className="flex items-center gap-1">
+                                            Active
+                                            <div className="group relative">
+                                                <span className="text-purple-500 dark:text-purple-400 cursor-help text-xs w-3 h-3 rounded-full border border-current flex items-center justify-center text-[8px]">i</span>
+                                                <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-2 py-1 bg-gray-900 dark:bg-gray-100 text-white dark:text-gray-900 text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none whitespace-nowrap z-10">
+                                                    The revision ID that's currently published and visible to readers
+                                                </div>
+                                            </div>
+                                        </span>
+                                        <span className="font-mono text-xs">
+                                            {article?.activeRevisionId || 'None'}
+                                        </span>
+                                    </div>
+                                    <div className="flex justify-between items-center">
+                                        <span className="flex items-center gap-1">
+                                            Latest
+                                            <div className="group relative">
+                                                <span className="text-purple-500 dark:text-purple-400 cursor-help text-xs w-3 h-3 rounded-full border border-current flex items-center justify-center text-[8px]">i</span>
+                                                <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-2 py-1 bg-gray-900 dark:bg-gray-100 text-white dark:text-gray-900 text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none whitespace-nowrap z-10">
+                                                    The most recent revision ID that exists in the database
+                                                </div>
+                                            </div>
+                                        </span>
+                                        <span className="font-mono text-xs">
+                                            {latestRevision?.$id || 'None'}
+                                        </span>
+                                    </div>
+                                    <div className="flex justify-between items-center">
+                                        <span className="flex items-center gap-1">
+                                            Match
+                                            <div className="group relative">
+                                                <span className="text-purple-500 dark:text-purple-400 cursor-help text-xs w-3 h-3 rounded-full border border-current flex items-center justify-center text-[8px]">i</span>
+                                                <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-2 py-1 bg-gray-900 dark:bg-gray-100 text-white dark:text-gray-900 text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none whitespace-nowrap z-10">
+                                                    Whether the active and latest revisions are the same (should be ✓ for normal operation)
+                                                </div>
+                                            </div>
+                                        </span>
+                                        <span className={article?.activeRevisionId === latestRevision?.$id ? 'text-green-600 dark:text-green-400' : 'text-orange-600 dark:text-orange-400'}>
+                                            {article?.activeRevisionId === latestRevision?.$id ? '✓' : '✗'}
+                                        </span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div className="mt-3 pt-2">
+                            <div className="flex items-center justify-between text-xs">
+                                <div className="flex items-center gap-4">
+                                    <span className="text-purple-600 dark:text-purple-400 flex items-center gap-1">
+                                        Queue
+                                        <div className="group relative">
+                                            <span className="text-purple-500 dark:text-purple-400 cursor-help text-xs w-3 h-3 rounded-full border border-current flex items-center justify-center text-[8px]">i</span>
+                                            <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-2 py-1 bg-gray-900 dark:bg-gray-100 text-white dark:text-gray-900 text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none whitespace-nowrap z-10">
+                                                Number of pending changes waiting to be auto-saved to the server
+                                            </div>
+                                        </div>
+                                        : <span className={queueLength > 0 ? 'text-yellow-600 dark:text-yellow-400' : 'text-purple-500 dark:text-purple-400'}>{queueLength}</span>
+                                    </span>
+                                    <span className="text-purple-600 dark:text-purple-400 flex items-center gap-1">
+                                        Last saved
+                                        <div className="group relative">
+                                            <span className="text-purple-500 dark:text-purple-400 cursor-help text-xs w-3 h-3 rounded-full border border-current flex items-center justify-center text-[8px]">i</span>
+                                            <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-2 py-1 bg-gray-900 dark:bg-gray-100 text-white dark:text-gray-900 text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none whitespace-nowrap z-10">
+                                                When the article was last successfully saved to the server
+                                            </div>
+                                        </div>
+                                        : {lastSaved ? (
+                                            <span className="flex items-center gap-1">
+                                                <span>{lastSaved.toLocaleTimeString()}</span>
+                                                <span className="text-purple-500 dark:text-purple-400 text-xs">
+                                                    ({(() => {
+                                                        const now = new Date()
+                                                        const diffMs = now.getTime() - lastSaved.getTime()
+                                                        const diffMins = Math.floor(diffMs / (1000 * 60))
+                                                        const diffHours = Math.floor(diffMs / (1000 * 60 * 60))
+                                                        const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24))
+                                                        
+                                                        if (diffMins < 1) return 'just now'
+                                                        if (diffMins < 60) return `${diffMins}m ago`
+                                                        if (diffHours < 24) return `${diffHours}h ago`
+                                                        return `${diffDays}d ago`
+                                                    })()})
+                                                </span>
+                                            </span>
+                                        ) : 'Never'}
+                                    </span>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div className="mt-3 pt-2 border-t border-purple-200 dark:border-purple-700">
+                            <div className="flex items-center justify-between text-xs">
+                                <div className="flex items-center gap-4">
+                                    <div className="font-medium text-purple-700 dark:text-purple-300 flex items-center gap-1">
+                                        Backups
+                                        <div className="group relative">
+                                            <span className="text-purple-500 dark:text-purple-400 cursor-help text-xs w-3 h-3 rounded-full border border-current flex items-center justify-center text-[8px]">i</span>
+                                            <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-2 py-1 bg-gray-900 dark:bg-gray-100 text-white dark:text-gray-900 text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none whitespace-nowrap z-10">
+                                                Local backups stored in your browser for data recovery
+                                            </div>
+                                        </div>
+                                    </div>
                                     {(() => {
                                         const backupDebug = getBackupDebugInfo(articleId)
                                         const detailedBackup = getDetailedBackupInfo(articleId)
-                                        
                                         return (
-                                            <div className="space-y-2 p-2 bg-white dark:bg-gray-900 rounded border">
-                                                <div className="text-xs">
-                                                    <span className="font-medium">Has Backup:</span>
-                                                    <span className={`ml-2 px-2 py-1 rounded text-xs ${
-                                                        backupDebug.hasBackup 
-                                                            ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200' 
-                                                            : 'bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-200'
-                                                    }`}>
-                                                        {backupDebug.hasBackup ? 'Yes' : 'No'}
-                                                    </span>
-                                                </div>
-                                                
-                                                {backupDebug.hasBackup && detailedBackup && (
-                                                    <>
-                                                        <div className="text-xs">
-                                                            <span className="font-medium">Backup Age:</span>
-                                                            <span className={`ml-2 px-2 py-1 rounded text-xs ${
-                                                                (detailedBackup.age || 0) > 60 
-                                                                    ? 'bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-200' 
-                                                                    : 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200'
-                                                            }`}>
-                                                                {detailedBackup.age} minutes
-                                                            </span>
-                                                        </div>
-                                                        <div className="text-xs">
-                                                            <span className="font-medium">Backup Size:</span>
-                                                            <span className="ml-2 text-blue-600 dark:text-blue-400">
-                                                                {(detailedBackup.totalSize / 1024).toFixed(1)} KB
-                                                            </span>
-                                                        </div>
-                                                        <div className="text-xs">
-                                                            <span className="font-medium">Body Length:</span>
-                                                            <span className="ml-2 text-blue-600 dark:text-blue-400">
-                                                                {detailedBackup.bodyLength} chars
-                                                            </span>
-                                                        </div>
-                                                        <div className="text-xs">
-                                                            <span className="font-medium">Form Data Keys:</span>
-                                                            <span className="ml-2 text-blue-600 dark:text-blue-400">
-                                                                {detailedBackup.formDataKeys.join(', ')}
-                                                            </span>
-                                                        </div>
-                                                        <div className="text-xs">
-                                                            <span className="font-medium">Backup Timestamp:</span>
-                                                            <span className="ml-2 text-blue-600 dark:text-blue-400">
-                                                                {new Date(detailedBackup.timestamp).toLocaleString()}
-                                                            </span>
-                                                        </div>
-                                                    </>
-                                                )}
-                                                
-                                                <div className="text-xs">
-                                                    <span className="font-medium">Total Backups:</span>
-                                                    <span className="ml-2 text-blue-600 dark:text-blue-400">
-                                                        {backupDebug.totalBackups}
-                                                    </span>
-                                                </div>
-                                                
-                                                <div className="text-xs">
-                                                    <span className="font-medium">LocalStorage Available:</span>
-                                                    <span className={`ml-2 px-2 py-1 rounded text-xs ${
-                                                        backupDebug.localStorageAvailable 
-                                                            ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200' 
-                                                            : 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200'
-                                                    }`}>
-                                                        {backupDebug.localStorageAvailable ? 'Yes' : 'No'}
-                                                    </span>
-                                                </div>
-                                                
-                                                <div className="text-xs">
-                                                    <span className="font-medium">Auto-save Status:</span>
-                                                    <span className={`ml-2 px-2 py-1 rounded text-xs ${
-                                                        isAutoSaving 
-                                                            ? 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200' 
-                                                            : hasUnsavedChanges
-                                                            ? 'bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-200'
-                                                            : 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200'
-                                                    }`}>
-                                                        {isAutoSaving ? 'Saving...' : hasUnsavedChanges ? 'Unsaved Changes' : 'Saved'}
-                                                    </span>
-                                                </div>
-                                                
-                                                <div className="text-xs">
-                                                    <span className="font-medium">Last Saved:</span>
-                                                    <span className="ml-2 text-blue-600 dark:text-blue-400">
-                                                        {lastSaved ? lastSaved.toLocaleString() : 'Never'}
-                                                    </span>
-                                                </div>
-                                                
-                                                <div className="flex gap-2 mt-2">
-                                                    <button
-                                                        onClick={() => {
-                                                            const formData = {
-                                                                trailer,
-                                                                title,
-                                                                slug: title ? slugify(title) : '',
-                                                                subtitle,
-                                                                live,
-                                                                redirect,
-                                                                authors,
-                                                                categories,
-                                                                body: JSON.stringify(localSections),
-                                                                status,
-                                                                pinned: article?.pinned || false,
-                                                                images: article?.images || null,
-                                                                blogId: article?.blogId || null,
-                                                                createdBy: article?.createdBy || userId,
-                                                            }
-                                                            triggerBackup(formData)
-                                                        }}
-                                                        className="px-2 py-1 text-xs bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200 rounded hover:bg-green-200 dark:hover:bg-green-800"
-                                                    >
-                                                        Manual Backup
-                                                    </button>
-                                                    <button
-                                                        onClick={() => {
-                                                            const backupData = recoverFromBackup()
-                                                            if (backupData) {
-                                                                console.log('Backup data:', backupData)
-                                                            }
-                                                        }}
-                                                        className="px-2 py-1 text-xs bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200 rounded hover:bg-blue-200 dark:hover:bg-blue-800"
-                                                    >
-                                                        Test Recovery
-                                                    </button>
-                                                    <button
-                                                        onClick={() => {
-                                                            const cleaned = forceCleanupAllBackups()
-                                                            console.log(`Cleaned up ${cleaned} backup entries`)
-                                                        }}
-                                                        className="px-2 py-1 text-xs bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200 rounded hover:bg-red-200 dark:hover:bg-red-800"
-                                                    >
-                                                        Clean All Backups
-                                                    </button>
-                                                </div>
-                                                
-                                                {backupDebug.allBackupKeys.length > 0 && (
-                                                    <div className="text-xs mt-2">
-                                                        <span className="font-medium">All Backup Keys:</span>
-                                                        <div className="mt-1 space-y-1">
-                                                            {backupDebug.allBackupKeys.map((key, index) => (
-                                                                <div key={index} className="flex items-center gap-2 text-gray-500 dark:text-gray-400 font-mono text-xs">
-                                                                    <span className="flex-1">{key}</span>
-                                                                    <button
-                                                                        onClick={() => {
-                                                                            const backupData = getBackupDataByKey(key)
-                                                                            setSelectedBackupData(backupData)
-                                                                            setBackupDataDialogOpen(true)
-                                                                        }}
-                                                                        className="px-2 py-1 text-xs bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200 rounded hover:bg-purple-200 dark:hover:bg-purple-800"
-                                                                    >
-                                                                        View
-                                                                    </button>
-                                                                </div>
-                                                            ))}
+                                            <div className="flex items-center gap-4">
+                                                <span className="text-purple-600 dark:text-purple-400 flex items-center gap-1">
+                                                    Status
+                                                    <div className="group relative">
+                                                        <span className="text-purple-500 dark:text-purple-400 cursor-help text-xs w-3 h-3 rounded-full border border-current flex items-center justify-center text-[8px]">i</span>
+                                                        <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-2 py-1 bg-gray-900 dark:bg-gray-100 text-white dark:text-gray-900 text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none whitespace-nowrap z-10">
+                                                            Whether there's actual backup data with content
                                                         </div>
                                                     </div>
+                                                    : <span className={backupDebug.hasBackup ? 'text-green-600 dark:text-green-400' : 'text-gray-500 dark:text-gray-400'}>
+                                                        {backupDebug.hasBackup ? 'Has Data' : 'Empty'}
+                                                    </span>
+                                                </span>
+                                                {detailedBackup && (
+                                                    <span className="text-purple-600 dark:text-purple-400 flex items-center gap-1">
+                                                        Size
+                                                        <div className="group relative">
+                                                            <span className="text-purple-500 dark:text-purple-400 cursor-help text-xs w-3 h-3 rounded-full border border-current flex items-center justify-center text-[8px]">i</span>
+                                                            <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-2 py-1 bg-gray-900 dark:bg-gray-100 text-white dark:text-gray-900 text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none whitespace-nowrap z-10">
+                                                                Total size of backup data in KB
+                                                            </div>
+                                                        </div>
+                                                        : <span className="text-blue-600 dark:text-blue-400">
+                                                            {(detailedBackup.totalSize / 1024).toFixed(1)} KB
+                                                        </span>
+                                                    </span>
                                                 )}
                                             </div>
                                         )
                                     })()}
+                                </div>
+                                <div className="flex gap-1">
+                                    <button
+                                        onClick={() => {
+                                            const formData = {
+                                                trailer,
+                                                title,
+                                                slug: title ? slugify(title) : '',
+                                                subtitle,
+                                                live,
+                                                redirect,
+                                                authors,
+                                                categories,
+                                                body: JSON.stringify(localSections),
+                                                status,
+                                                pinned: article?.pinned || false,
+                                                images: article?.images || null,
+                                                blogId: article?.blogId || null,
+                                                createdBy: article?.createdBy || userId,
+                                            }
+                                            triggerBackup(formData)
+                                        }}
+                                        className="px-2 py-1 text-xs bg-purple-200 text-purple-800 dark:bg-purple-800 dark:text-purple-200 rounded hover:bg-purple-300 dark:hover:bg-purple-700"
+                                        title="Create a manual backup of current form data"
+                                    >
+                                        Save Backup
+                                    </button>
+                                    <button
+                                        onClick={() => {
+                                            const cleaned = forceCleanupAllBackups()
+                                            console.log(`Cleaned up ${cleaned} backup entries`)
+                                        }}
+                                        className="px-2 py-1 text-xs bg-red-200 text-red-800 dark:bg-red-800 dark:text-red-200 rounded hover:bg-red-300 dark:hover:bg-red-700"
+                                        title="Remove all backup data from localStorage"
+                                    >
+                                        Clear Backups
+                                    </button>
                                 </div>
                             </div>
                         </div>

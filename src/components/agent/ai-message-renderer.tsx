@@ -1,5 +1,6 @@
-import React from 'react'
+import React, { memo } from 'react'
 import { cn } from '@/lib/utils'
+import { JSONProcessingIndicator } from './json-processing-indicator'
 
 interface AIMessageRendererProps {
   content: string
@@ -10,7 +11,7 @@ interface AIMessageRendererProps {
  * Renders AI messages with special handling for JSON commands
  * Shows a nice visual indication of changes made instead of raw JSON
  */
-export function AIMessageRenderer({ content, className }: AIMessageRendererProps) {
+export const AIMessageRenderer = memo(function AIMessageRenderer({ content, className }: AIMessageRendererProps) {
   if (!content) return null
 
   // Check if content starts with JSON-like structure (even if incomplete)
@@ -53,16 +54,17 @@ export function AIMessageRenderer({ content, className }: AIMessageRendererProps
       return <div className={cn("space-y-1 text-xs leading-relaxed", className)}>{content}</div>
     }
   } else {
-    // Incomplete JSON detected - hide content to prevent flashing
+    // Incomplete JSON detected - show processing indicator
     // This handles the streaming case where JSON is being built
     const firstNewline = content.indexOf('\n')
     if (firstNewline > 0) {
       // There's a newline, check if there's content after it
       const afterNewline = content.slice(firstNewline + 1).trim()
       if (afterNewline) {
-        // Show only the content after the newline (explanation)
+        // Show processing indicator and the content after the newline (explanation)
         return (
-          <div className={cn("space-y-1", className)}>
+          <div className={cn("space-y-2", className)}>
+            <JSONProcessingIndicator content={content} />
             <div className="text-xs leading-relaxed">
               {afterNewline}
             </div>
@@ -71,10 +73,10 @@ export function AIMessageRenderer({ content, className }: AIMessageRendererProps
       }
     }
     
-    // No newline yet or no content after newline - hide everything during streaming
+    // No newline yet or no content after newline - show processing indicator during streaming
     return (
       <div className={cn("space-y-1", className)}>
-        {/* Hide content during JSON streaming */}
+        <JSONProcessingIndicator content={content} />
       </div>
     )
   }
@@ -85,5 +87,5 @@ export function AIMessageRenderer({ content, className }: AIMessageRendererProps
       {content}
     </div>
   )
-}
+})
 

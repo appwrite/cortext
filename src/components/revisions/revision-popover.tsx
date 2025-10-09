@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect } from 'react'
+import { useDebugMode } from '@/contexts/debug-context'
 import { Button } from '@/components/ui/button'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { ScrollArea } from '@/components/ui/scroll-area'
@@ -32,8 +33,9 @@ export function RevisionPopover({
   onScrollToTop,
   className,
   currentRevisionVersion,
-  debugMode = false
+  debugMode: _debugMode = false
 }: RevisionPopoverProps) {
+  const { isDebugMode: debugMode } = useDebugMode()
   const [isOpen, setIsOpen] = useState(false)
   const [revisionToDelete, setRevisionToDelete] = useState<string | null>(null)
   const [popoverPosition, setPopoverPosition] = useState<'bottom' | 'top'>('bottom')
@@ -136,15 +138,15 @@ export function RevisionPopover({
     if (firstChange.includes('Updated title:')) {
       const titleChange = firstChange.split('Updated title: ')[1]
       const newTitle = titleChange.split(' → ')[1] || titleChange
-      return `Version ${revision.version} - Title: ${truncate(newTitle, 30)}`
+      return `Version ${revision.version} - Title: ${truncate(newTitle, 20)}`
     }
     if (firstChange.includes('Section')) {
       const sectionInfo = firstChange.split(': ')[0]
-      return `Version ${revision.version} - ${truncate(sectionInfo, 40)}`
+      return `Version ${revision.version} - ${truncate(sectionInfo, 20)}`
     }
     if (firstChange.includes('Updated')) {
       const field = firstChange.split('Updated ')[1].split(':')[0]
-      return `Version ${revision.version} - Updated ${truncate(field, 30)}`
+      return `Version ${revision.version} - Updated ${truncate(field, 20)}`
     }
     
     return `Version ${revision.version}`
@@ -228,29 +230,36 @@ export function RevisionPopover({
                         setIsOpen(false)
                       }}
                     >
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2 leading-5">
-                          <div 
-                            className="text-xs truncate"
-                            title={getRevisionTitle(revision)}
-                          >
-                            {getRevisionTitle(revision)}
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2 leading-5">
+                            <div 
+                              className="text-xs truncate"
+                              title={getRevisionTitle(revision)}
+                            >
+                              {getRevisionTitle(revision)}
+                            </div>
+                            <div className="flex items-center gap-1">
+                              {revision.$id === currentRevisionId && (
+                                <span className="inline-flex items-center gap-1 text-xs text-green-600 font-medium">
+                                  <div className="w-1.5 h-1.5 bg-green-600 rounded-full"></div>
+                                  Active
+                                </span>
+                              )}
+                              {revision.$id === formRevisionId && (
+                                <span className="inline-flex items-center gap-1 text-xs text-blue-600 font-medium">
+                                  <div className="w-1.5 h-1.5 bg-blue-600 rounded-full"></div>
+                                  Editing
+                                </span>
+                              )}
+                            </div>
                           </div>
-                          <div className="flex items-center gap-1">
-                            {revision.$id === currentRevisionId && (
-                              <span className="inline-flex items-center gap-1 text-xs text-green-600 font-medium">
-                                <div className="w-1.5 h-1.5 bg-green-600 rounded-full"></div>
-                                Active
-                              </span>
-                            )}
-                            {revision.$id === formRevisionId && (
-                              <span className="inline-flex items-center gap-1 text-xs text-blue-600 font-medium">
-                                <div className="w-1.5 h-1.5 bg-blue-600 rounded-full"></div>
-                                Editing
-                              </span>
-                            )}
-                          </div>
-                        </div>
+                          
+                          {/* Debug mode: Show trimmed revision ID */}
+                          {debugMode && (
+                            <div className="text-xs text-purple-600 dark:text-purple-400 font-mono mt-1">
+                              ID: {revision.$id}
+                            </div>
+                          )}
                         
                           <div className="text-xs text-muted-foreground leading-5">
                             <span>{revision.userName || revision.userEmail || 'Unknown'}</span>

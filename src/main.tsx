@@ -8,6 +8,7 @@ import { routeTree } from "./routeTree.gen";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { queryClient } from "./lib/react-query";
 import { ThemeProvider } from "./contexts/theme-context";
+import { DebugProvider } from "./contexts/debug-context";
 import { cleanupOldBackups } from "./lib/local-storage-backup";
 
 export interface RouterContext {
@@ -29,7 +30,9 @@ export function App() {
 
   return (
     <ThemeProvider>
-      <RouterProvider router={router} context={initialContext} />
+      <DebugProvider>
+        <RouterProvider router={router} context={initialContext} />
+      </DebugProvider>
     </ThemeProvider>
   );
 }

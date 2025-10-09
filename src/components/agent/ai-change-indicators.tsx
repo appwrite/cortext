@@ -1,5 +1,5 @@
-import React from 'react'
-import { CheckCircle } from 'lucide-react'
+import React, { useState } from 'react'
+import { CheckCircle, ChevronDown, ChevronUp } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
 interface AICommand {
@@ -69,11 +69,14 @@ function CommandRenderer({ command, isStreaming }: { command: AICommand; isStrea
 }
 
 function ArticleChanges({ data, isStreaming }: { data: any; isStreaming: boolean }) {
+  const [isExpanded, setIsExpanded] = useState(false)
   const changes = Object.entries(data).map(([key, value]) => ({
     field: key,
     value: value,
     label: getFieldLabel(key)
   }))
+
+  const changesText = changes.map(change => `${change.label}: ${typeof change.value === 'string' ? `"${change.value}"` : String(change.value)}`).join(', ')
 
   return (
     <div className="bg-green-50 dark:bg-green-950/20 rounded-md p-2.5">
@@ -83,7 +86,27 @@ function ArticleChanges({ data, isStreaming }: { data: any; isStreaming: boolean
         ) : (
           <CheckCircle className="h-3 w-3 flex-shrink-0 mt-0.5" />
         )}
-        <span>Article: {changes.map(change => `${change.label}: ${typeof change.value === 'string' ? `"${change.value}"` : String(change.value)}`).join(', ')}</span>
+        <div className="flex-1 min-w-0">
+          <div className="flex items-start gap-2">
+            <div className={cn(
+              "flex-1 min-w-0",
+              !isExpanded && "line-clamp-2"
+            )}>
+              Article: {changesText}
+            </div>
+            <button
+              onClick={() => setIsExpanded(!isExpanded)}
+              className="flex-shrink-0 ml-1 p-0.5 hover:bg-green-100 dark:hover:bg-green-900/30 rounded transition-colors"
+              aria-label={isExpanded ? 'Collapse' : 'Expand'}
+            >
+              {isExpanded ? (
+                <ChevronUp className="h-3 w-3" />
+              ) : (
+                <ChevronDown className="h-3 w-3" />
+              )}
+            </button>
+          </div>
+        </div>
       </div>
     </div>
   )
@@ -111,10 +134,18 @@ function getTypeText(type: string) {
 }
 
 function SectionChanges({ data, isStreaming }: { data: any[]; isStreaming: boolean }) {
+  const [isExpanded, setIsExpanded] = useState(false)
   const changes = data.map((section, index) => ({
     ...section,
     id: section.id || `section-${index}`
   }))
+
+  const changesText = changes.map(change => {
+    const actionText = getActionText(change.action)
+    const typeText = getTypeText(change.type)
+    const contentText = change.content ? `"${change.content.length > 20 ? change.content.substring(0, 20) + '...' : change.content}"` : ''
+    return `${actionText} ${typeText}${contentText ? ` ${contentText}` : ''}`
+  }).join(', ')
 
   return (
     <div className="bg-green-50 dark:bg-green-950/20 rounded-md p-2.5">
@@ -124,12 +155,27 @@ function SectionChanges({ data, isStreaming }: { data: any[]; isStreaming: boole
         ) : (
           <CheckCircle className="h-3 w-3 flex-shrink-0 mt-0.5" />
         )}
-        <span>Content: {changes.map(change => {
-          const actionText = getActionText(change.action)
-          const typeText = getTypeText(change.type)
-          const contentText = change.content ? `"${change.content.length > 20 ? change.content.substring(0, 20) + '...' : change.content}"` : ''
-          return `${actionText} ${typeText}${contentText ? ` ${contentText}` : ''}`
-        }).join(', ')}</span>
+        <div className="flex-1 min-w-0">
+          <div className="flex items-start gap-2">
+            <div className={cn(
+              "flex-1 min-w-0",
+              !isExpanded && "line-clamp-2"
+            )}>
+              Content: {changesText}
+            </div>
+            <button
+              onClick={() => setIsExpanded(!isExpanded)}
+              className="flex-shrink-0 ml-1 p-0.5 hover:bg-green-100 dark:hover:bg-green-900/30 rounded transition-colors"
+              aria-label={isExpanded ? 'Collapse' : 'Expand'}
+            >
+              {isExpanded ? (
+                <ChevronUp className="h-3 w-3" />
+              ) : (
+                <ChevronDown className="h-3 w-3" />
+              )}
+            </button>
+          </div>
+        </div>
       </div>
     </div>
   )

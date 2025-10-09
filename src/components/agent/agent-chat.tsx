@@ -12,6 +12,7 @@ import { useConversationManager, useMessagesWithNotifications } from '@/hooks/us
 import { ConversationSelector } from './conversation-selector'
 import { ConversationPlaceholder } from './conversation-placeholder'
 import { useAuth } from '@/hooks/use-auth'
+import { useDebugMode } from '@/contexts/debug-context'
 import { useLatestRevision } from '@/hooks/use-latest-revision'
 import type { Messages } from '@/lib/appwrite/appwrite.types'
 import { functionService } from '@/lib/appwrite/functions'
@@ -74,7 +75,7 @@ export function AgentChat({
     const [lastStreamingContent, setLastStreamingContent] = useState<string>('')
     const [streamingContentCheckCount, setStreamingContentCheckCount] = useState(0)
     const [lastMetadataStatus, setLastMetadataStatus] = useState<string>('None')
-    const [showDebugPanel, setShowDebugPanel] = useState<boolean>(false)
+    const { isDebugMode: showDebugPanel, setDebugMode: setShowDebugPanel } = useDebugMode()
     const [totalCost, setTotalCost] = useState<number>(0)
     const [totalTokens, setTotalTokens] = useState<number>(0)
     const [totalInputTokens, setTotalInputTokens] = useState<number>(0)
@@ -608,19 +609,6 @@ export function AgentChat({
         }
     }, [isPromptLocked])
 
-    // Keyboard shortcut to toggle debug panel (Cmd+. or Ctrl+.)
-    useEffect(() => {
-        const handleKeyDown = (e: KeyboardEvent) => {
-            // Check for Cmd+. (Mac) or Ctrl+. (Windows/Linux)
-            if (e.key === '.' && (e.metaKey || e.ctrlKey)) {
-                e.preventDefault()
-                setShowDebugPanel(prev => !prev)
-            }
-        }
-
-        document.addEventListener('keydown', handleKeyDown)
-        return () => document.removeEventListener('keydown', handleKeyDown)
-    }, [showDebugPanel])
 
     const send = async (messageText?: string) => {
         const text = (messageText || input).trim()
@@ -686,73 +674,310 @@ export function AgentChat({
         send(message)
     }
 
+    // Mock message functions for debug mode
+    const addMockUserMessage = async () => {
+        if (!currentConversationId || !user?.$id) return
+        try {
+            await createMessage({
+                role: 'user',
+                content: 'This is a mock user message for testing the UI layout and behavior.',
+                userId: user.$id,
+                revisionId: latestRevision?.$id || null,
+                metadata: { isMock: true }
+            })
+        } catch (error) {
+            console.error('Failed to add mock user message:', error)
+        }
+    }
+
+    const addMockAssistantMessage = async () => {
+        if (!currentConversationId || !user?.$id) return
+        try {
+            await createMessage({
+                role: 'assistant',
+                content: 'This is a mock assistant response with regular text content for testing purposes.',
+                userId: user.$id,
+                revisionId: latestRevision?.$id || null,
+                metadata: { 
+                    isMock: true,
+                    status: 'completed',
+                    tokenCount: 25,
+                    generationTimeMs: 1500
+                }
+            })
+        } catch (error) {
+            console.error('Failed to add mock assistant message:', error)
+        }
+    }
+
+    const addMockAssistantWithChanges = async () => {
+        if (!currentConversationId || !user?.$id) return
+        try {
+            await createMessage({
+                role: 'assistant',
+                content: `{"article": {"title": "Mock Article Title", "subtitle": "Mock subtitle for testing"}}
+I've updated the article title and subtitle based on your request. The changes include a more engaging title and a descriptive subtitle that better represents the content.`,
+                userId: user.$id,
+                revisionId: latestRevision?.$id || null,
+                metadata: { 
+                    isMock: true,
+                    status: 'completed',
+                    tokenCount: 45,
+                    generationTimeMs: 2200
+                }
+            })
+        } catch (error) {
+            console.error('Failed to add mock assistant with changes:', error)
+        }
+    }
+
+    const addMockStreamingMessage = async () => {
+        if (!currentConversationId || !user?.$id) return
+        try {
+            await createMessage({
+                role: 'assistant',
+                content: 'This is a mock streaming message that shows the writing indicator...',
+                userId: user.$id,
+                revisionId: latestRevision?.$id || null,
+                metadata: { 
+                    isMock: true,
+                    streaming: true,
+                    status: 'generating'
+                }
+            })
+        } catch (error) {
+            console.error('Failed to add mock streaming message:', error)
+        }
+    }
+
+    const addMockErrorMessage = async () => {
+        if (!currentConversationId || !user?.$id) return
+        try {
+            await createMessage({
+                role: 'assistant',
+                content: 'This is a mock error message that shows the error state.',
+                userId: user.$id,
+                revisionId: latestRevision?.$id || null,
+                metadata: { 
+                    isMock: true,
+                    status: 'error'
+                }
+            })
+        } catch (error) {
+            console.error('Failed to add mock error message:', error)
+        }
+    }
+
+    const addMockLongMessage = async () => {
+        if (!currentConversationId || !user?.$id) return
+        try {
+            const longContent = `{"sections": [{"action": "create", "type": "paragraph", "content": "This is a very long mock message that contains multiple sections and extensive content to test how the collapsible green changes card behaves when there is a lot of text content that needs to be truncated and displayed with the expand/collapse functionality."}, {"action": "update", "type": "heading", "content": "Updated Heading"}, {"action": "create", "type": "quote", "content": "This is a quote section with additional content"}]}
+I've made several changes to your content including creating new paragraphs, updating headings, and adding quote sections. The content has been restructured to improve readability and flow.`
+            await createMessage({
+                role: 'assistant',
+                content: longContent,
+                userId: user.$id,
+                revisionId: latestRevision?.$id || null,
+                metadata: { 
+                    isMock: true,
+                    status: 'completed',
+                    tokenCount: 120,
+                    generationTimeMs: 3500
+                }
+            })
+        } catch (error) {
+            console.error('Failed to add mock long message:', error)
+        }
+    }
+
+    const addMockWaitingForStream = async () => {
+        if (!currentConversationId || !user?.$id) return
+        try {
+            await createMessage({
+                role: 'assistant',
+                content: '',
+                userId: user.$id,
+                revisionId: latestRevision?.$id || null,
+                metadata: { 
+                    isMock: true,
+                    streaming: true,
+                    status: 'generating'
+                }
+            })
+        } catch (error) {
+            console.error('Failed to add mock waiting for stream message:', error)
+        }
+    }
+
+    const addMockProcessingJSON = async () => {
+        if (!currentConversationId || !user?.$id) return
+        try {
+            // Simulate incomplete JSON being processed
+            const incompleteJSON = `{"article": {"title": "Processing Title", "subtitle": "Processing subtitle`
+            await createMessage({
+                role: 'assistant',
+                content: incompleteJSON,
+                userId: user.$id,
+                revisionId: latestRevision?.$id || null,
+                metadata: { 
+                    isMock: true,
+                    streaming: true,
+                    status: 'generating',
+                    processingJSON: true
+                }
+            })
+        } catch (error) {
+            console.error('Failed to add mock processing JSON message:', error)
+        }
+    }
+
     const chatContent = (
         <>
             <ScrollArea ref={scrollAreaRef} className="flex-1">
-                {/* Debug panel - sticky to top (toggleable with Cmd+. or Ctrl+.) */}
+                {/* Debug panel - sticky to top */}
                 {showDebugPanel && (
-                    <div className="sticky top-0 z-10 p-2 bg-purple-100/80 dark:bg-purple-900/80 backdrop-blur-sm border-b border-purple-200 dark:border-purple-700">
-                    <div className="flex items-center gap-1 mb-1">
-                        <div className={`w-1.5 h-1.5 rounded-full ${isLoadingConversations ? 'bg-yellow-500' : 'bg-green-500'}`}></div>
-                        <span className="text-[10px] font-semibold text-purple-700 dark:text-purple-300">Debug</span>
-                        <div className="ml-auto flex items-center gap-1">
-                            {isPromptLocked && (
-                                <button
-                                    onClick={() => {
-                                        setIsStreaming(false)
-                                        setIsWaitingForStream(false)
-                                        setStreamingMessageId(null)
-                                        setLastStreamingContent('')
-                                        setStreamingContentCheckCount(0)
-                                        setLastMetadataStatus('None')
-                                        isStreamingRef.current = false
-                                    }}
-                                    className="px-1 py-0.5 text-[9px] bg-red-500 text-white rounded hover:bg-red-600"
-                                >
-                                    Reset
-                                </button>
-                            )}
-                            <div className="text-[9px] text-purple-500 dark:text-purple-400">
-                                {new Date().toLocaleTimeString()}
+                    <div className="sticky top-0 z-10 p-4 mb-4 bg-purple-100/80 dark:bg-purple-900/80 backdrop-blur-sm">
+                        <div className="flex items-center justify-between mb-3">
+                            <h3 className="text-sm font-semibold text-purple-800 dark:text-purple-200">
+                                Debug
+                                <span className="ml-2 text-xs font-normal text-purple-600 dark:text-purple-300">
+                                    AI Chat
+                                </span>
+                            </h3>
+                            <button 
+                                onClick={() => setShowDebugPanel(false)}
+                                className="text-xs text-purple-600 hover:text-purple-800 dark:text-purple-400 dark:hover:text-purple-200"
+                            >
+                                ×
+                            </button>
+                        </div>
+                        <div className="grid grid-cols-2 gap-4 text-xs">
+                            <div>
+                                <div className="font-medium text-purple-700 dark:text-purple-300 mb-1">Conversation</div>
+                                <div className="space-y-1">
+                                    <div className="flex justify-between items-center">
+                                        <span className="flex items-center gap-1">
+                                            Title
+                                            <div className="group relative">
+                                                <span className="text-purple-500 dark:text-purple-400 cursor-help text-xs w-3 h-3 rounded-full border border-current flex items-center justify-center text-[8px]">i</span>
+                                                <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-2 py-1 bg-gray-900 dark:bg-gray-100 text-white dark:text-gray-900 text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none whitespace-nowrap z-10">
+                                                    Current conversation title
+                                                </div>
+                                            </div>
+                                        </span>
+                                        <span className="font-mono text-xs">
+                                            {conversations.find(c => c.$id === currentConversationId)?.title || 'None'}
+                                        </span>
+                                    </div>
+                                    <div className="flex justify-between items-center">
+                                        <span className="flex items-center gap-1">
+                                            ID
+                                            <div className="group relative">
+                                                <span className="text-purple-500 dark:text-purple-400 cursor-help text-xs w-3 h-3 rounded-full border border-current flex items-center justify-center text-[8px]">i</span>
+                                                <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-2 py-1 bg-gray-900 dark:bg-gray-100 text-white dark:text-gray-900 text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none whitespace-nowrap z-10">
+                                                    Conversation ID (last 8 chars)
+                                                </div>
+                                            </div>
+                                        </span>
+                                        <span className="font-mono text-xs">
+                                            {currentConversationId?.slice(-8) || 'None'}
+                                        </span>
+                                    </div>
+                                </div>
+                            </div>
+                            <div>
+                                <div className="font-medium text-purple-700 dark:text-purple-300 mb-1">Status</div>
+                                <div className="space-y-1">
+                                    <div className="flex justify-between items-center">
+                                        <span className="flex items-center gap-1">
+                                            Messages
+                                            <div className="group relative">
+                                                <span className="text-purple-500 dark:text-purple-400 cursor-help text-xs w-3 h-3 rounded-full border border-current flex items-center justify-center text-[8px]">i</span>
+                                                <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-2 py-1 bg-gray-900 dark:bg-gray-100 text-white dark:text-gray-900 text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none whitespace-nowrap z-10">
+                                                    Total number of messages in conversation
+                                                </div>
+                                            </div>
+                                        </span>
+                                        <span className="text-blue-600 dark:text-blue-400">
+                                            {messages.length}
+                                        </span>
+                                    </div>
+                                    <div className="flex justify-between items-center">
+                                        <span className="flex items-center gap-1">
+                                            State
+                                            <div className="group relative">
+                                                <span className="text-purple-500 dark:text-purple-400 cursor-help text-xs w-3 h-3 rounded-full border border-current flex items-center justify-center text-[8px]">i</span>
+                                                <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-2 py-1 bg-gray-900 dark:bg-gray-100 text-white dark:text-gray-900 text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none whitespace-nowrap z-10">
+                                                    Current processing state
+                                                </div>
+                                            </div>
+                                        </span>
+                                        <span className={isStreaming ? 'text-yellow-600 dark:text-yellow-400' : isWaitingForStream ? 'text-orange-600 dark:text-orange-400' : 'text-green-600 dark:text-green-400'}>
+                                            {isStreaming ? 'Streaming' : isWaitingForStream ? 'Waiting' : 'Ready'}
+                                        </span>
+                                    </div>
+                                    <div className="flex justify-between items-center">
+                                        <span className="flex items-center gap-1">
+                                            Lock
+                                            <div className="group relative">
+                                                <span className="text-purple-500 dark:text-purple-400 cursor-help text-xs w-3 h-3 rounded-full border border-current flex items-center justify-center text-[8px]">i</span>
+                                                <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-2 py-1 bg-gray-900 dark:bg-gray-100 text-white dark:text-gray-900 text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none whitespace-nowrap z-10">
+                                                    Whether input is locked during processing
+                                                </div>
+                                            </div>
+                                        </span>
+                                        <span className={isPromptLocked ? 'text-red-600 dark:text-red-400' : 'text-green-600 dark:text-green-400'}>
+                                            {isPromptLocked ? 'Locked' : 'Unlocked'}
+                                        </span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div className="mt-3 pt-2 border-t border-purple-200 dark:border-purple-700">
+                            <div className="flex items-center justify-between text-xs">
+                                <div className="flex items-center gap-4">
+                                    <span className="text-purple-600 dark:text-purple-400 flex items-center gap-1">
+                                        Cost
+                                        <div className="group relative">
+                                            <span className="text-purple-500 dark:text-purple-400 cursor-help text-xs w-3 h-3 rounded-full border border-current flex items-center justify-center text-[8px]">i</span>
+                                            <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-2 py-1 bg-gray-900 dark:bg-gray-100 text-white dark:text-gray-900 text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none whitespace-nowrap z-10">
+                                                Total cost of AI requests
+                                            </div>
+                                        </div>
+                                        : <span className="text-blue-600 dark:text-blue-400">${totalCost.toFixed(6)}</span>
+                                    </span>
+                                    <span className="text-purple-600 dark:text-purple-400 flex items-center gap-1">
+                                        Tokens
+                                        <div className="group relative">
+                                            <span className="text-purple-500 dark:text-purple-400 cursor-help text-xs w-3 h-3 rounded-full border border-current flex items-center justify-center text-[8px]">i</span>
+                                            <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-2 py-1 bg-gray-900 dark:bg-gray-100 text-white dark:text-gray-900 text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none whitespace-nowrap z-10">
+                                                Total tokens used (In: {totalInputTokens.toLocaleString()}, Out: {totalOutputTokens.toLocaleString()})
+                                            </div>
+                                        </div>
+                                        : <span className="text-blue-600 dark:text-blue-400">{totalTokens.toLocaleString()}</span>
+                                    </span>
+                                </div>
+                                <div className="flex gap-1">
+                                    {isPromptLocked && (
+                                        <button
+                                            onClick={() => {
+                                                setIsStreaming(false)
+                                                setIsWaitingForStream(false)
+                                                setStreamingMessageId(null)
+                                                setLastStreamingContent('')
+                                                setStreamingContentCheckCount(0)
+                                                setLastMetadataStatus('None')
+                                                isStreamingRef.current = false
+                                            }}
+                                            className="px-2 py-1 text-xs bg-red-200 text-red-800 dark:bg-red-800 dark:text-red-200 rounded hover:bg-red-300 dark:hover:bg-red-700"
+                                        >
+                                            Reset
+                                        </button>
+                                    )}
+                                </div>
                             </div>
                         </div>
                     </div>
-                    <div className="grid grid-cols-3 text-[10px]">
-                        <div>
-                            <div className="text-purple-500 dark:text-purple-400 font-medium text-[9px]">Conversation</div>
-                            <div className="text-purple-800 dark:text-purple-200 font-mono text-[10px]">
-                                {conversations.find(c => c.$id === currentConversationId)?.title || 'None'}
-                            </div>
-                            <div className="text-purple-600 dark:text-purple-400 text-[9px] font-mono">
-                                ID: {currentConversationId?.slice(-8) || 'None'}
-                            </div>
-                        </div>
-                        <div>
-                            <div className="text-purple-500 dark:text-purple-400 font-medium text-[9px]">Messages & Status</div>
-                            <div className="text-purple-800 dark:text-purple-200 font-mono text-[10px]">
-                                Messages: {messages.length}
-                            </div>
-                            <div className="text-purple-600 dark:text-purple-400 text-[9px] font-mono">
-                                {isWaitingForStream ? '⏳ Waiting' : ''} {isStreaming ? '🔄 Streaming' : ''} {isPromptLocked ? '🔒 Locked' : '🔓 Unlocked'}
-                            </div>
-                            <div className="text-purple-500 dark:text-purple-400 text-[8px] font-mono">
-                                Last: {lastMetadataStatus}
-                            </div>
-                        </div>
-                        <div>
-                            <div className="text-purple-500 dark:text-purple-400 font-medium text-[9px]">Cost & Tokens</div>
-                            <div className="text-purple-800 dark:text-purple-200 font-mono text-[10px]">
-                                Total: ${totalCost.toFixed(6)}
-                            </div>
-                            <div className="text-purple-600 dark:text-purple-400 text-[9px] font-mono">
-                                Tokens: {totalTokens.toLocaleString()}
-                            </div>
-                            <div className="text-purple-500 dark:text-purple-400 text-[8px] font-mono">
-                                In: {totalInputTokens.toLocaleString()} | Out: {totalOutputTokens.toLocaleString()}
-                            </div>
-                        </div>
-                    </div>
-                </div>
                 )}
                 {isLoadingMessages ? (
                     <div className="flex items-center justify-center min-h-full pt-32">
@@ -793,7 +1018,8 @@ export function AgentChat({
                                         {m.role === 'assistant' && m.metadata?.streaming && m.metadata?.status === 'generating' && (
                                             <div className="flex items-center gap-1 mt-1">
                                                 <span className="text-xs text-muted-foreground">
-                                                    Writing
+                                                    {isWaitingForStream ? 'Waiting for stream...' : 
+                                                     'Writing'}
                                                 </span>
                                                 <div className="flex gap-0.5">
                                                     <div className="w-1 h-1 bg-muted-foreground rounded-full animate-pulse" style={{ animationDelay: '0ms' }}></div>
@@ -878,6 +1104,105 @@ export function AgentChat({
                         )}
                         
                         <div ref={bottomRef} />
+                        
+                        {/* Debug Mode: Mock Message Buttons */}
+                        {debugMode && (
+                            <div className="sticky top-0 z-10 p-4 mb-4 bg-purple-100 dark:bg-purple-900 rounded-lg">
+                                <div className="flex items-center justify-between mb-3">
+                                    <h3 className="text-sm font-semibold text-purple-800 dark:text-purple-200">
+                                        Debug
+                                        <span className="ml-2 text-xs font-normal text-purple-600 dark:text-purple-300">
+                                            Mock Messages
+                                        </span>
+                                    </h3>
+                                </div>
+                                <div className="grid grid-cols-2 gap-4 text-xs">
+                                    <div>
+                                        <div className="font-medium text-purple-700 dark:text-purple-300 mb-2">User Messages</div>
+                                        <div className="space-y-1">
+                                            <Button
+                                                variant="outline"
+                                                size="sm"
+                                                className="h-6 px-2 text-xs text-purple-600 border-purple-300 hover:bg-purple-200 dark:text-purple-400 dark:border-purple-700 dark:hover:bg-purple-800"
+                                                onClick={() => addMockUserMessage()}
+                                            >
+                                                User Message
+                                            </Button>
+                                        </div>
+                                    </div>
+                                    <div>
+                                        <div className="font-medium text-purple-700 dark:text-purple-300 mb-2">Assistant Messages</div>
+                                        <div className="space-y-1">
+                                            <div className="flex flex-wrap gap-1">
+                                                <Button
+                                                    variant="outline"
+                                                    size="sm"
+                                                    className="h-6 px-2 text-xs text-purple-600 border-purple-300 hover:bg-purple-200 dark:text-purple-400 dark:border-purple-700 dark:hover:bg-purple-800"
+                                                    onClick={() => addMockAssistantMessage()}
+                                                >
+                                                    Text
+                                                </Button>
+                                                <Button
+                                                    variant="outline"
+                                                    size="sm"
+                                                    className="h-6 px-2 text-xs text-purple-600 border-purple-300 hover:bg-purple-200 dark:text-purple-400 dark:border-purple-700 dark:hover:bg-purple-800"
+                                                    onClick={() => addMockAssistantWithChanges()}
+                                                >
+                                                    + Changes
+                                                </Button>
+                                                <Button
+                                                    variant="outline"
+                                                    size="sm"
+                                                    className="h-6 px-2 text-xs text-purple-600 border-purple-300 hover:bg-purple-200 dark:text-purple-400 dark:border-purple-700 dark:hover:bg-purple-800"
+                                                    onClick={() => addMockLongMessage()}
+                                                >
+                                                    Long
+                                                </Button>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div className="mt-3 pt-2 border-t border-purple-200 dark:border-purple-700">
+                                    <div className="flex items-center justify-between text-xs">
+                                        <div className="font-medium text-purple-700 dark:text-purple-300 mb-2">Special States</div>
+                                        <div className="flex flex-wrap gap-1">
+                                            <Button
+                                                variant="outline"
+                                                size="sm"
+                                                className="h-6 px-2 text-xs text-purple-600 border-purple-300 hover:bg-purple-200 dark:text-purple-400 dark:border-purple-700 dark:hover:bg-purple-800"
+                                                onClick={() => addMockStreamingMessage()}
+                                            >
+                                                Streaming
+                                            </Button>
+                                            <Button
+                                                variant="outline"
+                                                size="sm"
+                                                className="h-6 px-2 text-xs text-purple-600 border-purple-300 hover:bg-purple-200 dark:text-purple-400 dark:border-purple-700 dark:hover:bg-purple-800"
+                                                onClick={() => addMockWaitingForStream()}
+                                            >
+                                                Waiting
+                                            </Button>
+                                            <Button
+                                                variant="outline"
+                                                size="sm"
+                                                className="h-6 px-2 text-xs text-purple-600 border-purple-300 hover:bg-purple-200 dark:text-purple-400 dark:border-purple-700 dark:hover:bg-purple-800"
+                                                onClick={() => addMockProcessingJSON()}
+                                            >
+                                                JSON
+                                            </Button>
+                                            <Button
+                                                variant="outline"
+                                                size="sm"
+                                                className="h-6 px-2 text-xs text-purple-600 border-purple-300 hover:bg-purple-200 dark:text-purple-400 dark:border-purple-700 dark:hover:bg-purple-800"
+                                                onClick={() => addMockErrorMessage()}
+                                            >
+                                                Error
+                                            </Button>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        )}
                     </div>
                 ) : shouldShowPlaceholder ? (
                     <div className="flex items-center justify-center min-h-full">
