@@ -102,7 +102,7 @@ function DocsLayoutContent() {
             <div className="flex-1 mx-auto w-full max-w-7xl px-6 py-6">
                 <div className="flex gap-16">
                     {/* Sidebar */}
-                    <aside className="hidden lg:block w-64 flex-shrink-0">
+                    <aside className="hidden lg:block w-48 flex-shrink-0">
                         <nav className="sticky top-24 space-y-5">
                             {docsNavigation.map((section) => (
                                 <div key={section.title}>

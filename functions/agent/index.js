@@ -85,7 +85,7 @@ Key guidelines:
 Context: You're assisting with professional blog content creation and editing.`;
 
 // Token-cache friendly article context builder
-function buildArticleContext(article, maxTokens = 20000) {
+function buildArticleContext(article, maxTokens = 50000) {
     if (!article) return '';
     
     const context = {
@@ -109,7 +109,7 @@ function buildArticleContext(article, maxTokens = 20000) {
             const sections = JSON.parse(article.body);
             context.sections = sections.map(section => ({
                 type: section.type,
-                content: section.content ? section.content.substring(0, 300) : '', // Increased to 300 chars for better identification
+                content: section.content ? section.content.substring(0, 1000) : '', // Increased to 1000 chars for full content
                 id: section.id
             }));
         } catch (e) {
@@ -467,10 +467,10 @@ export default async function ({ req, res, log, error }) {
         
         addDebugLog(`Filtered messages: ${originalMessageCount} -> ${conversationMessages.length} (removed ${originalMessageCount - conversationMessages.length} empty/null messages)`);
 
-        // Limit conversation history to prevent token limit issues (keep last 50 messages)
-        const limitedConversationMessages = conversationMessages.slice(-50);
-        if (conversationMessages.length > 50) {
-          addDebugLog(`Limited conversation to last 50 messages (was ${conversationMessages.length})`);
+        // Limit conversation history to prevent token limit issues (keep last 100 messages)
+        const limitedConversationMessages = conversationMessages.slice(-100);
+        if (conversationMessages.length > 100) {
+          addDebugLog(`Limited conversation to last 100 messages (was ${conversationMessages.length})`);
         }
 
         // Add system prompt at the beginning for context
@@ -544,7 +544,7 @@ export default async function ({ req, res, log, error }) {
         const streamParams = {
           prompt: messagesWithSystem,
           temperature: 0.7,
-          max_tokens: 1000
+          max_tokens: 2000
         };
         
         addDebugLog('Stream parameters: ' + JSON.stringify(streamParams, null, 2));
