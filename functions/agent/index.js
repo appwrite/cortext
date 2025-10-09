@@ -659,6 +659,7 @@ export default async function ({ req, res, log, error }) {
         const systemPrompt = buildSystemPrompt(articleContext);
         addDebugLog(`System prompt built: ${systemPrompt.length} chars, article context: ${articleContext ? 'Yes' : 'No'}`);
         log(`System prompt (${systemPrompt.length} chars): ${systemPrompt.substring(0, 25000)}${systemPrompt.length > 25000 ? '...' : ''}`);
+        log(`articleContext: ${articleContext}`);
         
         const messagesWithSystem = [
           { role: 'system', content: [{ type: 'text', text: systemPrompt }] },
