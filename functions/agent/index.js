@@ -840,8 +840,8 @@ export default async function ({ req, res, log, error }) {
                 status: 'draft',
                 createdBy: agentId || 'cortext-agent',
                 userId: agentId || 'cortext-agent',
-                userName: 'Cortext AI Agent',
-                userEmail: 'ai@cortext.app',
+                userName: 'Cortext',
+                userEmail: 'noreply@cortext',
                 messageId: initialMessage.$id,
                 data: JSON.stringify({
                   initial: false,

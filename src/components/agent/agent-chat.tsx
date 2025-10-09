@@ -14,6 +14,7 @@ import { useAuth } from '@/hooks/use-auth'
 import { useLatestRevision } from '@/hooks/use-latest-revision'
 import type { Messages } from '@/lib/appwrite/appwrite.types'
 import { functionService } from '@/lib/appwrite/functions'
+import { db } from '@/lib/appwrite/db'
 import { formatDuration } from '@/lib/date-utils'
 import { AIMessageRenderer } from './ai-message-renderer'
 import { AIChangeIndicators } from './ai-change-indicators'
@@ -42,6 +43,7 @@ export function AgentChat({
     onSetSubtitle,
     articleId,
     blogId,
+    onApplyAIRevision,
 }: {
     title: string
     subtitle: string
@@ -49,6 +51,7 @@ export function AgentChat({
     onSetSubtitle: (s: string) => void
     articleId: string
     blogId?: string
+    onApplyAIRevision?: (revisionId: string) => void
 }) {
     const { user } = useAuth()
     const { latestRevision } = useLatestRevision(articleId)
@@ -289,17 +292,15 @@ export function AgentChat({
             
             // Only process if this is a new revision we haven't seen before
             if (newRevisionId !== lastProcessedRevisionId) {
-                console.log('🔄 New revision detected:', newRevisionId)
+                console.log('🔄 New AI revision detected:', newRevisionId)
                 
-                // Invalidate queries to refresh the form data
-                queryClient.invalidateQueries({ queryKey: ['revisions', articleId] })
-                queryClient.invalidateQueries({ queryKey: ['article', articleId] })
-                queryClient.invalidateQueries({ queryKey: ['latestRevision', articleId] })
+                // Apply AI revision without triggering auto-save
+                applyAIRevision(newRevisionId)
                 
                 // Update the last processed revision ID
                 setLastProcessedRevisionId(newRevisionId)
                 
-                console.log('✅ Form data refreshed for new revision:', newRevisionId)
+                console.log('✅ AI revision applied:', newRevisionId)
             } else {
                 console.log('⏭️ Revision already processed:', newRevisionId)
             }
@@ -307,6 +308,27 @@ export function AgentChat({
             console.log('❌ No revisionId found in latest assistant message')
         }
     }, [messages, lastProcessedRevisionId, articleId, queryClient])
+
+    // Function to apply AI revision without triggering auto-save
+    const applyAIRevision = useCallback(async (revisionId: string) => {
+        try {
+            console.log('🤖 Applying AI revision:', revisionId)
+            
+            if (onApplyAIRevision) {
+                // Use the parent callback to apply the revision
+                onApplyAIRevision(revisionId)
+            } else {
+                // Fallback: invalidate queries (may trigger auto-save)
+                console.warn('⚠️ No onApplyAIRevision callback provided, using fallback')
+                queryClient.invalidateQueries({ queryKey: ['revisions', articleId] })
+                queryClient.invalidateQueries({ queryKey: ['article', articleId] })
+                queryClient.invalidateQueries({ queryKey: ['latestRevision', articleId] })
+            }
+
+        } catch (error) {
+            console.error('❌ Error applying AI revision:', error)
+        }
+    }, [articleId, queryClient, onApplyAIRevision])
 
     // Determine if prompt should be locked (waiting for stream or streaming)
     const isPromptLocked = isWaitingForStream || isStreaming

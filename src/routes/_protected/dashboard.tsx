@@ -1739,6 +1739,32 @@ function ArticleEditor({ articleId, userId, user, onBack }: { articleId: string;
     }
 
     // Handle reverting to a specific revision
+    // Handle AI revision application without triggering auto-save
+    const handleApplyAIRevision = async (revisionId: string) => {
+        console.log('🤖 Applying AI revision:', revisionId)
+        
+        try {
+            // Disable auto-save temporarily during AI revision application
+            isRevertingRef.current = true
+            
+            // Just invalidate queries to refresh the form data
+            // The form will automatically load the latest revision (which should be the AI revision)
+            qc.invalidateQueries({ queryKey: ['revisions', articleId] })
+            qc.invalidateQueries({ queryKey: ['article', articleId] })
+            qc.invalidateQueries({ queryKey: ['latestRevision', articleId] })
+
+            console.log('✅ AI revision queries invalidated - form will load latest revision')
+            
+        } catch (error) {
+            console.error('❌ Error applying AI revision:', error)
+        } finally {
+            // Re-enable auto-save after a short delay
+            setTimeout(() => {
+                isRevertingRef.current = false
+            }, 1000)
+        }
+    }
+
     const handleRevertToRevision = async (revisionId: string) => {
         console.log('handleRevertToRevision called with:', revisionId)
         try {
@@ -1935,6 +1961,7 @@ function ArticleEditor({ articleId, userId, user, onBack }: { articleId: string;
                 onSetSubtitle={setExcerpt}
                 articleId={articleId}
                 blogId={currentBlog?.$id}
+                onApplyAIRevision={handleApplyAIRevision}
             />
             <div className="px-6 pt-2 pb-2 ml-0 md:ml-[18rem] lg:ml-[20rem] xl:ml-[24rem]">
                 <div className="flex items-center justify-between">
@@ -2978,11 +3005,30 @@ const TextEditor = memo(({ section, onLocalChange, disabled = false }: { section
     const onLocalChangeRef = useRef(onLocalChange)
     onLocalChangeRef.current = onLocalChange
 
-    useEffect(() => {
+    // Function to adjust textarea height
+    const adjustHeight = useCallback(() => {
         if (!ref.current) return
         ref.current.style.height = 'auto'
         ref.current.style.height = ref.current.scrollHeight + 'px'
-    }, [value])
+    }, [])
+
+    // Use useEffect with requestAnimationFrame for immediate DOM updates after AI text insertion
+    useEffect(() => {
+        // Use requestAnimationFrame to ensure DOM is fully updated
+        const frameId = requestAnimationFrame(() => {
+            adjustHeight()
+            // Add a small delay to ensure DOM is fully updated after AI text insertion
+            setTimeout(adjustHeight, 0)
+        })
+        return () => cancelAnimationFrame(frameId)
+    }, [value, adjustHeight])
+
+    // Also adjust height when the component mounts or when section content changes externally
+    useEffect(() => {
+        if (section.content !== value) {
+            setValue(section.content ?? '')
+        }
+    }, [section.content])
 
     useEffect(() => {
         onLocalChangeRef.current({ content: value, type: 'text' })
