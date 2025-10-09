@@ -214,52 +214,62 @@ function buildArticleContext(article, maxTokens = 150000) {
     };
     
     // Parse and summarize sections for token efficiency
-    if (article.body) {
+    // Handle both main article structure (sections in body field) and revision structure (sections directly)
+    let sections = [];
+    
+    if (article.sections && Array.isArray(article.sections)) {
+        // Revision data structure - sections are stored directly
+        sections = article.sections;
+    } else if (article.body) {
+        // Main article structure - sections are stored in body field as JSON
         try {
-            const sections = JSON.parse(article.body);
-            context.sections = sections.map(section => {
-                const sectionData = {
-                    type: section.type,
-                    content: section.content ? section.content.substring(0, 5000) : '', // Increased to 5000 chars for full content
-                    id: section.id
-                };
-                
-                // Include additional fields based on section type
-                if (section.type === 'quote' && section.speaker) {
-                    sectionData.speaker = section.speaker;
-                }
-                
-                if (section.type === 'code' && section.language) {
-                    sectionData.language = section.language;
-                }
-                
-                if (section.type === 'image') {
-                    if (section.imageIds && section.imageIds.length > 0) {
-                        sectionData.imageIds = section.imageIds;
-                    }
-                    if (section.mediaId) {
-                        sectionData.mediaId = section.mediaId;
-                    }
-                }
-                
-                if (section.type === 'video' && section.embedUrl) {
-                    sectionData.embedUrl = section.embedUrl;
-                }
-                
-                if (section.type === 'map' && section.data) {
-                    sectionData.data = section.data;
-                }
-                
-                return sectionData;
-            });
+            sections = JSON.parse(article.body);
         } catch (e) {
             // If parsing fails, treat as plain text
-            context.sections = [{
+            sections = [{
                 type: 'text',
-                content: article.body.substring(0, 2000), // Increased for better context
+                content: article.body.substring(0, 2000),
                 id: 'legacy'
             }];
         }
+    }
+    
+    if (sections && sections.length > 0) {
+        context.sections = sections.map(section => {
+            const sectionData = {
+                type: section.type,
+                content: section.content ? section.content.substring(0, 5000) : '', // Increased to 5000 chars for full content
+                id: section.id
+            };
+            
+            // Include additional fields based on section type
+            if (section.type === 'quote' && section.speaker) {
+                sectionData.speaker = section.speaker;
+            }
+            
+            if (section.type === 'code' && section.language) {
+                sectionData.language = section.language;
+            }
+            
+            if (section.type === 'image') {
+                if (section.imageIds && section.imageIds.length > 0) {
+                    sectionData.imageIds = section.imageIds;
+                }
+                if (section.mediaId) {
+                    sectionData.mediaId = section.mediaId;
+                }
+            }
+            
+            if (section.type === 'video' && section.embedUrl) {
+                sectionData.embedUrl = section.embedUrl;
+            }
+            
+            if (section.type === 'map' && section.data) {
+                sectionData.data = section.data;
+            }
+            
+            return sectionData;
+        });
     }
     
     // Build compact context string
@@ -502,24 +512,16 @@ client
 
 export default async function ({ req, res, log, error }) {
   try {
-    // Log the incoming request
-    log('Agent function called');
-    log('Request method: ' + req.method);
-    log('Request headers: ' + JSON.stringify(req.headers));
-
     // Get JWT token and dynamic API key from headers
     const jwtToken = req.headers['x-appwrite-user-jwt'];
     const userId = req.headers['x-appwrite-user-id'];
     const dynamicApiKey = req.headers['x-appwrite-key'];
     
-    log('JWT token present: ' + (jwtToken ? 'Yes' : 'No'));
-    log('User ID: ' + (userId || 'Not provided'));
-    log('Dynamic API key present: ' + (dynamicApiKey ? 'Yes' : 'No'));
+    log(`Agent function called - User: ${userId || 'anonymous'}, Method: ${req.method}`);
 
     // Authenticate using JWT token for user verification
     if (jwtToken) {
       client.setJWT(jwtToken);
-      log('Authenticated with JWT token');
     } else {
       return res.json({
         success: false,
@@ -540,12 +542,9 @@ export default async function ({ req, res, log, error }) {
       .setEndpoint(endpoint)
       .setProject(projectId)
       .setKey(dynamicApiKey);
-    
-    log('Server client configured with dynamic API key');
 
     // Parse the request body
     const body = req.bodyJson;
-    log('Request body: ' + JSON.stringify(body));
 
     // Validate required fields
     if (!body) {
@@ -556,8 +555,7 @@ export default async function ({ req, res, log, error }) {
     }
 
     const { conversationId, agentId, blogId, metadata, articleId } = body;
-
-    log('Request body fields: ' + JSON.stringify({ conversationId, agentId, blogId, articleId, metadata }));
+    log(`Processing request - Conversation: ${conversationId}, Article: ${articleId || 'none'}`);
 
     // Get database ID from environment
     const databaseId = process.env.APPWRITE_DATABASE_ID;
@@ -586,29 +584,7 @@ export default async function ({ req, res, log, error }) {
       }, 400);
     }
 
-    // Load article context if articleId is provided
-    let articleContext = '';
-    if (articleId) {
-      try {
-        log('Loading article context for articleId: ' + articleId);
-        const article = await serverDatabases.getDocument(databaseId, 'articles', articleId);
-        log('Article loaded: ' + JSON.stringify({
-          id: article.$id,
-          title: article.title,
-          subtitle: article.subtitle,
-          status: article.status
-        }));
-        articleContext = buildArticleContext(article);
-        log('Article context loaded: ' + (articleContext ? 'Yes' : 'No'));
-        log('Article context size: ' + (articleContext ? articleContext.length : 0) + ' characters');
-        log('Article context preview: ' + articleContext.substring(0, 200) + '...');
-      } catch (error) {
-        log('Failed to load article context: ' + error.message);
-        // Continue without article context
-      }
-    } else {
-      log('No articleId provided, skipping article context loading');
-    }
+    // Article context will be loaded later after we get the revisionId from conversation messages
 
     // If using JWT authentication, userId should be available from the token
     if (jwtToken && !messageUserId) {
@@ -629,7 +605,10 @@ export default async function ({ req, res, log, error }) {
         const timestamp = new Date().toISOString();
         const logEntry = `[${timestamp}] ${message}`;
         debugLogs.push(logEntry);
-        log(message); // Still log to console
+        // Only log important messages to console, not all debug messages
+        if (message.includes('ERROR') || message.includes('Failed') || message.includes('Stream completed')) {
+          log(message);
+        }
       };
 
       // Helper function to create metadata within 2000 char limit
@@ -678,9 +657,7 @@ export default async function ({ req, res, log, error }) {
 
         // Add system prompt at the beginning for context
         const systemPrompt = buildSystemPrompt(articleContext);
-        addDebugLog(`System prompt length: ${systemPrompt.length}`);
-        addDebugLog(`Article context: ${articleContext ? 'Yes' : 'No'}`);
-        addDebugLog(`System prompt preview: ${systemPrompt.substring(0, 200)}...`);
+        addDebugLog(`System prompt built: ${systemPrompt.length} chars, article context: ${articleContext ? 'Yes' : 'No'}`);
         
         const messagesWithSystem = [
           { role: 'system', content: [{ type: 'text', text: systemPrompt }] },
@@ -726,17 +703,12 @@ export default async function ({ req, res, log, error }) {
                     process.env.OPENAI_API_TOKEN ||
                     process.env.OPENAI_TOKEN;
         
-        addDebugLog('OpenAI API Key present: ' + (apiKey ? 'Yes (length: ' + apiKey.length + ')' : 'No'));
-        addDebugLog('Environment variables available: ' + Object.keys(process.env).filter(key => key.includes('OPENAI')).join(', '));
-        addDebugLog('All environment variables: ' + Object.keys(process.env).sort().join(', '));
-        
         if (!apiKey) {
-          throw new Error('OPENAI_API_KEY environment variable is not set. Available env vars: ' + Object.keys(process.env).join(', '));
+          throw new Error('OPENAI_API_KEY environment variable is not set');
         }
 
         // Use OpenAI model to generate streaming response
-        addDebugLog('Calling OpenAI model with ' + messagesWithSystem.length + ' messages (1 system + ' + limitedConversationMessages.length + ' conversation)');
-        addDebugLog('Message format: ' + JSON.stringify(messagesWithSystem[0], null, 2));
+        addDebugLog(`Calling OpenAI model with ${messagesWithSystem.length} messages`);
         
         // Create a new model instance with the verified API key
         const dynamicOpenaiModel = new OpenAICompatibleModel({
@@ -750,10 +722,8 @@ export default async function ({ req, res, log, error }) {
           max_tokens: 2000
         };
         
-        addDebugLog('Stream parameters: ' + JSON.stringify(streamParams, null, 2));
-        
         const streamResult = await dynamicOpenaiModel.doStream(streamParams);
-        addDebugLog('OpenAI stream result received, starting to process...');
+        addDebugLog('OpenAI stream started');
 
         // Check if stream exists
         if (!streamResult || !streamResult.stream) {
@@ -814,7 +784,7 @@ export default async function ({ req, res, log, error }) {
         };
         resetInactivityTimeout();
 
-        addDebugLog('Starting to process streaming chunks... (5min total timeout, 2min inactivity timeout)');
+        addDebugLog('Starting to process streaming chunks...');
 
         try {
           // Process streaming chunks
@@ -824,9 +794,6 @@ export default async function ({ req, res, log, error }) {
               break;
             }
             
-            addDebugLog(`Processing chunk ${chunkCount + 1}, chunk type: ${chunk.type || 'unknown'}`);
-            addDebugLog(`Chunk structure: ${JSON.stringify(chunk, null, 2)}`);
-            
             // Handle different chunk types from Mastra stream
             if (chunk.type === 'text-delta' && chunk.delta) {
               const content = chunk.delta;
@@ -834,7 +801,6 @@ export default async function ({ req, res, log, error }) {
               chunkCount++;
               lastChunkTime = Date.now();
               resetInactivityTimeout(); // Reset inactivity timeout when we receive content
-              addDebugLog(`Received content chunk: "${content}" (total length: ${fullContent.length})`);
 
               // Update the message document with accumulated content for streaming effect
               // Update every 2 chunks or on newlines for better performance while maintaining streaming feel
@@ -858,7 +824,6 @@ export default async function ({ req, res, log, error }) {
                       }, 5, 100)
                     }
                   );
-                  addDebugLog(`Updated streaming message with ${chunkCount} chunks, content length: ${fullContent.length}`);
                 } catch (updateError) {
                   addDebugLog('Error updating streaming message: ' + updateError.message);
                   // Continue streaming even if update fails
@@ -871,7 +836,6 @@ export default async function ({ req, res, log, error }) {
               chunkCount++;
               lastChunkTime = Date.now();
               resetInactivityTimeout();
-              addDebugLog(`Received content chunk (alt format): "${content}" (total length: ${fullContent.length})`);
 
               // Update the message document with accumulated content for streaming effect
               // Update every 2 chunks or on newlines for better performance while maintaining streaming feel
@@ -895,7 +859,6 @@ export default async function ({ req, res, log, error }) {
                       }, 5, 100)
                     }
                   );
-                  addDebugLog(`Updated streaming message with ${chunkCount} chunks, content length: ${fullContent.length}`);
                 } catch (updateError) {
                   addDebugLog('Error updating streaming message: ' + updateError.message);
                   // Continue streaming even if update fails
@@ -908,7 +871,6 @@ export default async function ({ req, res, log, error }) {
               chunkCount++;
               lastChunkTime = Date.now();
               resetInactivityTimeout();
-              addDebugLog(`Received content chunk (OpenAI format): "${content}" (total length: ${fullContent.length})`);
 
               // Update the message document with accumulated content for streaming effect
               // Update every 2 chunks or on newlines for better performance while maintaining streaming feel
@@ -932,7 +894,6 @@ export default async function ({ req, res, log, error }) {
                       }, 5, 100)
                     }
                   );
-                  addDebugLog(`Updated streaming message with ${chunkCount} chunks, content length: ${fullContent.length}`);
                 } catch (updateError) {
                   addDebugLog('Error updating streaming message: ' + updateError.message);
                   // Continue streaming even if update fails
@@ -943,7 +904,7 @@ export default async function ({ req, res, log, error }) {
               streamCompleted = true;
               break;
             } else if (chunk.type === 'finish') {
-              addDebugLog('Stream finished normally - waiting for final content');
+              addDebugLog('Stream finished normally');
               
               // Extract usage information if available
               if (chunk.usage) {
@@ -953,31 +914,21 @@ export default async function ({ req, res, log, error }) {
                 
                 const costInfo = calculateCost(inputTokens, outputTokens);
                 estimatedCost = costInfo.totalCost;
-                
-                addDebugLog(`Token usage - Input: ${inputTokens}, Output: ${outputTokens}, Total: ${totalTokens}`);
-                addDebugLog(`Estimated cost - Input: $${costInfo.inputCost.toFixed(6)}, Output: $${costInfo.outputCost.toFixed(6)}, Total: $${costInfo.totalCost.toFixed(6)}`);
               }
               
               // Don't break immediately, wait for potential final content
-              // Set a short timeout to allow for final content
               setTimeout(() => {
                 if (!streamCompleted) {
-                  addDebugLog('No more content after finish signal, completing stream');
                   streamCompleted = true;
                 }
               }, 1000); // Wait 1 second for final content
             } else if (chunk.type === 'text-end') {
-              addDebugLog('Text stream ended - waiting for final content');
               // Don't break immediately, wait for potential final content
-              // Set a short timeout to allow for final content
               setTimeout(() => {
                 if (!streamCompleted) {
-                  addDebugLog('No more content after text-end signal, completing stream');
                   streamCompleted = true;
                 }
               }, 1000); // Wait 1 second for final content
-            } else {
-              addDebugLog(`Unhandled chunk type: ${chunk.type}, chunk: ${JSON.stringify(chunk)}`);
             }
           }
         } catch (streamError) {
@@ -989,17 +940,16 @@ export default async function ({ req, res, log, error }) {
         clearTimeout(streamTimeout);
         clearTimeout(inactivityTimeout);
         streamCompleted = true;
-        addDebugLog(`Stream processing completed. Total chunks: ${chunkCount}, Content length: ${fullContent.length}`);
+        addDebugLog(`Stream completed: ${chunkCount} chunks, ${fullContent.length} chars`);
 
         // If no content was received, provide a fallback
         if (!fullContent || fullContent.trim().length === 0) {
-          addDebugLog('No content received from stream, using fallback message');
+          addDebugLog('No content received, using fallback message');
           fullContent = "I apologize, but I'm having trouble generating a response right now. Please try again.";
         }
 
         // Calculate total generation time
         const generationTimeMs = Date.now() - generationStartTime;
-        addDebugLog(`Total generation time: ${generationTimeMs}ms`);
         
         // If no usage information was provided, estimate based on content length
         if (totalTokens === 0) {
@@ -1013,9 +963,6 @@ export default async function ({ req, res, log, error }) {
           
           const costInfo = calculateCost(inputTokens, outputTokens);
           estimatedCost = costInfo.totalCost;
-          
-          addDebugLog(`Estimated token usage (no usage data) - Input: ${inputTokens}, Output: ${outputTokens}, Total: ${totalTokens}`);
-          addDebugLog(`Estimated cost - Input: $${costInfo.inputCost.toFixed(6)}, Output: $${costInfo.outputCost.toFixed(6)}, Total: $${costInfo.totalCost.toFixed(6)}`);
         }
 
         // Add a small delay to ensure all content is processed
@@ -1023,41 +970,30 @@ export default async function ({ req, res, log, error }) {
 
         // Parse LLM response for article updates and create new revision
         let newRevisionId = null;
-        addDebugLog(`Revision creation check - revisionId: ${revisionId}, articleId: ${articleId}, fullContent length: ${fullContent?.length || 0}`);
         
         if (revisionId && articleId && fullContent) {
           try {
-            addDebugLog('Parsing LLM response for article updates...');
-            
             // Extract JSON from the response (look for JSON at the beginning)
-            // Try multiple patterns to find the JSON object
             let jsonStr = null;
             let jsonMatch = fullContent.match(/^\{[\s\S]*?\}\n/);
             
             if (!jsonMatch) {
-              // Try to find JSON without requiring newline after
               jsonMatch = fullContent.match(/^\{[\s\S]*?\}(?=\n|$)/);
             }
             
             if (!jsonMatch) {
-              // Try to find any JSON object at the start
               jsonMatch = fullContent.match(/^\{[\s\S]*?\}/);
             }
             
             if (jsonMatch) {
               jsonStr = jsonMatch[0].trim();
-              addDebugLog(`Found JSON in response: ${jsonStr.substring(0, 200)}...`);
               
               try {
                 const updates = JSON.parse(jsonStr);
-                addDebugLog(`Parsed updates: ${JSON.stringify(updates)}`);
                 
                 // Get current article and revision
               const currentArticle = await serverDatabases.getDocument(databaseId, 'articles', articleId);
               const currentRevision = await serverDatabases.getDocument(databaseId, 'revisions', revisionId);
-              
-              addDebugLog(`Current article: ${currentArticle.title}`);
-              addDebugLog(`Current revision version: ${currentRevision.version}`);
               
               // Get team ID from the blog for proper permissions
               let teamId = null;
@@ -1065,7 +1001,6 @@ export default async function ({ req, res, log, error }) {
                 try {
                   const blog = await serverDatabases.getDocument(databaseId, 'blogs', currentArticle.blogId);
                   teamId = blog.teamId;
-                  addDebugLog(`Found team ID: ${teamId}`);
                 } catch (blogError) {
                   addDebugLog(`Failed to get blog ${currentArticle.blogId}: ${blogError.message}`);
                 }
@@ -1086,12 +1021,10 @@ export default async function ({ req, res, log, error }) {
                 Object.keys(updates.article).forEach(key => {
                   updatedArticle[key] = updates.article[key];
                 });
-                addDebugLog(`Applied article updates: ${JSON.stringify(updates.article)}`);
               }
               
               // Apply section updates
               if (updates.sections) {
-                addDebugLog(`Processing ${updates.sections.length} section updates: ${JSON.stringify(updates.sections.map(u => ({ id: u.id, action: u.action, type: u.type })))}`);
                 updates.sections.forEach(update => {
                   switch (update.action) {
                     case 'create':
@@ -1132,25 +1065,17 @@ export default async function ({ req, res, log, error }) {
                       } else {
                         sections.push(newSection);
                       }
-                      addDebugLog(`Created new section: ${update.type} at position ${update.position || 'end'}`);
                       break;
                       
                     case 'update':
                       const updateIndex = sections.findIndex(s => s.id === update.id);
                       if (updateIndex !== -1) {
                         sections[updateIndex] = { ...sections[updateIndex], ...update };
-                        addDebugLog(`Updated section ${update.id}`);
                       }
                       break;
                       
                     case 'delete':
-                      addDebugLog(`Attempting to delete section with ID: ${update.id}`);
-                      addDebugLog(`Current sections before deletion: ${JSON.stringify(sections.map(s => ({ id: s.id, type: s.type })))}`);
-                      const beforeCount = sections.length;
                       sections = sections.filter(s => s.id !== update.id);
-                      const afterCount = sections.length;
-                      addDebugLog(`Deleted section ${update.id}. Sections before: ${beforeCount}, after: ${afterCount}`);
-                      addDebugLog(`Sections after deletion: ${JSON.stringify(sections.map(s => ({ id: s.id, type: s.type })))}`);
                       break;
                       
                     case 'move':
@@ -1163,14 +1088,12 @@ export default async function ({ req, res, log, error }) {
                           const targetIndex = sections.findIndex(s => s.id === update.targetId);
                           sections.splice(targetIndex, 0, movedSection);
                         }
-                        addDebugLog(`Moved section ${update.id}`);
                       }
                       break;
                   }
                 });
                 
                 updatedArticle.body = JSON.stringify(sections);
-                addDebugLog(`Updated sections, new count: ${sections.length}`);
               }
               
               // Create new revision
@@ -1226,8 +1149,6 @@ export default async function ({ req, res, log, error }) {
                 ServerPermission.delete(ServerRole.team(teamId))
               ] : undefined;
               
-              addDebugLog(`Creating revision with permissions: ${permissions ? 'team-based' : 'default'}`);
-              
               const newRevision = await serverDatabases.createDocument(
                 databaseId,
                 'revisions',
@@ -1237,35 +1158,25 @@ export default async function ({ req, res, log, error }) {
               );
               
               newRevisionId = newRevision.$id;
-              addDebugLog(`Created new revision ${newRevisionId} (version ${nextVersion})`);
               
               // Update article's active revision ID
               await serverDatabases.updateDocument(databaseId, 'articles', articleId, {
                 activeRevisionId: newRevisionId
               });
-              
-              addDebugLog(`Updated article activeRevisionId to ${newRevisionId}`);
-              addDebugLog(`New revision ID to be saved in message: ${newRevisionId}`);
               } catch (jsonParseError) {
                 addDebugLog(`Error parsing JSON: ${jsonParseError.message}`);
-                addDebugLog(`JSON string that failed to parse: ${jsonStr}`);
                 // Continue without creating revision
               }
             } else {
               addDebugLog('No JSON found in LLM response, skipping revision creation');
-              addDebugLog(`Full content preview: ${fullContent.substring(0, 200)}...`);
             }
           } catch (parseError) {
             addDebugLog(`Error parsing LLM response or creating revision: ${parseError.message}`);
             // Continue without creating revision
           }
-        } else {
-          addDebugLog(`Skipping revision creation - missing required data: revisionId=${!!revisionId}, articleId=${!!articleId}, fullContent=${!!fullContent}`);
         }
 
         // Final update with complete content, revision ID, and truncated debug logs
-        addDebugLog(`Final message update - revisionId: ${newRevisionId}`);
-        addDebugLog(`Updating message ${initialMessage.$id} with revisionId: ${newRevisionId}`);
         await serverDatabases.updateDocument(
           databaseId,
           'messages',
@@ -1298,12 +1209,10 @@ export default async function ({ req, res, log, error }) {
             }, 10, 80)
           }
         );
-        addDebugLog(`Message updated with revisionId: ${newRevisionId}`);
         
         // Verify the message was updated correctly
         try {
           const updatedMessage = await serverDatabases.getDocument(databaseId, 'messages', initialMessage.$id);
-          addDebugLog(`Verification - Message revisionId: ${updatedMessage.revisionId}, Expected: ${newRevisionId}`);
         } catch (verifyError) {
           addDebugLog(`Failed to verify message update: ${verifyError.message}`);
         }
@@ -1330,7 +1239,6 @@ export default async function ({ req, res, log, error }) {
         
         // Calculate generation time even for error cases
         const generationTimeMs = Date.now() - generationStartTime;
-        addDebugLog(`Generation failed after ${generationTimeMs}ms: ${error.message}`);
         
         const fallbackMessage = await serverDatabases.createDocument(
           databaseId,
@@ -1372,7 +1280,6 @@ export default async function ({ req, res, log, error }) {
     }
 
     // Load conversation history for LLM context using server SDK
-    log('Loading conversation history for conversation: ' + conversationId);
     const conversationMessages = await serverDatabases.listDocuments(
       databaseId,
       'messages',
@@ -1392,6 +1299,37 @@ export default async function ({ req, res, log, error }) {
     const revisionId = latestUserMessage?.revisionId || null;
     
     log(`Revision ID from latest user message: ${revisionId || 'None'}`);
+
+    // Load article context from revision data if revisionId is available
+    let articleContext = '';
+    if (revisionId && articleId) {
+      try {
+        const revision = await serverDatabases.getDocument(databaseId, 'revisions', revisionId);
+        const revisionData = revision.data ? JSON.parse(revision.data) : {};
+        const articleData = revisionData.attributes || revisionData;
+        articleContext = buildArticleContext(articleData);
+        log(`Loaded article context from revision ${revisionId} (${articleContext.length} chars)`);
+      } catch (error) {
+        log(`Failed to load revision ${revisionId}: ${error.message}`);
+        // Fallback: try to load from main article if revision fails
+        try {
+          const article = await serverDatabases.getDocument(databaseId, 'articles', articleId);
+          articleContext = buildArticleContext(article);
+          log(`Fallback: loaded from main article ${articleId}`);
+        } catch (fallbackError) {
+          log(`Failed to load main article ${articleId}: ${fallbackError.message}`);
+        }
+      }
+    } else if (articleId) {
+      // If no revisionId but we have articleId, load from main article
+      try {
+        const article = await serverDatabases.getDocument(databaseId, 'articles', articleId);
+        articleContext = buildArticleContext(article);
+        log(`Loaded article context from main article ${articleId}`);
+      } catch (error) {
+        log(`Failed to load main article ${articleId}: ${error.message}`);
+      }
+    }
 
     // Generate streaming LLM response and update database in real-time
     const streamingResult = await generateStreamingLLMResponse(
@@ -1424,7 +1362,6 @@ export default async function ({ req, res, log, error }) {
         messageCount: (conversation.messageCount || 0) + 1
       });
 
-      log('Conversation updated successfully');
     } catch (conversationError) {
       error('Failed to update conversation: ' + conversationError.message);
       // Don't fail the entire request if conversation update fails
@@ -1440,8 +1377,6 @@ export default async function ({ req, res, log, error }) {
       createdAt: msg.$createdAt,
       metadata: msg.metadata ? JSON.parse(msg.metadata) : null
     }));
-
-    log('Prepared conversation history with ' + conversationHistory.length + ' messages');
 
     // Return success response with conversation history and streaming info
     return res.json({
