@@ -892,15 +892,47 @@ function ArticleEditor({ articleId, userId, user, onBack }: { articleId: string;
         }
     }, [])
 
-    // Comment targets for the article
-    // Memoize comment targets to prevent unnecessary re-computations
-    const commentTargets = useMemo(() => [
+    // Comment targets for the article - completely separate from content changes
+    // Only update when sections are added/removed, never when content changes
+    const [commentTargets, setCommentTargets] = useState<Array<{ type: string; id?: string }>>([
         { type: 'trailer' },
         { type: 'title' },
         { type: 'subtitle' },
-        { type: 'redirect' },
-        ...(localSections?.map(section => ({ type: 'section', id: section.id })) || [])
-    ], [localSections])
+        { type: 'redirect' }
+    ])
+
+    // Update comment targets only when section structure changes (add/remove)
+    useEffect(() => {
+        const baseTargets = [
+            { type: 'trailer' },
+            { type: 'title' },
+            { type: 'subtitle' },
+            { type: 'redirect' }
+        ]
+        
+        if (!localSections || localSections.length === 0) {
+            setCommentTargets(baseTargets)
+            return
+        }
+        
+        // Only update if section IDs have actually changed
+        const currentSectionIds = localSections.map(s => s.id).join(',')
+        const newSectionTargets = localSections.map(section => ({ type: 'section', id: section.id }))
+        const newTargets = [...baseTargets, ...newSectionTargets]
+        
+        // Only update if the structure actually changed
+        setCommentTargets(prev => {
+            const prevSectionIds = prev
+                .filter(t => t.type === 'section')
+                .map(t => t.id)
+                .join(',')
+            
+            if (prevSectionIds !== currentSectionIds) {
+                return newTargets
+            }
+            return prev
+        })
+    }, [localSections?.length, localSections?.map(s => s.id).join(',')])
 
     const { getCommentCount } = useCommentCounts(
         articleId,
@@ -908,7 +940,9 @@ function ArticleEditor({ articleId, userId, user, onBack }: { articleId: string;
         commentTargets
     )
 
-    // Memoize comment counts to prevent expensive recalculations on every render
+    // Memoize comment counts with stable references to prevent expensive recalculations
+    // These should only change when comments are actually added/removed, not when typing
+    // Now that commentTargets is stable, these will be stable too
     const trailerCommentCount = useMemo(() => getCommentCount('trailer'), [getCommentCount])
     const titleCommentCount = useMemo(() => getCommentCount('title'), [getCommentCount])
     const subtitleCommentCount = useMemo(() => getCommentCount('subtitle'), [getCommentCount])
@@ -917,7 +951,7 @@ function ArticleEditor({ articleId, userId, user, onBack }: { articleId: string;
     // Pre-load all comments for the article to eliminate layout shift
     useAllComments(articleId, currentBlog?.$id || '')
 
-    // Function to measure and update row positions
+    // Function to measure and update row positions (debounced)
     const updateRowPositions = useCallback(() => {
         const newPositions: Record<string, { top: number; height: number }> = {}
         const tableContainer = document.querySelector('.sections-table-container')
@@ -937,11 +971,21 @@ function ArticleEditor({ articleId, userId, user, onBack }: { articleId: string;
         }
     }, [])
 
-    // Update row positions when sections change or after render
+    // Debounced row position updates
+    const rowPositionTimeoutRef = useRef<NodeJS.Timeout | null>(null)
+    const debouncedUpdateRowPositions = useCallback(() => {
+        if (rowPositionTimeoutRef.current) {
+            clearTimeout(rowPositionTimeoutRef.current)
+        }
+        rowPositionTimeoutRef.current = setTimeout(() => {
+            updateRowPositions()
+        }, 100) // 100ms debounce for row position updates
+    }, [updateRowPositions])
+
+    // Update row positions when sections change or after render (debounced)
     useEffect(() => {
-        const timer = setTimeout(updateRowPositions, 0) // Use setTimeout to ensure DOM is updated
-        return () => clearTimeout(timer)
-    }, [localSections, updateRowPositions])
+        debouncedUpdateRowPositions()
+    }, [localSections, debouncedUpdateRowPositions])
 
     // Update row positions on window resize
     useEffect(() => {
@@ -1328,6 +1372,21 @@ function ArticleEditor({ articleId, userId, user, onBack }: { articleId: string;
         }
     }, [isSaving, hasUserInteracted, hasChanges, setHasUserInteractedDebug])
 
+    // Cleanup timeouts on unmount
+    useEffect(() => {
+        return () => {
+            if (changeTrackingTimeoutRef.current) {
+                clearTimeout(changeTrackingTimeoutRef.current)
+            }
+            if (subtitleHeightTimeoutRef.current) {
+                clearTimeout(subtitleHeightTimeoutRef.current)
+            }
+            if (rowPositionTimeoutRef.current) {
+                clearTimeout(rowPositionTimeoutRef.current)
+            }
+        }
+    }, [])
+
     // Track the last processed revision ID to detect new revisions
     const [lastProcessedRevisionId, setLastProcessedRevisionId] = useState<string | null>(null)
     
@@ -1384,6 +1443,7 @@ function ArticleEditor({ articleId, userId, user, onBack }: { articleId: string;
             )
             return updated
         })
+        // Throttle change tracking to reduce UI updates
         setHasChanges(true)
         setHasUserInteracted(true)
     }, [])
@@ -1419,64 +1479,98 @@ function ArticleEditor({ articleId, userId, user, onBack }: { articleId: string;
         setHasUserInteracted(true)
     }, [])
 
-    // Wrapper functions to track user interaction
+    // Debounced change tracking refs
+    const changeTrackingTimeoutRef = useRef<NodeJS.Timeout | null>(null)
+    
+    // Debounced change tracking function
+    const debouncedChangeTracking = useCallback(() => {
+        if (changeTrackingTimeoutRef.current) {
+            clearTimeout(changeTrackingTimeoutRef.current)
+        }
+        changeTrackingTimeoutRef.current = setTimeout(() => {
+            setHasChanges(true)
+            setHasUserInteracted(true)
+        }, 300) // 300ms debounce for change tracking
+    }, [])
+
+    // Wrapper functions to track user interaction (optimized)
     const handleTrailerChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
         setTrailer(e.target.value)
-        setHasChanges(true)
-        setHasUserInteracted(true)
-    }, [])
+        debouncedChangeTracking()
+    }, [debouncedChangeTracking])
 
     const handleTitleChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
         setTitle(e.target.value)
-        setHasChanges(true)
-        setHasUserInteracted(true)
-    }, [])
+        debouncedChangeTracking()
+    }, [debouncedChangeTracking])
 
-    // Function to adjust subtitle textarea height
+    // Function to adjust subtitle textarea height (optimized)
     const adjustSubtitleHeight = useCallback(() => {
         if (!subtitleRef.current) return
+        // Reset height to auto to get accurate scrollHeight
         subtitleRef.current.style.height = 'auto'
-        subtitleRef.current.style.height = subtitleRef.current.scrollHeight + 'px'
+        const scrollHeight = subtitleRef.current.scrollHeight
+        subtitleRef.current.style.height = `${scrollHeight}px`
     }, [])
 
-    // Adjust subtitle height when content changes
-    useEffect(() => {
-        const frameId = requestAnimationFrame(() => {
+    // Debounced subtitle height adjustment - stable reference
+    const subtitleHeightTimeoutRef = useRef<NodeJS.Timeout | null>(null)
+    const debouncedSubtitleHeightAdjustment = useCallback(() => {
+        if (subtitleHeightTimeoutRef.current) {
+            clearTimeout(subtitleHeightTimeoutRef.current)
+        }
+        subtitleHeightTimeoutRef.current = setTimeout(() => {
             adjustSubtitleHeight()
-            setTimeout(adjustSubtitleHeight, 0)
-        })
-        return () => cancelAnimationFrame(frameId)
-    }, [subtitle, adjustSubtitleHeight])
+        }, 16) // ~60fps
+    }, [adjustSubtitleHeight])
+
+    // Adjust subtitle height when content changes (debounced)
+    useEffect(() => {
+        debouncedSubtitleHeightAdjustment()
+    }, [subtitle])
+
+    // Adjust subtitle height on initial render and window resize
+    useEffect(() => {
+        const handleResize = () => adjustSubtitleHeight()
+        
+        // Initial adjustment
+        const timer = setTimeout(() => {
+            adjustSubtitleHeight()
+        }, 0)
+        
+        // Add resize listener
+        window.addEventListener('resize', handleResize)
+        
+        return () => {
+            clearTimeout(timer)
+            window.removeEventListener('resize', handleResize)
+        }
+    }, [adjustSubtitleHeight])
 
     const handleSubtitleChange = useCallback((e: React.ChangeEvent<HTMLTextAreaElement>) => {
         setExcerpt(e.target.value)
-        setHasChanges(true)
-        setHasUserInteracted(true)
-    }, [])
+        debouncedChangeTracking()
+    }, [debouncedChangeTracking])
 
     const handleLiveChange = useCallback((checked: boolean) => {
         setLive(checked)
-        setHasChanges(true)
-        setHasUserInteracted(true)
-    }, [])
+        debouncedChangeTracking()
+    }, [debouncedChangeTracking])
 
     const handleRedirectChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
         setRedirect(e.target.value)
-        setHasChanges(true)
-        setHasUserInteracted(true)
-    }, [])
+        debouncedChangeTracking()
+    }, [debouncedChangeTracking])
 
     const handleAuthorsChange = useCallback((authors: string[]) => {
         setAuthors(authors)
-        setHasChanges(true)
-        setHasUserInteracted(true)
-    }, [])
+        debouncedChangeTracking()
+    }, [debouncedChangeTracking])
 
     const handleCategoriesChange = useCallback((categories: string[]) => {
         setCategories(categories)
-        setHasChanges(true)
-        setHasUserInteracted(true)
-    }, [])
+        debouncedChangeTracking()
+    }, [debouncedChangeTracking])
 
     // Memoized selectors to prevent unnecessary re-renders
     const memoizedAuthorSelector = useMemo(() => (
@@ -2729,22 +2823,45 @@ function SectionEditor({ section, onLocalChange, isDragging = false, userId, dis
 const TitleEditor = memo(({ section, onLocalChange, disabled = false }: { section: any; onLocalChange: (data: Partial<any>) => void; disabled?: boolean }) => {
     const [value, setValue] = useState(section.content ?? '')
     const onLocalChangeRef = useRef(onLocalChange)
+    const isInternalUpdate = useRef(false)
+    const debounceTimeoutRef = useRef<NodeJS.Timeout | null>(null)
     onLocalChangeRef.current = onLocalChange
 
     const handleChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+        isInternalUpdate.current = true
         setValue(e.target.value)
     }, [])
 
     // Sync external changes to local state (when section content changes externally)
     useEffect(() => {
-        if (section.content !== value) {
+        if (section.content !== value && !isInternalUpdate.current) {
             setValue(section.content ?? '')
         }
-    }, [section.content])
+    }, [section.content, value])
 
+    // Debounced parent notification (only on internal changes)
     useEffect(() => {
-        onLocalChangeRef.current({ content: value, type: 'title' })
+        if (isInternalUpdate.current) {
+            // Clear any pending debounced update
+            if (debounceTimeoutRef.current) {
+                clearTimeout(debounceTimeoutRef.current)
+            }
+            // Debounce the parent notification
+            debounceTimeoutRef.current = setTimeout(() => {
+                onLocalChangeRef.current({ content: value, type: 'title' })
+                isInternalUpdate.current = false
+            }, 300) // 300ms debounce for parent updates
+        }
     }, [value])
+
+    // Cleanup timeout on unmount
+    useEffect(() => {
+        return () => {
+            if (debounceTimeoutRef.current) {
+                clearTimeout(debounceTimeoutRef.current)
+            }
+        }
+    }, [])
 
     return (
         <div className="space-y-1">
@@ -2765,45 +2882,95 @@ const QuoteEditor = memo(({ section, onLocalChange, disabled = false }: { sectio
     const [speaker, setSpeaker] = useState(section.speaker ?? '')
     const quoteRef = useRef<HTMLTextAreaElement | null>(null)
     const onLocalChangeRef = useRef(onLocalChange)
+    const isInternalUpdate = useRef(false)
+    const debounceTimeoutRef = useRef<NodeJS.Timeout | null>(null)
     onLocalChangeRef.current = onLocalChange
 
-    // Function to adjust textarea height
+    // Function to adjust textarea height (optimized)
     const adjustHeight = useCallback(() => {
         if (!quoteRef.current) return
+        // Reset height to auto to get accurate scrollHeight
         quoteRef.current.style.height = 'auto'
-        quoteRef.current.style.height = quoteRef.current.scrollHeight + 'px'
+        const scrollHeight = quoteRef.current.scrollHeight
+        quoteRef.current.style.height = `${scrollHeight}px`
     }, [])
 
-    // Adjust height when quote content changes
-    useEffect(() => {
-        const frameId = requestAnimationFrame(() => {
+    // Debounced height adjustment
+    const debouncedAdjustHeight = useCallback(() => {
+        if (debounceTimeoutRef.current) {
+            clearTimeout(debounceTimeoutRef.current)
+        }
+        debounceTimeoutRef.current = setTimeout(() => {
             adjustHeight()
-            setTimeout(adjustHeight, 0)
-        })
-        return () => cancelAnimationFrame(frameId)
-    }, [quote, adjustHeight])
+        }, 16) // ~60fps
+    }, [adjustHeight])
+
+    // Adjust height when quote content changes (debounced)
+    useEffect(() => {
+        debouncedAdjustHeight()
+    }, [quote])
+
+    // Adjust height on initial render and window resize
+    useEffect(() => {
+        const handleResize = () => adjustHeight()
+        
+        // Initial adjustment
+        const timer = setTimeout(() => {
+            adjustHeight()
+        }, 0)
+        
+        // Add resize listener
+        window.addEventListener('resize', handleResize)
+        
+        return () => {
+            clearTimeout(timer)
+            window.removeEventListener('resize', handleResize)
+        }
+    }, [adjustHeight])
 
     const handleQuoteChange = useCallback((e: React.ChangeEvent<HTMLTextAreaElement>) => {
+        isInternalUpdate.current = true
         setQuote(e.target.value)
     }, [])
 
     const handleSpeakerChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+        isInternalUpdate.current = true
         setSpeaker(e.target.value)
     }, [])
 
     // Sync external changes to local state (when section content changes externally)
     useEffect(() => {
-        if (section.content !== quote) {
+        if (section.content !== quote && !isInternalUpdate.current) {
             setQuote(section.content ?? '')
         }
-        if (section.speaker !== speaker) {
+        if (section.speaker !== speaker && !isInternalUpdate.current) {
             setSpeaker(section.speaker ?? '')
         }
-    }, [section.content, section.speaker])
+    }, [section.content, section.speaker, quote, speaker])
 
+    // Debounced parent notification (only on internal changes)
     useEffect(() => {
-        onLocalChangeRef.current({ content: quote, speaker, type: 'quote' })
+        if (isInternalUpdate.current) {
+            // Clear any pending debounced update
+            if (debounceTimeoutRef.current) {
+                clearTimeout(debounceTimeoutRef.current)
+            }
+            // Debounce the parent notification
+            debounceTimeoutRef.current = setTimeout(() => {
+                onLocalChangeRef.current({ content: quote, speaker, type: 'quote' })
+                isInternalUpdate.current = false
+            }, 300) // 300ms debounce for parent updates
+        }
     }, [quote, speaker])
+
+    // Cleanup timeout on unmount
+    useEffect(() => {
+        return () => {
+            if (debounceTimeoutRef.current) {
+                clearTimeout(debounceTimeoutRef.current)
+            }
+        }
+    }, [])
 
     return (
         <div className="space-y-2 w-full min-w-0">
@@ -2846,45 +3013,85 @@ const TextEditor = memo(({ section, onLocalChange, disabled = false }: { section
     const [value, setValue] = useState(section.content ?? '')
     const ref = useRef<HTMLTextAreaElement | null>(null)
     const onLocalChangeRef = useRef(onLocalChange)
+    const isInternalUpdate = useRef(false)
+    const debounceTimeoutRef = useRef<NodeJS.Timeout | null>(null)
     onLocalChangeRef.current = onLocalChange
 
-    // Function to adjust textarea height
+    // Function to adjust textarea height (optimized)
     const adjustHeight = useCallback(() => {
         if (!ref.current) return
-        // Reset height to auto to get the correct scrollHeight
+        // Reset height to auto to get accurate scrollHeight
         ref.current.style.height = 'auto'
-        // Set height to scrollHeight to fit content
-        ref.current.style.height = ref.current.scrollHeight + 'px'
+        const scrollHeight = ref.current.scrollHeight
+        ref.current.style.height = `${scrollHeight}px`
     }, [])
 
-    // Adjust height when value changes or component mounts
-    useEffect(() => {
-        // Use requestAnimationFrame to ensure DOM is fully updated
-        const frameId = requestAnimationFrame(() => {
-            adjustHeight()
-            // Add a small delay to ensure DOM is fully updated after AI text insertion
-            setTimeout(adjustHeight, 0)
-        })
-        return () => cancelAnimationFrame(frameId)
-    }, [value, adjustHeight])
-
-    // Also adjust height when the component mounts or when section content changes externally
-    useEffect(() => {
-        if (section.content !== value) {
-            setValue(section.content ?? '')
+    // Debounced height adjustment
+    const debouncedAdjustHeight = useCallback(() => {
+        if (debounceTimeoutRef.current) {
+            clearTimeout(debounceTimeoutRef.current)
         }
-    }, [section.content])
-
-    // Adjust height on mount
-    useEffect(() => {
-        adjustHeight()
+        debounceTimeoutRef.current = setTimeout(() => {
+            adjustHeight()
+        }, 16) // ~60fps
     }, [adjustHeight])
 
+    // Adjust height when value changes (debounced)
     useEffect(() => {
-        onLocalChangeRef.current({ content: value, type: 'text' })
+        debouncedAdjustHeight()
     }, [value])
 
+    // Sync external changes to local state (when section content changes externally)
+    useEffect(() => {
+        if (section.content !== value && !isInternalUpdate.current) {
+            setValue(section.content ?? '')
+        }
+    }, [section.content, value])
+
+    // Adjust height on initial render and window resize
+    useEffect(() => {
+        const handleResize = () => adjustHeight()
+        
+        // Initial adjustment
+        const timer = setTimeout(() => {
+            adjustHeight()
+        }, 0)
+        
+        // Add resize listener
+        window.addEventListener('resize', handleResize)
+        
+        return () => {
+            clearTimeout(timer)
+            window.removeEventListener('resize', handleResize)
+        }
+    }, [adjustHeight])
+
+    // Debounced parent notification (only on internal changes)
+    useEffect(() => {
+        if (isInternalUpdate.current) {
+            // Clear any pending debounced update
+            if (debounceTimeoutRef.current) {
+                clearTimeout(debounceTimeoutRef.current)
+            }
+            // Debounce the parent notification
+            debounceTimeoutRef.current = setTimeout(() => {
+                onLocalChangeRef.current({ content: value, type: 'text' })
+                isInternalUpdate.current = false
+            }, 300) // 300ms debounce for parent updates
+        }
+    }, [value])
+
+    // Cleanup timeout on unmount
+    useEffect(() => {
+        return () => {
+            if (debounceTimeoutRef.current) {
+                clearTimeout(debounceTimeoutRef.current)
+            }
+        }
+    }, [])
+
     const handleChange = useCallback((e: React.ChangeEvent<HTMLTextAreaElement>) => {
+        isInternalUpdate.current = true
         setValue(e.target.value)
     }, [])
 

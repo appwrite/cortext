@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { CommentIcon } from './comment-icon';
 import { CommentList } from './comment-list';
 import { CommentForm, CommentFormRef } from './comment-form';
@@ -36,8 +36,8 @@ export function CommentPopover({
   const commentListRef = useRef<{ focusComment: (commentId: string) => void } | null>(null);
   const commentFormRef = useRef<CommentFormRef>(null);
 
-  // Calculate popover position and height
-  const calculatePosition = () => {
+  // Calculate popover position and height (memoized to prevent expensive calculations)
+  const calculatePosition = useCallback(() => {
     if (containerRef.current) {
       const containerRect = containerRef.current.getBoundingClientRect();
       const viewportHeight = window.innerHeight;
@@ -56,9 +56,9 @@ export function CommentPopover({
         setPopoverPosition('bottom');
       }
     }
-  };
+  }, []);
 
-  const getMaxPopoverHeight = () => {
+  const getMaxPopoverHeight = useCallback(() => {
     if (containerRef.current) {
       const containerRect = containerRef.current.getBoundingClientRect();
       const viewportHeight = window.innerHeight;
@@ -76,7 +76,7 @@ export function CommentPopover({
       return maxHeight;
     }
     return 400; // Fallback height
-  };
+  }, [popoverPosition]);
 
   // Calculate position when opening and close dropdown when clicking outside
   useEffect(() => {

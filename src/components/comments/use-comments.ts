@@ -1,4 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useMemo } from 'react';
 import { db } from '@/lib/appwrite/db';
 import { Query, type Models } from 'appwrite';
 import type { Comments } from '@/lib/appwrite/appwrite.types';
@@ -150,36 +151,40 @@ export function useAllComments(articleId: string, blogId: string) {
     enabled: !!articleId && !!blogId,
   });
 
-  // Function to get comments for a specific target
-  const getCommentsForTarget = (targetType: string, targetId?: string) => {
-    if (!allComments) return [];
-    
-    return allComments.filter(comment => {
-      const matchesType = comment.targetType === targetType;
-      const matchesId = targetId ? comment.targetId === targetId : !comment.targetId;
-      return matchesType && matchesId;
-    });
-  };
+  // Memoize functions to prevent them from changing on every render
+  const getCommentsForTarget = useMemo(() => {
+    return (targetType: string, targetId?: string) => {
+      if (!allComments) return [];
+      
+      return allComments.filter(comment => {
+        const matchesType = comment.targetType === targetType;
+        const matchesId = targetId ? comment.targetId === targetId : !comment.targetId;
+        return matchesType && matchesId;
+      });
+    };
+  }, [allComments]);
 
-  // Function to get comment count for a specific target
-  const getCommentCountForTarget = (targetType: string, targetId?: string) => {
-    const comments = getCommentsForTarget(targetType, targetId);
-    return comments.length;
-  };
+  const getCommentCountForTarget = useMemo(() => {
+    return (targetType: string, targetId?: string) => {
+      const comments = getCommentsForTarget(targetType, targetId);
+      return comments.length;
+    };
+  }, [getCommentsForTarget]);
 
-  // Function to check if there are new comments (you can implement logic based on timestamps)
-  const hasNewCommentsForTarget = (targetType: string, targetId?: string) => {
-    if (!allComments) return false;
-    
-    const comments = getCommentsForTarget(targetType, targetId);
-    
-    // Consider comments as "new" if created within the last 24 hours
-    const dayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
-    return comments.some(comment => {
-      const commentDate = new Date(comment.$createdAt);
-      return commentDate > dayAgo;
-    });
-  };
+  const hasNewCommentsForTarget = useMemo(() => {
+    return (targetType: string, targetId?: string) => {
+      if (!allComments) return false;
+      
+      const comments = getCommentsForTarget(targetType, targetId);
+      
+      // Consider comments as "new" if created within the last 24 hours
+      const dayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
+      return comments.some(comment => {
+        const commentDate = new Date(comment.$createdAt);
+        return commentDate > dayAgo;
+      });
+    };
+  }, [allComments, getCommentsForTarget]);
 
   return {
     allComments,

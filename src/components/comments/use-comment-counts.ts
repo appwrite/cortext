@@ -1,3 +1,4 @@
+import { useMemo } from 'react';
 import { useAllComments } from './use-comments';
 
 interface CommentCounts {
@@ -19,24 +20,31 @@ export function useCommentCounts(
     hasNewCommentsForTarget 
   } = useAllComments(articleId, blogId);
 
-  // Calculate counts from pre-loaded comments
-  const commentCounts: CommentCounts = {};
-  
-  if (allComments) {
-    for (const target of targets) {
-      const targetKey = `${target.type}-${target.id || 'main'}`;
-      commentCounts[targetKey] = {
-        count: getCommentCountForTarget(target.type, target.id),
-        hasNewComments: hasNewCommentsForTarget(target.type, target.id)
-      };
+  // Memoize comment counts to prevent expensive recalculations on every render
+  const commentCounts = useMemo(() => {
+    const counts: CommentCounts = {};
+    
+    if (allComments) {
+      for (const target of targets) {
+        const targetKey = `${target.type}-${target.id || 'main'}`;
+        counts[targetKey] = {
+          count: getCommentCountForTarget(target.type, target.id),
+          hasNewComments: hasNewCommentsForTarget(target.type, target.id)
+        };
+      }
     }
-  }
+    
+    return counts;
+  }, [allComments, targets, getCommentCountForTarget, hasNewCommentsForTarget]);
 
-  const getCommentCount = (type: string, id?: string) => {
-    const targetKey = `${type}-${id || 'main'}`;
-    const result = commentCounts[targetKey] || { count: 0, hasNewComments: false };
-    return result;
-  };
+  // Memoize the getCommentCount function to prevent it from changing on every render
+  const getCommentCount = useMemo(() => {
+    return (type: string, id?: string) => {
+      const targetKey = `${type}-${id || 'main'}`;
+      const result = commentCounts[targetKey] || { count: 0, hasNewComments: false };
+      return result;
+    };
+  }, [commentCounts]);
 
   return {
     commentCounts,
