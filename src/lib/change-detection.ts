@@ -231,23 +231,3 @@ export function createChangeObject(
   }
 }
 
-/**
- * Check if localStorage is available
- */
-export function isLocalStorageAvailable(): boolean {
-  try {
-    const test = '__localStorage_test__'
-    localStorage.setItem(test, test)
-    localStorage.removeItem(test)
-    return true
-  } catch {
-    return false
-  }
-}
-
-/**
- * Get a unique change ID
- */
-export function generateChangeId(): string {
-  return `change_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
-}

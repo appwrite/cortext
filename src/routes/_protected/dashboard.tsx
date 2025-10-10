@@ -37,7 +37,6 @@ import { TeamBlogProvider, useTeamBlogContext } from '@/contexts/team-blog-conte
 import { useDebugMode } from '@/contexts/debug-context'
 import { useDocumentTitle } from '@/hooks/use-document-title'
 import { useAutoSave } from '@/hooks/use-auto-save'
-import { offlineStorage } from '@/lib/offline-storage'
 import { formatDateForDisplay, formatDateCompact, formatDateRelative } from '@/lib/date-utils'
 import { cn } from '@/lib/utils'
 import { CommentableInput, CommentableSection, useCommentCounts, useAllComments, CommentPopover } from '@/components/comments'
@@ -765,10 +764,9 @@ function ArticleEditor({ articleId, userId, user, onBack }: { articleId: string;
             teamId: currentTeam?.$id,
             userInfo,
             autoSaveStatus: autoSave.status,
-            hasUnsavedChanges: autoSave.hasUnsavedChanges,
-            isOnline: autoSave.isOnline
+            hasUnsavedChanges: autoSave.hasUnsavedChanges
         })
-    }, [articleId, userId, currentTeam?.$id, userInfo, autoSave.status, autoSave.hasUnsavedChanges, autoSave.isOnline])
+    }, [articleId, userId, currentTeam?.$id, userInfo, autoSave.status, autoSave.hasUnsavedChanges])
 
 
 
@@ -1249,47 +1247,12 @@ function ArticleEditor({ articleId, userId, user, onBack }: { articleId: string;
     const [isFullyLoaded, setIsFullyLoaded] = useState(false)
     const [initialSections, setInitialSections] = useState<any[]>([])
 
-    // Restore offline changes when component loads
+    // Reset hasUserInteracted when auto-save successfully saves changes
     useEffect(() => {
-        if (isFullyLoaded && autoSave.hasUnsavedChanges) {
-            console.log('🔄 Restoring offline changes...')
-            try {
-                const changes = JSON.parse(localStorage.getItem(`cortext_offline_${articleId}`) || '[]')
-                const latestChange = changes.find((change: any) => change.isHumanChange)
-                
-                if (latestChange && latestChange.data) {
-                    console.log('📥 Restoring data from offline storage:', latestChange.data)
-                    
-                    // Restore form data
-                    if (latestChange.data.title) setTitle(latestChange.data.title)
-                    if (latestChange.data.subtitle) setExcerpt(latestChange.data.subtitle)
-                    if (latestChange.data.trailer) setTrailer(latestChange.data.trailer)
-                    if (latestChange.data.status) setStatus(latestChange.data.status)
-                    if (latestChange.data.live !== undefined) setLive(latestChange.data.live)
-                    if (latestChange.data.redirect) setRedirect(latestChange.data.redirect)
-                    if (latestChange.data.authors) setAuthors(latestChange.data.authors)
-                    if (latestChange.data.categories) setCategories(latestChange.data.categories)
-                    
-                    // Restore sections
-                    if (latestChange.data.body) {
-                        try {
-                            const sections = JSON.parse(latestChange.data.body)
-                            if (Array.isArray(sections)) {
-                                setLocalSections(sections)
-                                console.log('📝 Restored sections:', sections.length)
-                            }
-                        } catch (error) {
-                            console.error('❌ Error parsing sections from offline data:', error)
-                        }
-                    }
-                    
-                    console.log('✅ Offline changes restored successfully')
-                }
-            } catch (error) {
-                console.error('❌ Error restoring offline changes:', error)
-            }
+        if (autoSave.status === 'saved' && hasUserInteracted) {
+            setHasUserInteractedDebug(false, 'auto-save completed')
         }
-    }, [isFullyLoaded, autoSave.hasUnsavedChanges, articleId, setTitle, setExcerpt, setTrailer, setStatus, setLive, setRedirect, setAuthors, setCategories, setLocalSections])
+    }, [autoSave.status, hasUserInteracted, setHasUserInteractedDebug])
 
     // Track the last processed revision ID to detect new revisions
     const [lastProcessedRevisionId, setLastProcessedRevisionId] = useState<string | null>(null)
@@ -2376,24 +2339,9 @@ function ArticleEditor({ articleId, userId, user, onBack }: { articleId: string;
                                             autoSave.status === 'saving' ? 'text-blue-600 dark:text-blue-400' :
                                             autoSave.status === 'saved' ? 'text-green-600 dark:text-green-400' :
                                             autoSave.status === 'error' ? 'text-red-600 dark:text-red-400' :
-                                            autoSave.status === 'offline' ? 'text-orange-600 dark:text-orange-400' :
                                             'text-gray-600 dark:text-gray-400'
                                         }`}>
                                             {autoSave.status}
-                                        </span>
-                                    </div>
-                                    <div className="flex justify-between items-center">
-                                        <span className="flex items-center gap-1">
-                                            Online Status
-                                            <div className="group relative">
-                                                <span className="text-purple-500 dark:text-purple-400 cursor-help text-xs w-3 h-3 rounded-full border border-current flex items-center justify-center text-[8px]">i</span>
-                                                <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-2 py-1 bg-gray-900 dark:bg-gray-100 text-white dark:text-gray-900 text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none whitespace-nowrap z-10">
-                                                    Whether the browser is connected to the internet
-                                                </div>
-                                            </div>
-                                        </span>
-                                        <span className={autoSave.isOnline ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}>
-                                            {autoSave.isOnline ? 'Online' : 'Offline'}
                                         </span>
                                     </div>
                                     <div className="flex justify-between items-center">
@@ -2408,20 +2356,6 @@ function ArticleEditor({ articleId, userId, user, onBack }: { articleId: string;
                                         </span>
                                         <span className={autoSave.hasUnsavedChanges ? 'text-orange-600 dark:text-orange-400' : 'text-green-600 dark:text-green-400'}>
                                             {autoSave.hasUnsavedChanges ? 'Yes' : 'No'}
-                                        </span>
-                                    </div>
-                                    <div className="flex justify-between items-center">
-                                        <span className="flex items-center gap-1">
-                                            Change Count
-                                            <div className="group relative">
-                                                <span className="text-purple-500 dark:text-purple-400 cursor-help text-xs w-3 h-3 rounded-full border border-current flex items-center justify-center text-[8px]">i</span>
-                                                <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-2 py-1 bg-gray-900 dark:bg-gray-100 text-white dark:text-gray-900 text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none whitespace-nowrap z-10">
-                                                    Number of changes stored offline
-                                                </div>
-                                            </div>
-                                        </span>
-                                        <span className="font-mono">
-                                            {autoSave.getUnsavedChangesCount()}
                                         </span>
                                     </div>
                                 </div>
@@ -2441,20 +2375,6 @@ function ArticleEditor({ articleId, userId, user, onBack }: { articleId: string;
                                                 new Date(autoSave.lastSaved).toLocaleTimeString() : 
                                                 'Never'
                                             }
-                                        </span>
-                                    </div>
-                                    <div className="flex justify-between items-center">
-                                        <span className="flex items-center gap-1">
-                                            Storage Available
-                                            <div className="group relative">
-                                                <span className="text-purple-500 dark:text-purple-400 cursor-help text-xs w-3 h-3 rounded-full border border-current flex items-center justify-center text-[8px]">i</span>
-                                                <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-2 py-1 bg-gray-900 dark:bg-gray-100 text-white dark:text-gray-900 text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none whitespace-nowrap z-10">
-                                                    Whether localStorage is available for offline storage
-                                                </div>
-                                            </div>
-                                        </span>
-                                        <span className={typeof Storage !== 'undefined' ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}>
-                                            {typeof Storage !== 'undefined' ? 'Yes' : 'No'}
                                         </span>
                                     </div>
                                     <div className="flex justify-between items-center">
@@ -2497,59 +2417,6 @@ function ArticleEditor({ articleId, userId, user, onBack }: { articleId: string;
                                 </div>
                             )}
                             
-                            <div className="mt-2">
-                                <div className="font-medium text-purple-700 dark:text-purple-300 mb-2 flex items-center gap-1">
-                                    Recent Changes
-                                    <div className="group relative">
-                                        <span className="text-purple-500 dark:text-purple-400 cursor-help text-xs w-3 h-3 rounded-full border border-current flex items-center justify-center text-[8px]">i</span>
-                                        <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-2 py-1 bg-gray-900 dark:bg-gray-100 text-white dark:text-gray-900 text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none whitespace-nowrap z-10">
-                                            Recent offline changes stored locally
-                                        </div>
-                                    </div>
-                                </div>
-                                <div className="space-y-1">
-                                    {(() => {
-                                        try {
-                                            const changes = JSON.parse(localStorage.getItem(`cortext_offline_${articleId}`) || '[]')
-                                            return changes.length > 0 ? 
-                                                changes.slice(0, 3).map((change: any, index: number) => {
-                                                    const timeAgo = new Date(change.timestamp)
-                                                    const now = new Date()
-                                                    const diffMs = now.getTime() - timeAgo.getTime()
-                                                    const diffMins = Math.floor(diffMs / 60000)
-                                                    const diffSecs = Math.floor((diffMs % 60000) / 1000)
-                                                    
-                                                    return (
-                                                        <div key={change.id} className="flex justify-between items-center text-xs">
-                                                            <span className="flex items-center gap-1">
-                                                                <span className={`px-1 rounded text-xs ${
-                                                                    change.isHumanChange 
-                                                                        ? 'bg-blue-50/90 dark:bg-blue-950/50 text-blue-700 dark:text-blue-300 backdrop-blur-sm' 
-                                                                        : 'bg-purple-50/90 dark:bg-purple-950/50 text-purple-700 dark:text-purple-300 backdrop-blur-sm'
-                                                                }`}>
-                                                                    {change.isHumanChange ? 'Human' : 'AI'}
-                                                                </span>
-                                                                <span className="font-mono text-xs">
-                                                                    v{change.version}
-                                                                </span>
-                                                            </span>
-                                                            <span className="text-gray-500">
-                                                                {diffMins > 0 ? `${diffMins}m ${diffSecs}s ago` : `${diffSecs}s ago`}
-                                                            </span>
-                                                        </div>
-                                                    )
-                                                }) :
-                                                <div className="text-gray-500 italic text-xs">No offline changes</div>
-                                        } catch (error) {
-                                            return (
-                                                <div className="text-red-500 italic text-xs">
-                                                    Error: {error instanceof Error ? error.message : 'Unknown error'}
-                                                </div>
-                                            )
-                                        }
-                                    })()}
-                                </div>
-                            </div>
                             
                             <div className="mt-2 flex gap-2 flex-wrap">
                                 <Button 
@@ -2610,58 +2477,6 @@ function ArticleEditor({ articleId, userId, user, onBack }: { articleId: string;
                                     size="sm" 
                                     variant="outline" 
                                     onClick={() => {
-                                        console.log('🧪 Clear offline changes')
-                                        autoSave.clearUnsavedChanges()
-                                    }}
-                                    className="h-6 px-2 text-xs text-purple-600 border-purple-300 hover:bg-purple-200 dark:text-purple-400 dark:border-purple-700 dark:hover:bg-purple-800"
-                                >
-                                    Clear Changes
-                                </Button>
-                                <Button 
-                                    size="sm" 
-                                    variant="outline" 
-                                    onClick={() => {
-                                        console.log('🔍 Debug Offline Storage')
-                                        try {
-                                            const key = `cortext_offline_${articleId}`
-                                            const rawData = localStorage.getItem(key)
-                                            console.log('📦 Raw localStorage data:', rawData)
-                                            
-                                            if (rawData) {
-                                                const changes = JSON.parse(rawData)
-                                                console.log('📦 Parsed changes:', changes)
-                                                console.log('📦 Changes count:', changes.length)
-                                                
-                                                changes.forEach((change: any, index: number) => {
-                                                    console.log(`📦 Change ${index + 1}:`, {
-                                                        id: change.id,
-                                                        timestamp: new Date(change.timestamp).toISOString(),
-                                                        isHumanChange: change.isHumanChange,
-                                                        version: change.version,
-                                                        hasData: !!change.data,
-                                                        dataKeys: change.data ? Object.keys(change.data) : 'no data'
-                                                    })
-                                                })
-                                            } else {
-                                                console.log('📦 No offline data found for key:', key)
-                                            }
-                                            
-                                            // Also check all cortext keys
-                                            const allKeys = Object.keys(localStorage).filter(k => k.startsWith('cortext_offline_'))
-                                            console.log('📦 All cortext offline keys:', allKeys)
-                                            
-                                        } catch (error) {
-                                            console.error('❌ Error reading offline storage:', error)
-                                        }
-                                    }}
-                                    className="h-6 px-2 text-xs text-purple-600 border-purple-300 hover:bg-purple-200 dark:text-purple-400 dark:border-purple-700 dark:hover:bg-purple-800"
-                                >
-                                    Debug Storage
-                                </Button>
-                                <Button 
-                                    size="sm" 
-                                    variant="outline" 
-                                    onClick={() => {
                                         console.log('🧪 Basic Auto-Save Test')
                                         console.log('🔧 Auto-save object:', autoSave)
                                         console.log('🔧 isFullyLoaded:', isFullyLoaded)
@@ -2691,51 +2506,6 @@ function ArticleEditor({ articleId, userId, user, onBack }: { articleId: string;
                                     className="h-6 px-2 text-xs text-purple-600 border-purple-300 hover:bg-purple-200 dark:text-purple-400 dark:border-purple-700 dark:hover:bg-purple-800"
                                 >
                                     Basic Test
-                                </Button>
-                                <Button 
-                                    size="sm" 
-                                    variant="outline" 
-                                    onClick={() => {
-                                        console.log('🧪 Test Offline Restore')
-                                        
-                                        // Create test offline data
-                                        const testData = {
-                                            title: 'Offline Test Title',
-                                            subtitle: 'Offline Test Subtitle',
-                                            trailer: 'Offline trailer',
-                                            status: 'draft',
-                                            live: true,
-                                            pinned: false,
-                                            redirect: 'https://example.com',
-                                            slug: 'offline-test-title',
-                                            authors: ['author1'],
-                                            categories: ['category1'],
-                                            images: null,
-                                            blogId: article?.blogId || null,
-                                            body: JSON.stringify([
-                                                { id: '1', type: 'text', content: 'Offline test content' },
-                                                { id: '2', type: 'title', content: 'Offline test heading' }
-                                            ]),
-                                            createdBy: userId,
-                                        }
-                                        
-                                        // Store offline
-                                        const changeId = offlineStorage.storeChange({
-                                            articleId,
-                                            data: testData,
-                                            isHumanChange: true,
-                                            version: 1
-                                        })
-                                        
-                                        console.log('💾 Stored test offline change:', changeId)
-                                        console.log('🔄 Now reload the page to test offline restore!')
-                                        
-                                        // Show alert
-                                        alert('Test offline data stored! Reload the page to test offline restore functionality.')
-                                    }}
-                                    className="h-6 px-2 text-xs text-purple-600 border-purple-300 hover:bg-purple-200 dark:text-purple-400 dark:border-purple-700 dark:hover:bg-purple-800"
-                                >
-                                    Test Offline
                                 </Button>
                             </div>
                         </div>

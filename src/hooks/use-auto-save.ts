@@ -1,12 +1,11 @@
 /**
- * Auto-save hook with offline-first support
- * Handles automatic saving of user changes with local storage backup
+ * Auto-save hook
+ * Handles automatic saving of user changes
  */
 
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
-import { offlineStorage, OfflineChange } from '../lib/offline-storage'
-import { detectChangeSource, detectArticleChanges, shouldAutoSave, isLocalStorageAvailable } from '../lib/change-detection'
+import { detectChangeSource, detectArticleChanges, shouldAutoSave } from '../lib/change-detection'
 import { db } from '../lib/appwrite/db'
 import { createUpdateRevision } from '../lib/appwrite/db'
 
@@ -18,11 +17,10 @@ export interface AutoSaveConfig {
 }
 
 export interface AutoSaveState {
-  status: 'idle' | 'saving' | 'saved' | 'error' | 'offline'
+  status: 'idle' | 'saving' | 'saved' | 'error'
   lastSaved?: Date
   hasUnsavedChanges: boolean
   error?: string
-  isOnline: boolean
 }
 
 const DEFAULT_CONFIG: Required<AutoSaveConfig> = {
@@ -45,18 +43,16 @@ export function useAutoSave(
   const [state, setState] = useState<AutoSaveState>({
     status: 'idle',
     hasUnsavedChanges: false,
-    isOnline: navigator.onLine,
   })
 
   // Debug status changes
   useEffect(() => {
     console.log('🔄 Auto-save status changed:', state.status, {
       hasUnsavedChanges: state.hasUnsavedChanges,
-      isOnline: state.isOnline,
       lastSaved: state.lastSaved,
       error: state.error
     })
-  }, [state.status, state.hasUnsavedChanges, state.isOnline, state.lastSaved, state.error])
+  }, [state.status, state.hasUnsavedChanges, state.lastSaved, state.error])
 
   // Auto-reset stuck "saving" status
   useEffect(() => {
@@ -80,32 +76,6 @@ export function useAutoSave(
   const retryCountRef = useRef(0)
   const lastSavedDataRef = useRef<any>(null)
   const isSavingRef = useRef(false)
-
-  // Check if localStorage is available
-  const storageAvailable = isLocalStorageAvailable()
-
-  // Online/offline detection
-  useEffect(() => {
-    const handleOnline = () => {
-      setState(prev => ({ ...prev, isOnline: true, status: 'idle' }))
-      // Try to save any pending changes when coming back online
-      if (offlineStorage.hasUnsavedHumanChanges(articleId)) {
-        triggerSave()
-      }
-    }
-
-    const handleOffline = () => {
-      setState(prev => ({ ...prev, isOnline: false, status: 'offline' }))
-    }
-
-    window.addEventListener('online', handleOnline)
-    window.addEventListener('offline', handleOffline)
-
-    return () => {
-      window.removeEventListener('online', handleOnline)
-      window.removeEventListener('offline', handleOffline)
-    }
-  }, [articleId])
 
   // Cleanup timers on unmount
   useEffect(() => {
@@ -215,8 +185,8 @@ export function useAutoSave(
       if (retryCountRef.current < finalConfig.maxRetries) {
         retryCountRef.current++
         console.log(`🔄 Retrying save (attempt ${retryCountRef.current}/${finalConfig.maxRetries})`)
-        setTimeout(() => {
-          triggerSave()
+        setTimeout(async () => {
+          await saveToServer(data, isHumanChange)
         }, finalConfig.retryDelay)
       } else {
         console.log('❌ Max retries reached, giving up')
@@ -234,44 +204,6 @@ export function useAutoSave(
     }
   }, [articleId, userId, teamId, queryClient, finalConfig.maxRetries, finalConfig.retryDelay])
 
-  /**
-   * Save changes offline
-   */
-  const saveOffline = useCallback((data: any, isHumanChange: boolean = true) => {
-    console.log('💾 saveOffline called:', {
-      articleId,
-      isHumanChange,
-      storageAvailable,
-      hasData: !!data
-    })
-
-    if (!storageAvailable) {
-      console.log('❌ Storage not available, cannot save offline')
-      return false
-    }
-
-    try {
-      const changeId = offlineStorage.storeChange({
-        articleId,
-        data,
-        isHumanChange,
-        version: 1
-      })
-
-      console.log('✅ Offline save successful:', changeId)
-
-      setState(prev => ({
-        ...prev,
-        hasUnsavedChanges: true,
-        status: prev.isOnline ? 'idle' : 'offline'
-      }))
-
-      return changeId
-    } catch (error) {
-      console.error('❌ Failed to save offline:', error)
-      return false
-    }
-  }, [articleId, storageAvailable])
 
   /**
    * Process changes and decide whether to save
@@ -289,7 +221,6 @@ export function useAutoSave(
       articleId,
       hasNewData: !!newData,
       context,
-      isOnline: state.isOnline,
       isFullyLoaded: true, // This should be passed from the component
       currentStatus: state.status
     })
@@ -338,12 +269,11 @@ export function useAutoSave(
       return // Don't save this type of change
     }
 
-    // Always save human changes offline immediately
-    if (changeSource.isHumanChange) {
-      console.log('💾 Saving human change offline...')
-      const changeId = saveOffline(newData, true)
-      console.log('✅ Offline save result:', changeId ? 'success' : 'failed')
-    }
+    // Mark as having unsaved changes
+    setState(prev => ({
+      ...prev,
+      hasUnsavedChanges: true
+    }))
 
     // Clear existing timers
     if (debounceTimerRef.current) {
@@ -359,43 +289,25 @@ export function useAutoSave(
     console.log('⏰ Setting up debounced save:', {
       debounceDelay: finalConfig.debounceDelay,
       saveInterval: finalConfig.saveInterval,
-      isOnline: state.isOnline,
       isSaving: isSavingRef.current
     })
 
     debounceTimerRef.current = setTimeout(() => {
       console.log('⏰ Debounce timer fired, checking conditions...')
-      if (state.isOnline && !isSavingRef.current) {
+      if (!isSavingRef.current) {
         console.log('✅ Conditions met, setting up server save timer')
-        saveTimerRef.current = setTimeout(() => {
+        saveTimerRef.current = setTimeout(async () => {
           console.log('🚀 Server save timer fired, triggering save')
-          triggerSave()
+          await saveToServer(newData, changeSource.isHumanChange)
         }, finalConfig.saveInterval)
       } else {
         console.log('❌ Conditions not met for server save:', {
-          isOnline: state.isOnline,
           isSaving: isSavingRef.current
         })
       }
     }, finalConfig.debounceDelay)
-  }, [userId, state.isOnline, saveOffline, finalConfig.debounceDelay, finalConfig.saveInterval])
+  }, [userId, finalConfig.debounceDelay, finalConfig.saveInterval])
 
-  /**
-   * Trigger immediate save
-   */
-  const triggerSave = useCallback(async () => {
-    if (!state.isOnline || isSavingRef.current) return
-
-    const latestChange = offlineStorage.getLatestHumanChange(articleId)
-    if (!latestChange) return
-
-    const success = await saveToServer(latestChange.data, true)
-    
-    if (success) {
-      // Remove the saved change from offline storage
-      offlineStorage.removeChange(articleId, latestChange.id)
-    }
-  }, [articleId, state.isOnline, saveToServer])
 
   /**
    * Force save current data
@@ -409,65 +321,34 @@ export function useAutoSave(
       clearTimeout(saveTimerRef.current)
     }
 
-    // Save offline first
-    if (isHumanChange) {
-      saveOffline(data, true)
-    }
-
-    // Save to server if online
-    if (state.isOnline) {
-      return await saveToServer(data, isHumanChange)
-    }
-
-    return false
-  }, [state.isOnline, saveOffline, saveToServer])
+    // Save to server
+    return await saveToServer(data, isHumanChange)
+  }, [saveToServer])
 
   /**
    * Clear all unsaved changes
    */
   const clearUnsavedChanges = useCallback(() => {
-    offlineStorage.clearChanges(articleId)
     setState(prev => ({
       ...prev,
       hasUnsavedChanges: false,
       status: 'idle'
     }))
-  }, [articleId])
+  }, [])
 
   /**
    * Get unsaved changes count
    */
   const getUnsavedChangesCount = useCallback(() => {
-    return offlineStorage.getChanges(articleId).length
-  }, [articleId])
+    return state.hasUnsavedChanges ? 1 : 0
+  }, [state.hasUnsavedChanges])
 
   /**
    * Check if there are unsaved changes
    */
   const hasUnsavedChanges = useCallback(() => {
-    return offlineStorage.hasUnsavedHumanChanges(articleId)
-  }, [articleId])
-
-  // Initialize state from offline storage and restore changes
-  useEffect(() => {
-    if (storageAvailable) {
-      const hasChanges = offlineStorage.hasUnsavedHumanChanges(articleId)
-      setState(prev => ({
-        ...prev,
-        hasUnsavedChanges: hasChanges,
-        status: hasChanges ? (prev.isOnline ? 'idle' : 'offline') : 'idle'
-      }))
-
-      // If there are offline changes and we're online, try to save them
-      if (hasChanges && state.isOnline) {
-        console.log('🔄 Found offline changes, attempting to restore and save...')
-        // Small delay to ensure component is fully loaded
-        setTimeout(() => {
-          triggerSave()
-        }, 1000)
-      }
-    }
-  }, [articleId, storageAvailable, state.isOnline, triggerSave])
+    return state.hasUnsavedChanges
+  }, [state.hasUnsavedChanges])
 
   return {
     // State
@@ -475,7 +356,6 @@ export function useAutoSave(
     
     // Actions
     processChanges,
-    triggerSave,
     forceSave,
     clearUnsavedChanges,
     

@@ -4,7 +4,7 @@
  */
 
 import React from 'react'
-import { CheckCircle, Clock, Wifi, WifiOff, AlertCircle, Loader2 } from 'lucide-react'
+import { CheckCircle, Clock, Wifi, AlertCircle, Loader2 } from 'lucide-react'
 import { AutoSaveState } from '../../hooks/use-auto-save'
 
 interface AutoSaveIndicatorProps {
@@ -42,13 +42,6 @@ export function AutoSaveIndicator({
           text: 'Error',
           color: 'text-red-600 dark:text-red-400',
           bgColor: 'bg-red-50 dark:bg-red-900/20'
-        }
-      case 'offline':
-        return {
-          icon: <WifiOff className="w-3 h-3" />,
-          text: 'Offline',
-          color: 'text-orange-600 dark:text-orange-400',
-          bgColor: 'bg-orange-50 dark:bg-orange-900/20'
         }
       case 'idle':
       default:
