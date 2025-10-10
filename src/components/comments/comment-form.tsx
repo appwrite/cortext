@@ -1,4 +1,4 @@
-import React, { useState, useRef, forwardRef, useImperativeHandle } from 'react';
+import React, { useState, useRef, forwardRef, useImperativeHandle, useCallback, useEffect } from 'react';
 import { Send } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
@@ -38,6 +38,22 @@ export const CommentForm = forwardRef<CommentFormRef, CommentFormProps>(({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const createComment = useCreateComment();
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+
+  // Function to adjust textarea height
+  const adjustHeight = useCallback(() => {
+    if (!textareaRef.current) return;
+    textareaRef.current.style.height = 'auto';
+    textareaRef.current.style.height = textareaRef.current.scrollHeight + 'px';
+  }, []);
+
+  // Adjust height when content changes
+  useEffect(() => {
+    const frameId = requestAnimationFrame(() => {
+      adjustHeight();
+      setTimeout(adjustHeight, 0);
+    });
+    return () => cancelAnimationFrame(frameId);
+  }, [content, adjustHeight]);
 
   // Expose focus function to parent components
   useImperativeHandle(ref, () => ({
@@ -118,6 +134,7 @@ export const CommentForm = forwardRef<CommentFormRef, CommentFormProps>(({
         onKeyDown={handleKeyDown}
         placeholder={placeholder}
         className="min-h-[80px] resize-none"
+        style={{ overflow: 'hidden' }}
         disabled={isSubmitting}
       />
       

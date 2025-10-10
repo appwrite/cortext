@@ -751,15 +751,8 @@ function ArticleEditor({ articleId, userId, user, onBack }: { articleId: string;
     const { updateArticle } = useArticle()
     const isPending = isLoadingRevision
 
-    // Auto-save functionality
-    const userInfo = {
-        userName: user?.name || '',
-        userEmail: user?.email || ''
-    }
-    const autoSave = useAutoSave(articleId, userId, currentTeam?.$id, {
-        saveInterval: 5000, // 5 seconds
-        debounceDelay: 1000, // 1 second debounce
-    }, userInfo)
+    // Manual save functionality
+    const [isSaving, setIsSaving] = useState(false)
 
     // Helper function to get descriptive version name
     const getRevisionVersionName = (revision: any) => {
@@ -902,19 +895,26 @@ function ArticleEditor({ articleId, userId, user, onBack }: { articleId: string;
     }, [])
 
     // Comment targets for the article
-    const commentTargets = [
+    // Memoize comment targets to prevent unnecessary re-computations
+    const commentTargets = useMemo(() => [
         { type: 'trailer' },
         { type: 'title' },
         { type: 'subtitle' },
         { type: 'redirect' },
         ...(localSections?.map(section => ({ type: 'section', id: section.id })) || [])
-    ]
+    ], [localSections])
 
     const { getCommentCount } = useCommentCounts(
         articleId,
         currentBlog?.$id || '',
         commentTargets
     )
+
+    // Memoize comment counts to prevent expensive recalculations on every render
+    const trailerCommentCount = useMemo(() => getCommentCount('trailer'), [getCommentCount])
+    const titleCommentCount = useMemo(() => getCommentCount('title'), [getCommentCount])
+    const subtitleCommentCount = useMemo(() => getCommentCount('subtitle'), [getCommentCount])
+    const redirectCommentCount = useMemo(() => getCommentCount('redirect'), [getCommentCount])
 
     // Pre-load all comments for the article to eliminate layout shift
     useAllComments(articleId, currentBlog?.$id || '')
@@ -1246,13 +1246,89 @@ function ArticleEditor({ articleId, userId, user, onBack }: { articleId: string;
     const [isDataLoaded, setIsDataLoaded] = useState(false)
     const [isFullyLoaded, setIsFullyLoaded] = useState(false)
     const [initialSections, setInitialSections] = useState<any[]>([])
+    const [hasChanges, setHasChanges] = useState(false)
 
-    // Reset hasUserInteracted when auto-save successfully saves changes
-    useEffect(() => {
-        if (autoSave.status === 'saved' && hasUserInteracted) {
-            setHasUserInteractedDebug(false, 'auto-save completed')
+    // Manual save function
+    const handleSave = useCallback(async () => {
+        if (isSaving) return
+        
+        setIsSaving(true)
+        try {
+            const articleData = {
+                title,
+                subtitle,
+                trailer,
+                status,
+                live,
+                pinned: article?.pinned || false,
+                redirect,
+                slug: slugify(title),
+                authors,
+                categories,
+                images: article?.images || null,
+                blogId: article?.blogId || null,
+                body: JSON.stringify(localSections),
+                createdBy: article?.createdBy || userId,
+            }
+            
+            // Create revision
+            const revision = await createUpdateRevision(
+                articleId,
+                article || {} as Articles,
+                articleData as Articles,
+                currentTeam?.$id,
+                undefined,
+                { 
+                    userId, 
+                    userName: user?.name || '', 
+                    userEmail: user?.email || '' 
+                }
+            )
+
+            if (revision) {
+                // Update the article
+                await db.articles.update(articleId, {
+                    ...articleData,
+                    activeRevisionId: revision.$id
+                })
+                
+                // Update cache
+                qc.setQueryData(['article', articleId], (oldData: any) => {
+                    if (!oldData) return oldData
+                    return {
+                        ...oldData,
+                        ...articleData,
+                        activeRevisionId: revision.$id,
+                        $updatedAt: new Date().toISOString()
+                    }
+                })
+
+                // Invalidate related queries
+                qc.invalidateQueries({ queryKey: ['articles'] })
+                qc.invalidateQueries({ queryKey: ['latest-revision', articleId] })
+                qc.invalidateQueries({ queryKey: ['revisions', articleId] })
+                
+                setHasChanges(false)
+                toast({ title: 'Article saved successfully' })
+            }
+        } catch (error) {
+            console.error('Save failed:', error)
+            toast({ 
+                title: 'Save failed', 
+                description: error instanceof Error ? error.message : 'Unknown error',
+                variant: 'destructive'
+            })
+        } finally {
+            setIsSaving(false)
         }
-    }, [autoSave.status, hasUserInteracted, setHasUserInteractedDebug])
+    }, [isSaving, title, subtitle, trailer, status, live, redirect, authors, categories, localSections, article, userId, currentTeam?.$id, user, qc, articleId])
+
+    // Reset hasUserInteracted when save successfully saves changes
+    useEffect(() => {
+        if (!isSaving && hasUserInteracted && !hasChanges) {
+            setHasUserInteractedDebug(false, 'save completed')
+        }
+    }, [isSaving, hasUserInteracted, hasChanges, setHasUserInteractedDebug])
 
     // Track the last processed revision ID to detect new revisions
     const [lastProcessedRevisionId, setLastProcessedRevisionId] = useState<string | null>(null)
@@ -1297,10 +1373,8 @@ function ArticleEditor({ articleId, userId, user, onBack }: { articleId: string;
         }
         const updatedSections = [...localSections, newSection]
         setLocalSections(updatedSections)
-        // Only set hasUserInteracted if we're not in initial load
-        if (isFullyLoaded) {
-            setHasUserInteractedDebug(true, 'createSection')
-        }
+        setHasChanges(true)
+        setHasUserInteracted(true)
         // Focus the first input after the component re-renders
         focusTargetRef.current = { id: newSection.id, type: String(type) }
     }
@@ -1310,35 +1384,11 @@ function ArticleEditor({ articleId, userId, user, onBack }: { articleId: string;
             const updated = prev.map(section => 
                 section.id === id ? { ...section, ...data } : section
             )
-            
-            // Trigger auto-save for human changes
-            if (isFullyLoaded) {
-                setHasUserInteractedDebug(true, 'updateSection')
-                
-                // Create article data for auto-save
-                const articleData = {
-                    title,
-                    subtitle,
-                    trailer,
-                    status,
-                    live,
-                    pinned: article?.pinned || false,
-                    redirect,
-                    slug: slugify(title),
-                    authors,
-                    categories,
-                    images: article?.images || null,
-                    blogId: article?.blogId || null,
-                    body: JSON.stringify(updated),
-                    createdBy: article?.createdBy || userId,
-                }
-                
-                autoSave.processChanges(articleData, { isInitialLoad: false })
-            }
-            
             return updated
         })
-    }, [isFullyLoaded, title, subtitle, trailer, status, live, redirect, authors, categories, article, userId, autoSave])
+        setHasChanges(true)
+        setHasUserInteracted(true)
+    }, [])
 
     // Create onLocalChange handler that doesn't depend on localSections
     const createOnLocalChangeHandler = useCallback((sectionId: string) => {
@@ -1367,82 +1417,22 @@ function ArticleEditor({ articleId, userId, user, onBack }: { articleId: string;
 
     const handleStatusChange = useCallback((newStatus: string) => {
         setStatus(newStatus)
-        setHasUserInteractedDebug(true, 'handleStatusChange')
-        
-        // Trigger auto-save
-        if (isFullyLoaded) {
-            const articleData = {
-                title,
-                subtitle,
-                trailer,
-                status: newStatus,
-                live,
-                pinned: article?.pinned || false,
-                redirect,
-                slug: slugify(title),
-                authors,
-                categories,
-                images: article?.images || null,
-                blogId: article?.blogId || null,
-                body: JSON.stringify(localSections),
-                createdBy: article?.createdBy || userId,
-            }
-            autoSave.processChanges(articleData, { isInitialLoad: false })
-        }
-    }, [isFullyLoaded, title, subtitle, trailer, live, redirect, authors, categories, article, userId, localSections, autoSave])
+        setHasChanges(true)
+        setHasUserInteracted(true)
+    }, [])
 
     // Wrapper functions to track user interaction
     const handleTrailerChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
         setTrailer(e.target.value)
-        setHasUserInteractedDebug(true, 'handleTrailerChange')
-        
-        // Trigger auto-save
-        if (isFullyLoaded) {
-            const articleData = {
-                title,
-                subtitle,
-                trailer: e.target.value,
-                status,
-                live,
-                pinned: article?.pinned || false,
-                redirect,
-                slug: slugify(title),
-                authors,
-                categories,
-                images: article?.images || null,
-                blogId: article?.blogId || null,
-                body: JSON.stringify(localSections),
-                createdBy: article?.createdBy || userId,
-            }
-            autoSave.processChanges(articleData, { isInitialLoad: false })
-        }
-    }, [isFullyLoaded, title, subtitle, status, live, redirect, authors, categories, article, userId, localSections, autoSave])
+        setHasChanges(true)
+        setHasUserInteracted(true)
+    }, [])
 
     const handleTitleChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
         setTitle(e.target.value)
-        setHasUserInteractedDebug(true, 'handleTitleChange')
-        
-        // Trigger auto-save
-        if (isFullyLoaded) {
-            const articleData = {
-                title: e.target.value,
-                subtitle,
-                trailer,
-                status,
-                live,
-                pinned: article?.pinned || false,
-                redirect,
-                slug: slugify(e.target.value),
-                authors,
-                categories,
-                images: article?.images || null,
-                blogId: article?.blogId || null,
-                body: JSON.stringify(localSections),
-                createdBy: article?.createdBy || userId,
-            }
-            autoSave.processChanges(articleData, { isInitialLoad: false })
-        }
-    }, [isFullyLoaded, subtitle, trailer, status, live, redirect, authors, categories, article, userId, localSections, autoSave])
+        setHasChanges(true)
+        setHasUserInteracted(true)
+    }, [])
 
     // Function to adjust subtitle textarea height
     const adjustSubtitleHeight = useCallback(() => {
@@ -1462,133 +1452,33 @@ function ArticleEditor({ articleId, userId, user, onBack }: { articleId: string;
 
     const handleSubtitleChange = useCallback((e: React.ChangeEvent<HTMLTextAreaElement>) => {
         setExcerpt(e.target.value)
-        setHasUserInteractedDebug(true, 'handleSubtitleChange')
-        
-        // Trigger auto-save
-        if (isFullyLoaded) {
-            const articleData = {
-                title,
-                subtitle: e.target.value,
-                trailer,
-                status,
-                live,
-                pinned: article?.pinned || false,
-                redirect,
-                slug: slugify(title),
-                authors,
-                categories,
-                images: article?.images || null,
-                blogId: article?.blogId || null,
-                body: JSON.stringify(localSections),
-                createdBy: article?.createdBy || userId,
-            }
-            autoSave.processChanges(articleData, { isInitialLoad: false })
-        }
-    }, [isFullyLoaded, title, trailer, status, live, redirect, authors, categories, article, userId, localSections, autoSave, adjustSubtitleHeight])
+        setHasChanges(true)
+        setHasUserInteracted(true)
+    }, [])
 
     const handleLiveChange = useCallback((checked: boolean) => {
         setLive(checked)
-        setHasUserInteractedDebug(true, 'handleLiveChange')
-        
-        // Trigger auto-save
-        if (isFullyLoaded) {
-            const articleData = {
-                title,
-                subtitle,
-                trailer,
-                status,
-                live: checked,
-                pinned: article?.pinned || false,
-                redirect,
-                slug: slugify(title),
-                authors,
-                categories,
-                images: article?.images || null,
-                blogId: article?.blogId || null,
-                body: JSON.stringify(localSections),
-                createdBy: article?.createdBy || userId,
-            }
-            autoSave.processChanges(articleData, { isInitialLoad: false })
-        }
-    }, [isFullyLoaded, title, subtitle, trailer, status, redirect, authors, categories, article, userId, localSections, autoSave])
+        setHasChanges(true)
+        setHasUserInteracted(true)
+    }, [])
 
     const handleRedirectChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
         setRedirect(e.target.value)
-        setHasUserInteractedDebug(true, 'handleRedirectChange')
-        
-        // Trigger auto-save
-        if (isFullyLoaded) {
-            const articleData = {
-                title,
-                subtitle,
-                trailer,
-                status,
-                live,
-                pinned: article?.pinned || false,
-                redirect: e.target.value,
-                slug: slugify(title),
-                authors,
-                categories,
-                images: article?.images || null,
-                blogId: article?.blogId || null,
-                body: JSON.stringify(localSections),
-                createdBy: article?.createdBy || userId,
-            }
-            autoSave.processChanges(articleData, { isInitialLoad: false })
-        }
-    }, [isFullyLoaded, title, subtitle, trailer, status, live, authors, categories, article, userId, localSections, autoSave])
+        setHasChanges(true)
+        setHasUserInteracted(true)
+    }, [])
 
     const handleAuthorsChange = useCallback((authors: string[]) => {
         setAuthors(authors)
-        setHasUserInteractedDebug(true, 'handleAuthorsChange')
-        
-        // Trigger auto-save
-        if (isFullyLoaded) {
-            const articleData = {
-                title,
-                subtitle,
-                trailer,
-                status,
-                live,
-                pinned: article?.pinned || false,
-                redirect,
-                slug: slugify(title),
-                authors,
-                categories,
-                images: article?.images || null,
-                blogId: article?.blogId || null,
-                body: JSON.stringify(localSections),
-                createdBy: article?.createdBy || userId,
-            }
-            autoSave.processChanges(articleData, { isInitialLoad: false })
-        }
-    }, [isFullyLoaded, title, subtitle, trailer, status, live, redirect, categories, article, userId, localSections, autoSave])
+        setHasChanges(true)
+        setHasUserInteracted(true)
+    }, [])
 
     const handleCategoriesChange = useCallback((categories: string[]) => {
         setCategories(categories)
-        setHasUserInteractedDebug(true, 'handleCategoriesChange')
-        
-        // Trigger auto-save
-        if (isFullyLoaded) {
-            const articleData = {
-                title,
-                subtitle,
-                trailer,
-                status,
-                live,
-                pinned: article?.pinned || false,
-                redirect,
-                slug: slugify(title),
-                authors,
-                categories,
-                images: article?.images || null,
-                blogId: article?.blogId || null,
-                body: JSON.stringify(localSections),
-                createdBy: article?.createdBy || userId,
-            }
-            autoSave.processChanges(articleData, { isInitialLoad: false })
-        }
-    }, [isFullyLoaded, title, subtitle, trailer, status, live, redirect, authors, article, userId, localSections, autoSave])
+        setHasChanges(true)
+        setHasUserInteracted(true)
+    }, [])
 
     // Memoized selectors to prevent unnecessary re-renders
     const memoizedAuthorSelector = useMemo(() => (
@@ -2143,13 +2033,14 @@ function ArticleEditor({ articleId, userId, user, onBack }: { articleId: string;
                                     </div>
                                     <div className="flex justify-between items-center">
                                         <span className="flex items-center gap-1">
-                                            Auto-save
+                                            Save Status
                                         </span>
-                                        <AutoSaveIndicator 
-                                            state={autoSave} 
-                                            compact={true}
-                                            showTooltip={true}
-                                        />
+                                        <span className={`font-mono ${
+                                            isSaving ? 'text-blue-600 dark:text-blue-400' :
+                                            'text-gray-600 dark:text-gray-400'
+                                        }`}>
+                                            {isSaving ? 'Saving...' : 'Ready'}
+                                        </span>
                                     </div>
                                     <div className="flex justify-between items-center">
                                         <span className="flex items-center gap-1">
@@ -2224,11 +2115,11 @@ function ArticleEditor({ articleId, userId, user, onBack }: { articleId: string;
                         
                         <div className="mt-3 pt-2 border-t border-purple-200 dark:border-purple-700">
                             <div className="font-medium text-purple-700 dark:text-purple-300 mb-2 flex items-center gap-1">
-                                Auto-Save Debug
+                                Save Status
                                 <div className="group relative">
                                     <span className="text-purple-500 dark:text-purple-400 cursor-help text-xs w-3 h-3 rounded-full border border-current flex items-center justify-center text-[8px]">i</span>
                                     <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-2 py-1 bg-gray-900 dark:bg-gray-100 text-white dark:text-gray-900 text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none whitespace-nowrap z-10">
-                                        Debug information for auto-save and offline functionality
+                                        Debug information for manual save functionality
                                     </div>
                                 </div>
                             </div>
@@ -2236,56 +2127,37 @@ function ArticleEditor({ articleId, userId, user, onBack }: { articleId: string;
                                 <div className="space-y-1">
                                     <div className="flex justify-between items-center">
                                         <span className="flex items-center gap-1">
-                                            Auto-Save Status
+                                            Has Changes
                                             <div className="group relative">
                                                 <span className="text-purple-500 dark:text-purple-400 cursor-help text-xs w-3 h-3 rounded-full border border-current flex items-center justify-center text-[8px]">i</span>
                                                 <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-2 py-1 bg-gray-900 dark:bg-gray-100 text-white dark:text-gray-900 text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none whitespace-nowrap z-10">
-                                                    Current state of the auto-save process
+                                                    Whether user has made changes that need to be saved
+                                                </div>
+                                            </div>
+                                        </span>
+                                        <span className={hasChanges ? 'text-orange-600 dark:text-orange-400' : 'text-green-600 dark:text-green-400'}>
+                                            {hasChanges ? 'Yes' : 'No'}
+                                        </span>
+                                    </div>
+                                    <div className="flex justify-between items-center">
+                                        <span className="flex items-center gap-1">
+                                            Save Status
+                                            <div className="group relative">
+                                                <span className="text-purple-500 dark:text-purple-400 cursor-help text-xs w-3 h-3 rounded-full border border-current flex items-center justify-center text-[8px]">i</span>
+                                                <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-2 py-1 bg-gray-900 dark:bg-gray-100 text-white dark:text-gray-900 text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none whitespace-nowrap z-10">
+                                                    Current state of the save process
                                                 </div>
                                             </div>
                                         </span>
                                         <span className={`font-mono ${
-                                            autoSave.status === 'saving' ? 'text-blue-600 dark:text-blue-400' :
-                                            autoSave.status === 'saved' ? 'text-green-600 dark:text-green-400' :
-                                            autoSave.status === 'error' ? 'text-red-600 dark:text-red-400' :
+                                            isSaving ? 'text-blue-600 dark:text-blue-400' :
                                             'text-gray-600 dark:text-gray-400'
                                         }`}>
-                                            {autoSave.status}
-                                        </span>
-                                    </div>
-                                    <div className="flex justify-between items-center">
-                                        <span className="flex items-center gap-1">
-                                            Unsaved Changes
-                                            <div className="group relative">
-                                                <span className="text-purple-500 dark:text-purple-400 cursor-help text-xs w-3 h-3 rounded-full border border-current flex items-center justify-center text-[8px]">i</span>
-                                                <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-2 py-1 bg-gray-900 dark:bg-gray-100 text-white dark:text-gray-900 text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none whitespace-nowrap z-10">
-                                                    Whether there are changes waiting to be saved
-                                                </div>
-                                            </div>
-                                        </span>
-                                        <span className={autoSave.hasUnsavedChanges ? 'text-orange-600 dark:text-orange-400' : 'text-green-600 dark:text-green-400'}>
-                                            {autoSave.hasUnsavedChanges ? 'Yes' : 'No'}
+                                            {isSaving ? 'Saving...' : 'Ready'}
                                         </span>
                                     </div>
                                 </div>
                                 <div className="space-y-1">
-                                    <div className="flex justify-between items-center">
-                                        <span className="flex items-center gap-1">
-                                            Last Saved
-                                            <div className="group relative">
-                                                <span className="text-purple-500 dark:text-purple-400 cursor-help text-xs w-3 h-3 rounded-full border border-current flex items-center justify-center text-[8px]">i</span>
-                                                <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-2 py-1 bg-gray-900 dark:bg-gray-100 text-white dark:text-gray-900 text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none whitespace-nowrap z-10">
-                                                    When the last successful save occurred
-                                                </div>
-                                            </div>
-                                        </span>
-                                        <span className="font-mono text-xs">
-                                            {autoSave.lastSaved ? 
-                                                new Date(autoSave.lastSaved).toLocaleTimeString() : 
-                                                'Never'
-                                            }
-                                        </span>
-                                    </div>
                                     <div className="flex justify-between items-center">
                                         <span className="flex items-center gap-1">
                                             User Interacted
@@ -2317,97 +2189,35 @@ function ArticleEditor({ articleId, userId, user, onBack }: { articleId: string;
                                 </div>
                             </div>
                             
-                            {autoSave.error && (
-                                <div className="mt-2 p-2 bg-red-50 dark:bg-red-900/20 rounded text-xs">
-                                    <div className="font-medium text-red-700 dark:text-red-400 mb-1">Auto-Save Error:</div>
-                                    <div className="text-red-600 dark:text-red-300 font-mono break-all">
-                                        {autoSave.error}
-                                    </div>
-                                </div>
-                            )}
-                            
-                            
                             <div className="mt-2 flex gap-2 flex-wrap">
                                 <Button 
                                     size="sm" 
                                     variant="outline" 
                                     onClick={() => {
-                                        const articleData = {
-                                            title,
-                                            subtitle,
-                                            trailer,
-                                            status,
-                                            live,
-                                            pinned: article?.pinned || false,
-                                            redirect,
-                                            slug: slugify(title),
-                                            authors,
-                                            categories,
-                                            images: article?.images || null,
-                                            blogId: article?.blogId || null,
-                                            body: JSON.stringify(localSections),
-                                            createdBy: article?.createdBy || userId,
-                                        }
-                                        autoSave.processChanges(articleData, { isInitialLoad: false })
+                                        setHasChanges(true)
                                     }}
                                     className="h-6 px-2 text-xs text-purple-600 border-purple-300 hover:bg-purple-200 dark:text-purple-400 dark:border-purple-700 dark:hover:bg-purple-800"
                                 >
-                                    Test Auto-Save
-                                </Button>
-                                <Button 
-                                    size="sm" 
-                                    variant="outline" 
-                                    onClick={async () => {
-                                        const articleData = {
-                                            title,
-                                            subtitle,
-                                            trailer,
-                                            status,
-                                            live,
-                                            pinned: article?.pinned || false,
-                                            redirect,
-                                            slug: slugify(title),
-                                            authors,
-                                            categories,
-                                            images: article?.images || null,
-                                            blogId: article?.blogId || null,
-                                            body: JSON.stringify(localSections),
-                                            createdBy: article?.createdBy || userId,
-                                        }
-                                        await autoSave.forceSave(articleData, true)
-                                    }}
-                                    className="h-6 px-2 text-xs text-purple-600 border-purple-300 hover:bg-purple-200 dark:text-purple-400 dark:border-purple-700 dark:hover:bg-purple-800"
-                                >
-                                    Force Save
+                                    Trigger Changes
                                 </Button>
                                 <Button 
                                     size="sm" 
                                     variant="outline" 
                                     onClick={() => {
-                                        
-                                        // Test basic data
-                                        const testData = {
-                                            title: 'Test Title',
-                                            subtitle: 'Test Subtitle',
-                                            trailer: '',
-                                            status: 'draft',
-                                            live: false,
-                                            pinned: false,
-                                            redirect: '',
-                                            slug: 'test-title',
-                                            authors: [],
-                                            categories: [],
-                                            images: null,
-                                            blogId: article?.blogId || null,
-                                            body: JSON.stringify([{ id: '1', type: 'text', content: 'Test content' }]),
-                                            createdBy: userId,
-                                        }
-                                        
-                                        autoSave.processChanges(testData, { isInitialLoad: false })
+                                        setHasChanges(false)
                                     }}
                                     className="h-6 px-2 text-xs text-purple-600 border-purple-300 hover:bg-purple-200 dark:text-purple-400 dark:border-purple-700 dark:hover:bg-purple-800"
                                 >
-                                    Basic Test
+                                    Clear Changes
+                                </Button>
+                                <Button 
+                                    size="sm" 
+                                    variant="outline" 
+                                    onClick={handleSave}
+                                    disabled={isSaving || !hasChanges}
+                                    className="h-6 px-2 text-xs text-purple-600 border-purple-300 hover:bg-purple-200 dark:text-purple-400 dark:border-purple-700 dark:hover:bg-purple-800"
+                                >
+                                    Manual Save
                                 </Button>
                             </div>
                         </div>
@@ -2427,8 +2237,8 @@ function ArticleEditor({ articleId, userId, user, onBack }: { articleId: string;
                                 articleId={articleId}
                                 blogId={currentBlog?.$id || ''}
                                 targetType="trailer"
-                                commentCount={getCommentCount('trailer').count}
-                                hasNewComments={getCommentCount('trailer').hasNewComments}
+                                commentCount={trailerCommentCount.count}
+                                hasNewComments={trailerCommentCount.hasNewComments}
                             >
                                 <Input id="trailer" value={trailer} onChange={handleTrailerChange} placeholder="Breaking news, Exclusive..." disabled={isInRevertMode} />
                             </CommentableInput>
@@ -2451,8 +2261,8 @@ function ArticleEditor({ articleId, userId, user, onBack }: { articleId: string;
                                     articleId={articleId}
                                     blogId={currentBlog?.$id || ''}
                                     targetType="title"
-                                    commentCount={getCommentCount('title').count}
-                                    hasNewComments={getCommentCount('title').hasNewComments}
+                                    commentCount={titleCommentCount.count}
+                                    hasNewComments={titleCommentCount.hasNewComments}
                                 >
                                     <Input 
                                         id="title" 
@@ -2489,8 +2299,8 @@ function ArticleEditor({ articleId, userId, user, onBack }: { articleId: string;
                                 articleId={articleId}
                                 blogId={currentBlog?.$id || ''}
                                 targetType="subtitle"
-                                commentCount={getCommentCount('subtitle').count}
-                                hasNewComments={getCommentCount('subtitle').hasNewComments}
+                                commentCount={subtitleCommentCount.count}
+                                hasNewComments={subtitleCommentCount.hasNewComments}
                                 className="items-start"
                             >
                                 <Textarea 
@@ -2734,8 +2544,8 @@ function ArticleEditor({ articleId, userId, user, onBack }: { articleId: string;
                                 articleId={articleId}
                                 blogId={currentBlog?.$id || ''}
                                 targetType="redirect"
-                                commentCount={getCommentCount('redirect').count}
-                                hasNewComments={getCommentCount('redirect').hasNewComments}
+                                commentCount={redirectCommentCount.count}
+                                hasNewComments={redirectCommentCount.hasNewComments}
                             >
                                 <Input id="redirect" value={redirect} onChange={handleRedirectChange} placeholder="Redirect URL (optional)" disabled={isInRevertMode} />
                             </CommentableInput>
@@ -2792,6 +2602,15 @@ function ArticleEditor({ articleId, userId, user, onBack }: { articleId: string;
                             />
                         </div>
                         <div className="flex items-center gap-2">
+                            <Button
+                                variant="outline"
+                                size="default"
+                                onClick={handleSave}
+                                disabled={isSaving || !hasChanges}
+                                className="whitespace-nowrap"
+                            >
+                                {isSaving ? 'Saving...' : 'Save'}
+                            </Button>
                             <Button
                                 variant="default"
                                 size="default"
@@ -2946,8 +2765,25 @@ const TitleEditor = memo(({ section, onLocalChange, disabled = false }: { sectio
 const QuoteEditor = memo(({ section, onLocalChange, disabled = false }: { section: any; onLocalChange: (data: Partial<any>) => void; disabled?: boolean }) => {
     const [quote, setQuote] = useState(section.content ?? '')
     const [speaker, setSpeaker] = useState(section.speaker ?? '')
+    const quoteRef = useRef<HTMLTextAreaElement | null>(null)
     const onLocalChangeRef = useRef(onLocalChange)
     onLocalChangeRef.current = onLocalChange
+
+    // Function to adjust textarea height
+    const adjustHeight = useCallback(() => {
+        if (!quoteRef.current) return
+        quoteRef.current.style.height = 'auto'
+        quoteRef.current.style.height = quoteRef.current.scrollHeight + 'px'
+    }, [])
+
+    // Adjust height when quote content changes
+    useEffect(() => {
+        const frameId = requestAnimationFrame(() => {
+            adjustHeight()
+            setTimeout(adjustHeight, 0)
+        })
+        return () => cancelAnimationFrame(frameId)
+    }, [quote, adjustHeight])
 
     const handleQuoteChange = useCallback((e: React.ChangeEvent<HTMLTextAreaElement>) => {
         setQuote(e.target.value)
@@ -2976,13 +2812,19 @@ const QuoteEditor = memo(({ section, onLocalChange, disabled = false }: { sectio
             <div className="space-y-1">
                 <Label htmlFor={`quote-${section.id}`}>Quote</Label>
                 <Textarea 
+                    ref={quoteRef}
                     id={`quote-${section.id}`} 
                     value={quote} 
                     onChange={handleQuoteChange} 
                     placeholder="Add a memorable line…" 
                     rows={2}
-                    className="w-full min-w-0"
-                    style={{ width: '100%', maxWidth: '100%' }}
+                    className="w-full min-w-0 min-h-[60px]"
+                    style={{ 
+                        width: '100%', 
+                        maxWidth: '100%',
+                        overflow: 'hidden',
+                        resize: 'none'
+                    }}
                     disabled={disabled}
                 />
             </div>
@@ -3011,11 +2853,13 @@ const TextEditor = memo(({ section, onLocalChange, disabled = false }: { section
     // Function to adjust textarea height
     const adjustHeight = useCallback(() => {
         if (!ref.current) return
+        // Reset height to auto to get the correct scrollHeight
         ref.current.style.height = 'auto'
+        // Set height to scrollHeight to fit content
         ref.current.style.height = ref.current.scrollHeight + 'px'
     }, [])
 
-    // Use useEffect with requestAnimationFrame for immediate DOM updates after AI text insertion
+    // Adjust height when value changes or component mounts
     useEffect(() => {
         // Use requestAnimationFrame to ensure DOM is fully updated
         const frameId = requestAnimationFrame(() => {
@@ -3032,6 +2876,11 @@ const TextEditor = memo(({ section, onLocalChange, disabled = false }: { section
             setValue(section.content ?? '')
         }
     }, [section.content])
+
+    // Adjust height on mount
+    useEffect(() => {
+        adjustHeight()
+    }, [adjustHeight])
 
     useEffect(() => {
         onLocalChangeRef.current({ content: value, type: 'text' })

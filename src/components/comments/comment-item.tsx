@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, useCallback, useEffect } from 'react';
 import { formatDistanceToNow } from 'date-fns';
 import { Check, Trash2, Edit2, Save, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -40,6 +40,25 @@ export function CommentItem({
   const [isSaving, setIsSaving] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const editTextareaRef = useRef<HTMLTextAreaElement>(null);
+
+  // Function to adjust textarea height
+  const adjustHeight = useCallback(() => {
+    if (!editTextareaRef.current) return;
+    editTextareaRef.current.style.height = 'auto';
+    editTextareaRef.current.style.height = editTextareaRef.current.scrollHeight + 'px';
+  }, []);
+
+  // Adjust height when edit content changes
+  useEffect(() => {
+    if (isEditing) {
+      const frameId = requestAnimationFrame(() => {
+        adjustHeight();
+        setTimeout(adjustHeight, 0);
+      });
+      return () => cancelAnimationFrame(frameId);
+    }
+  }, [editContent, isEditing, adjustHeight]);
 
   const { updateComment, deleteComment } = useComments(articleId, blogId, targetType, targetId);
 
@@ -190,9 +209,11 @@ export function CommentItem({
           {isEditing ? (
             <div className="space-y-2">
               <Textarea
+                ref={editTextareaRef}
                 value={editContent}
                 onChange={(e) => setEditContent(e.target.value)}
                 className="min-h-[80px] resize-none"
+                style={{ overflow: 'hidden' }}
                 disabled={isSaving}
               />
               <div className="flex items-center space-x-2">
