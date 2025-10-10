@@ -88,7 +88,7 @@ export function CommentsSidebar({
       case 'subtitle':
         return 'Subtitle';
       case 'redirect':
-        return 'Redirect Settings';
+        return 'Redirect';
       case 'section':
         if (targetId && sections.length > 0) {
           const section = sections.find(s => s.id === targetId);
