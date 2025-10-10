@@ -2042,7 +2042,15 @@ function ArticleEditor({ articleId, userId, user, onBack }: { articleId: string;
     }
 
     if (isPending || !article) {
-        return <div className="text-sm text-muted-foreground">Loading…</div>
+        return (
+            <div className="h-dvh flex items-center justify-center">
+                <div className="text-center">
+                    <div className="text-sm text-muted-foreground">
+                        Loading…
+                    </div>
+                </div>
+            </div>
+        )
     }
 
     return (

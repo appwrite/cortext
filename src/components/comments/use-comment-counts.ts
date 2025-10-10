@@ -29,6 +29,7 @@ export function useCommentCounts(
   const commentCounts = useMemo(() => {
     const counts: CommentCounts = {};
     
+    // Always calculate counts when allComments is available
     if (allComments) {
       // Only recalculate if allComments has actually changed
       if (prevAllCommentsRef.current !== allComments) {
@@ -45,6 +46,13 @@ export function useCommentCounts(
         // Return previous counts if allComments hasn't changed
         return prevCommentCountsRef.current;
       }
+    } else {
+      // When allComments is not yet loaded, initialize with zero counts
+      // This ensures the counts are properly updated when data loads
+      for (const target of targets) {
+        const targetKey = `${target.type}-${target.id || 'main'}`;
+        counts[targetKey] = { count: 0, hasNewComments: false };
+      }
     }
     
     return counts;
@@ -55,8 +63,8 @@ export function useCommentCounts(
   const getCommentCount = useMemo(() => {
     return (type: string, id?: string) => {
       const targetKey = `${type}-${id || 'main'}`;
-      const result = commentCounts[targetKey] || { count: 0, hasNewComments: false };
-      return result;
+      // Since we now properly initialize all counts, we can safely access them
+      return commentCounts[targetKey];
     };
   }, [commentCounts]);
 

@@ -72,7 +72,7 @@ function NotFoundComponent() {
 
       {/* Bottom Header - Icon and Text */}
       <div className="absolute bottom-6 left-1/2 transform -translate-x-1/2">
-        <div className="font-light tracking-tight inline-flex items-center gap-2 text-sm text-foreground">
+        <div className="font-semibold tracking-tight inline-flex items-center gap-2 text-sm text-foreground">
           <Brain className="h-4 w-4 text-primary" />
           Cortext
         </div>
