@@ -235,8 +235,8 @@
     content-visibility: auto;
   }
   
-  /* Dashboard image specific optimizations */
-  .dashboard-screenshot img {
+  /* Content image specific optimizations */
+  .content-screenshot img {
     object-position: top center !important;
     object-fit: cover;
   }
@@ -348,4 +348,10 @@
 /* Simple loader container optimization */
 .loader-container {
   transform: translateZ(0);
+}
+
+/* Error page container optimization */
+.error-container {
+  transform: translateZ(0);
+  will-change: transform;
 }

@@ -1,4 +1,4 @@
-// Example of how to use the optimized comment system in the dashboard
+// Example of how to use the optimized comment system in the content
 // This shows the before and after approach
 
 // BEFORE (current approach - causes re-renders on input changes):

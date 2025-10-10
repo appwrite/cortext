@@ -58,8 +58,8 @@ export default async function ({ req, res, log, error }) {
         title: 'Welcome to Cortext Eldad test!',
         message: 'Thank you for joining our platform. Start creating amazing content with AI assistance.',
         type: 'success',
-        actionUrl: 'https://cortext.app/dashboard',
-        actionText: 'Go to Dashboard',
+        actionUrl: 'https://cortext.app/content',
+        actionText: 'Go to Content',
         blogId: '68e01ea6002132bfaf1d'
       };
     

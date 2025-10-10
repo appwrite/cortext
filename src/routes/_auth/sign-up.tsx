@@ -59,7 +59,7 @@ function RouteComponent() {
   const { mutate: signUp, isPending } = useMutation({
     mutationFn: createUserAccount,
     onSuccess: () => {
-      // TODO: Redirect to dashboard or login page
+      // TODO: Redirect to content or login page
     },
   });
 
@@ -78,7 +78,7 @@ function RouteComponent() {
       },
       onSuccess: () => {
         queryClient.invalidateQueries({ queryKey: ["auth", "user"] });
-        navigate({ to: search.redirect ?? "/dashboard" });
+        navigate({ to: search.redirect ?? "/content" });
       },
     });
   };

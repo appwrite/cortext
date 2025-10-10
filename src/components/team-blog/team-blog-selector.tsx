@@ -104,8 +104,8 @@ export function TeamBlogSelector({ userId }: TeamBlogSelectorProps) {
   }
 
   const handleBlogSelect = () => {
-    // Navigate to main dashboard when a blog is selected
-    navigate({ to: '/dashboard', search: {} })
+    // Navigate to main content when a blog is selected
+    navigate({ to: '/content', search: {} })
   }
 
   return (

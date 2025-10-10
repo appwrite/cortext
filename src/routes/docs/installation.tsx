@@ -76,8 +76,8 @@ function Installation() {
         {
             step: 3,
             title: "Get API credentials",
-            description: "Sign up and get your API key from the dashboard",
-            code: "# Visit https://cortext.com/dashboard\n# Copy your API key and project ID"
+            description: "Sign up and get your API key from the content",
+            code: "# Visit https://cortext.com/content\n# Copy your API key and project ID"
         },
         {
             step: 4,
@@ -121,7 +121,7 @@ testConnection();`
         },
         {
             problem: "API key invalid",
-            solution: "Check your API key in the dashboard and ensure it's correctly set in your environment",
+            solution: "Check your API key in the content and ensure it's correctly set in your environment",
             code: "echo $CORTEXT_API_KEY\n# Should show your API key"
         },
         {

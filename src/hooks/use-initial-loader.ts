@@ -8,11 +8,11 @@ export function useInitialLoader() {
   const location = useLocation();
 
   useEffect(() => {
-    // Only show loader for protected routes (dashboard pages), not the main landing page
-    const isProtectedRoute = location.pathname.startsWith('/dashboard');
+    // Only show loader for protected routes (content pages), not the main landing page
+    const isProtectedRoute = location.pathname.startsWith('/content');
     
     if (isProtectedRoute) {
-      // Show loader for dashboard pages on every navigation
+      // Show loader for content pages on every navigation
       const minLoadTime = 800; // 800ms minimum
       const startTime = Date.now();
       

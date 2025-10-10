@@ -17,7 +17,7 @@ export const Route = createFileRoute("/_auth")({
       user = await account.get();
       if (user) {
         throw redirect({
-          to: "/dashboard",
+          to: "/content",
         });
       }
     } catch (error) {

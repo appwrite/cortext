@@ -42,7 +42,7 @@ import { formatDateForDisplay, formatDateCompact, formatDateRelative } from '@/l
 import { cn } from '@/lib/utils'
 import { CommentableInput, CommentableSection, useCommentCounts, useAllComments, CommentPopover, CommentsSidebar } from '@/components/comments'
 
-export const Route = createFileRoute('/_protected/dashboard')({
+export const Route = createFileRoute('/_protected/content')({
     component: RouteComponent,
 })
 
@@ -73,8 +73,8 @@ function RouteComponent() {
     const { user, signOut } = useAuth()
     const userId = user?.$id
 
-    // Set document title for dashboard
-    useDocumentTitle('Dashboard')
+    // Set document title for content
+    useDocumentTitle('Content')
 
     if (!userId) {
         return <div className="p-6">Loading...</div>
@@ -84,7 +84,7 @@ function RouteComponent() {
         <TeamBlogProvider userId={userId}>
             <div className="h-dvh overflow-y-auto overscroll-none flex flex-col">
                 <Header userId={userId} onSignOut={() => signOut.mutate()} user={user} />
-                <Dashboard userId={userId} user={user} />
+                <Content userId={userId} user={user} />
             </div>
         </TeamBlogProvider>
     )
@@ -141,7 +141,7 @@ function Header({ userId, onSignOut, user }: { userId: string; onSignOut: () => 
     )
 }
 
-function Dashboard({ userId, user }: { userId: string; user: any }) {
+function Content({ userId, user }: { userId: string; user: any }) {
     const search = useSearch({ strict: false }) as { articleId?: string }
     const navigate = useNavigate()
     const { currentBlog } = useTeamBlogContext()
@@ -151,7 +151,7 @@ function Dashboard({ userId, user }: { userId: string; user: any }) {
         return (
             <main className="flex-1">
                 <ArticleProvider articleId={editingId}>
-                    <ArticleEditor key={editingId} articleId={editingId} userId={userId} user={user} onBack={() => navigate({ to: '/dashboard', search: {} })} />
+                    <ArticleEditor key={editingId} articleId={editingId} userId={userId} user={user} onBack={() => navigate({ to: '/content', search: {} })} />
                 </ArticleProvider>
             </main>
         )
@@ -214,7 +214,7 @@ function EmptyArticlesState({ currentBlog, userId, user }: { currentBlog: any; u
                             // Update article with revision ID
                             await db.articles.update(article.$id, { activeRevisionId: revision.$id })
                             
-                            navigate({ to: '/dashboard', search: { articleId: article.$id } })
+                            navigate({ to: '/content', search: { articleId: article.$id } })
                         } catch (error) {
                             toast({ 
                                 title: 'Failed to create article', 
@@ -378,7 +378,7 @@ function ArticlesList({ userId, user }: { userId: string; user: any }) {
                                             fill={a.pinned ? 'currentColor' : 'none'}
                                         />
                                     </Button>
-                                    <Link to="/dashboard" search={{ articleId: a.$id }} className="hover:underline">
+                                    <Link to="/content" search={{ articleId: a.$id }} className="hover:underline">
                                         {a.title || 'Untitled'}
                                     </Link>
                                     {a.status === 'draft' && (
@@ -440,7 +440,7 @@ function ArticlesList({ userId, user }: { userId: string; user: any }) {
                       // Update article with revision ID
                       await db.articles.update(article.$id, { activeRevisionId: revision.$id })
                       
-                      navigate({ to: '/dashboard', search: { articleId: article.$id } })
+                      navigate({ to: '/content', search: { articleId: article.$id } })
                     } catch (error) {
                       toast({
                         title: 'Error',
@@ -504,7 +504,7 @@ function ArticlesList({ userId, user }: { userId: string; user: any }) {
                                 // Update article with revision ID
                                 await db.articles.update(article.$id, { activeRevisionId: revision.$id })
                                 
-                                navigate({ to: '/dashboard', search: { articleId: article.$id } })
+                                navigate({ to: '/content', search: { articleId: article.$id } })
                             } catch (error) {
                                 toast({ 
                                     title: 'Failed to create article', 
@@ -1136,7 +1136,7 @@ function ArticleEditor({ articleId, userId, user, onBack }: { articleId: string;
                 description: `Created "${newArticle.title}"`
             })
             // Navigate to the new article
-            navigate({ to: '/dashboard', search: { articleId: newArticle.$id } })
+            navigate({ to: '/content', search: { articleId: newArticle.$id } })
         },
         onError: (error) => {
             console.error('Article duplication error:', error)

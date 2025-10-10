@@ -43,7 +43,7 @@ function Nav() {
                         <div className="animate-in fade-in duration-300">
                             {user ? (
                                 <div className="flex items-center gap-3">
-                                    <Link to="/dashboard" className="px-3 py-2 rounded-md text-sm font-medium border hover:bg-foreground/5 transition-colors">Dashboard</Link>
+                                    <Link to="/content" className="px-3 py-2 rounded-md text-sm font-medium border hover:bg-foreground/5 transition-colors">Content</Link>
                                     <UserAvatar user={user} onSignOut={() => signOut.mutate()} />
                                 </div>
                             ) : (
@@ -70,9 +70,9 @@ function Index() {
     const { effectiveTheme } = useThemeContext();
     const { user, isLoading } = useAuth();
     
-    // Preload the appropriate dashboard image based on theme
-    const dashboardImageSrc = effectiveTheme === 'dark' ? "/dashboard-dark.png" : "/dashboard-light.png";
-    useImagePreload(dashboardImageSrc, true);
+    // Preload the appropriate content image based on theme
+    const contentImageSrc = effectiveTheme === 'dark' ? "/content-dark.png" : "/content-light.png";
+    useImagePreload(contentImageSrc, true);
 
     useEffect(() => {
         const target = 128; // seed value for early signups
@@ -128,10 +128,10 @@ function Index() {
                         <div className="mt-8 flex flex-col sm:flex-row items-center justify-center gap-3 mb-8">
                         {!isLoading && (
                             <Link
-                                to={user ? "/dashboard" : "/sign-up"}
+                                to={user ? "/content" : "/sign-up"}
                                 className="w-full sm:w-auto px-5 py-3 rounded-md text-sm font-semibold text-white bg-neutral-900 hover:bg-neutral-800 dark:bg-white dark:text-neutral-900 dark:hover:bg-white/90 transition-colors text-center"
                             >
-                                {user ? "Go to Dashboard" : "Get started"}
+                                {user ? "Go to Content" : "Get started"}
                             </Link>
                         )}
                     </div>
@@ -140,13 +140,13 @@ function Index() {
                     </p> */}
                 </div>
 
-                {/* Dashboard screenshot that merges with the next separator */}
+                {/* Content screenshot that merges with the next separator */}
                 <div className="relative mx-auto mt-10 md:mt-12 w-full max-w-6xl -mb-px">
                     <div className="rounded-t-xl border border-b-0 border-foreground/5 bg-card dark:bg-transparent overflow-hidden">
-                        <div className="aspect-[16/9] w-full relative dashboard-screenshot">
+                        <div className="aspect-[16/9] w-full relative content-screenshot">
                             <OptimizedImage
-                                src={dashboardImageSrc}
-                                alt="Cortext Dashboard - Article Management Interface"
+                                src={contentImageSrc}
+                                alt="Cortext Content - Article Management Interface"
                                 className="h-full w-full object-cover filter brightness-95 contrast-110 saturate-90"
                                 style={{ objectPosition: 'top center' }}
                                 priority={true}
@@ -436,7 +436,7 @@ function Index() {
                             ))}
                         </ul>
                         {!isLoading && (
-                            <Link to={user ? "/dashboard" : "/sign-up"} className="mt-6 inline-flex justify-center rounded-md border px-4 py-2 text-sm font-medium hover:bg-foreground/5 transition-colors">{user ? "Go to Dashboard" : "Get started"}</Link>
+                            <Link to={user ? "/content" : "/sign-up"} className="mt-6 inline-flex justify-center rounded-md border px-4 py-2 text-sm font-medium hover:bg-foreground/5 transition-colors">{user ? "Go to Content" : "Get started"}</Link>
                         )}
                     </div>
 
@@ -466,7 +466,7 @@ function Index() {
                             ))}
                         </ul>
                         {!isLoading && (
-                            <Link to={user ? "/dashboard" : "/sign-up"} className="mt-6 inline-flex justify-center rounded-md px-4 py-2 text-sm font-semibold text-white bg-neutral-900 hover:bg-neutral-800 dark:bg-white dark:text-neutral-900 dark:hover:bg-white/90 transition-colors">{user ? "Go to Dashboard" : "Upgrade to Pro"}</Link>
+                            <Link to={user ? "/content" : "/sign-up"} className="mt-6 inline-flex justify-center rounded-md px-4 py-2 text-sm font-semibold text-white bg-neutral-900 hover:bg-neutral-800 dark:bg-white dark:text-neutral-900 dark:hover:bg-white/90 transition-colors">{user ? "Go to Content" : "Upgrade to Pro"}</Link>
                         )}
                     </div>
 
@@ -493,7 +493,7 @@ function Index() {
                             ))}
                         </ul>
                         {!isLoading && (
-                            <Link to={user ? "/dashboard" : "/sign-up"} className="mt-6 inline-flex justify-center rounded-md border px-4 py-2 text-sm font-medium hover:bg-foreground/5 transition-colors">{user ? "Go to Dashboard" : "Contact sales"}</Link>
+                            <Link to={user ? "/content" : "/sign-up"} className="mt-6 inline-flex justify-center rounded-md border px-4 py-2 text-sm font-medium hover:bg-foreground/5 transition-colors">{user ? "Go to Content" : "Contact sales"}</Link>
                         )}
                     </div>
                 </div>
@@ -507,10 +507,10 @@ function Index() {
                     <div className="mt-6 flex flex-col sm:flex-row items-center justify-center gap-3">
                         {!isLoading && (
                             <Link
-                                to={user ? "/dashboard" : "/sign-up"}
+                                to={user ? "/content" : "/sign-up"}
                                 className="w-full sm:w-auto px-5 py-3 rounded-md text-sm font-semibold text-white bg-neutral-900 hover:bg-neutral-800 dark:bg-white dark:text-neutral-900 dark:hover:bg-white/90 transition-colors text-center"
                             >
-                                {user ? "Go to Dashboard" : "Get started"}
+                                {user ? "Go to Content" : "Get started"}
                             </Link>
                         )}
                         {!isLoading && !user && (
@@ -534,7 +534,7 @@ function Index() {
                         <a className="text-foreground/60 hover:text-foreground" href="#pricing">Pricing</a>
                         <Link className="text-foreground/60 hover:text-foreground" to="/docs">Docs</Link>
                         {!isLoading && (
-                            <Link className="text-foreground/60 hover:text-foreground" to={user ? "/dashboard" : "/sign-up"}>{user ? "Dashboard" : "Get started"}</Link>
+                            <Link className="text-foreground/60 hover:text-foreground" to={user ? "/content" : "/sign-up"}>{user ? "Content" : "Get started"}</Link>
                         )}
                     </div>
                     <span className="text-foreground/60 order-2 sm:order-1">© {new Date().getFullYear()} Cortext</span>

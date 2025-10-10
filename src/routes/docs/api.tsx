@@ -179,7 +179,7 @@ const cortext = new Cortext({
       type: "image",
       data: {
         src: "https://example.com/image.jpg",
-        alt: "Cortext Dashboard"
+        alt: "Cortext Content"
       }
     }
   ],
@@ -501,7 +501,7 @@ const comment = await cortext.comments.create({
                 </p>
                 <div className="flex flex-col sm:flex-row gap-4 justify-center">
                     <a
-                        href="/dashboard"
+                        href="/content"
                         className="inline-flex items-center gap-2 px-6 py-3 rounded-md text-sm font-semibold text-white bg-neutral-900 hover:bg-neutral-800 dark:bg-white dark:text-neutral-900 dark:hover:bg-white/90 transition-colors"
                     >
                         Get API Key

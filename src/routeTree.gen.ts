@@ -10,9 +10,12 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as VerifyEmailRouteImport } from './routes/verify-email'
+import { Route as TestErrorRouteImport } from './routes/test-error'
 import { Route as DocsRouteImport } from './routes/docs'
 import { Route as ProtectedRouteImport } from './routes/_protected'
 import { Route as AuthRouteImport } from './routes/_auth'
+import { Route as R404RouteImport } from './routes/404'
+import { Route as SplatRouteImport } from './routes/$'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as DocsIndexRouteImport } from './routes/docs/index'
 import { Route as DocsQuickStartRouteImport } from './routes/docs/quick-start'
@@ -21,7 +24,7 @@ import { Route as DocsCollaborationRouteImport } from './routes/docs/collaborati
 import { Route as DocsBlocksRouteImport } from './routes/docs/blocks'
 import { Route as DocsApiRouteImport } from './routes/docs/api'
 import { Route as DocsAiCoauthorRouteImport } from './routes/docs/ai-coauthor'
-import { Route as ProtectedDashboardRouteImport } from './routes/_protected/dashboard'
+import { Route as ProtectedContentRouteImport } from './routes/_protected/content'
 import { Route as AuthSignUpRouteImport } from './routes/_auth/sign-up'
 import { Route as AuthSignOutRouteImport } from './routes/_auth/sign-out'
 import { Route as AuthSignInRouteImport } from './routes/_auth/sign-in'
@@ -29,6 +32,11 @@ import { Route as AuthSignInRouteImport } from './routes/_auth/sign-in'
 const VerifyEmailRoute = VerifyEmailRouteImport.update({
   id: '/verify-email',
   path: '/verify-email',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const TestErrorRoute = TestErrorRouteImport.update({
+  id: '/test-error',
+  path: '/test-error',
   getParentRoute: () => rootRouteImport,
 } as any)
 const DocsRoute = DocsRouteImport.update({
@@ -42,6 +50,16 @@ const ProtectedRoute = ProtectedRouteImport.update({
 } as any)
 const AuthRoute = AuthRouteImport.update({
   id: '/_auth',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const R404Route = R404RouteImport.update({
+  id: '/404',
+  path: '/404',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const SplatRoute = SplatRouteImport.update({
+  id: '/$',
+  path: '/$',
   getParentRoute: () => rootRouteImport,
 } as any)
 const IndexRoute = IndexRouteImport.update({
@@ -84,9 +102,9 @@ const DocsAiCoauthorRoute = DocsAiCoauthorRouteImport.update({
   path: '/ai-coauthor',
   getParentRoute: () => DocsRoute,
 } as any)
-const ProtectedDashboardRoute = ProtectedDashboardRouteImport.update({
-  id: '/dashboard',
-  path: '/dashboard',
+const ProtectedContentRoute = ProtectedContentRouteImport.update({
+  id: '/content',
+  path: '/content',
   getParentRoute: () => ProtectedRoute,
 } as any)
 const AuthSignUpRoute = AuthSignUpRouteImport.update({
@@ -107,12 +125,15 @@ const AuthSignInRoute = AuthSignInRouteImport.update({
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/$': typeof SplatRoute
+  '/404': typeof R404Route
   '/docs': typeof DocsRouteWithChildren
+  '/test-error': typeof TestErrorRoute
   '/verify-email': typeof VerifyEmailRoute
   '/sign-in': typeof AuthSignInRoute
   '/sign-out': typeof AuthSignOutRoute
   '/sign-up': typeof AuthSignUpRoute
-  '/dashboard': typeof ProtectedDashboardRoute
+  '/content': typeof ProtectedContentRoute
   '/docs/ai-coauthor': typeof DocsAiCoauthorRoute
   '/docs/api': typeof DocsApiRoute
   '/docs/blocks': typeof DocsBlocksRoute
@@ -123,11 +144,14 @@ export interface FileRoutesByFullPath {
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/$': typeof SplatRoute
+  '/404': typeof R404Route
+  '/test-error': typeof TestErrorRoute
   '/verify-email': typeof VerifyEmailRoute
   '/sign-in': typeof AuthSignInRoute
   '/sign-out': typeof AuthSignOutRoute
   '/sign-up': typeof AuthSignUpRoute
-  '/dashboard': typeof ProtectedDashboardRoute
+  '/content': typeof ProtectedContentRoute
   '/docs/ai-coauthor': typeof DocsAiCoauthorRoute
   '/docs/api': typeof DocsApiRoute
   '/docs/blocks': typeof DocsBlocksRoute
@@ -139,14 +163,17 @@ export interface FileRoutesByTo {
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/$': typeof SplatRoute
+  '/404': typeof R404Route
   '/_auth': typeof AuthRouteWithChildren
   '/_protected': typeof ProtectedRouteWithChildren
   '/docs': typeof DocsRouteWithChildren
+  '/test-error': typeof TestErrorRoute
   '/verify-email': typeof VerifyEmailRoute
   '/_auth/sign-in': typeof AuthSignInRoute
   '/_auth/sign-out': typeof AuthSignOutRoute
   '/_auth/sign-up': typeof AuthSignUpRoute
-  '/_protected/dashboard': typeof ProtectedDashboardRoute
+  '/_protected/content': typeof ProtectedContentRoute
   '/docs/ai-coauthor': typeof DocsAiCoauthorRoute
   '/docs/api': typeof DocsApiRoute
   '/docs/blocks': typeof DocsBlocksRoute
@@ -159,12 +186,15 @@ export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
+    | '/$'
+    | '/404'
     | '/docs'
+    | '/test-error'
     | '/verify-email'
     | '/sign-in'
     | '/sign-out'
     | '/sign-up'
-    | '/dashboard'
+    | '/content'
     | '/docs/ai-coauthor'
     | '/docs/api'
     | '/docs/blocks'
@@ -175,11 +205,14 @@ export interface FileRouteTypes {
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
+    | '/$'
+    | '/404'
+    | '/test-error'
     | '/verify-email'
     | '/sign-in'
     | '/sign-out'
     | '/sign-up'
-    | '/dashboard'
+    | '/content'
     | '/docs/ai-coauthor'
     | '/docs/api'
     | '/docs/blocks'
@@ -190,14 +223,17 @@ export interface FileRouteTypes {
   id:
     | '__root__'
     | '/'
+    | '/$'
+    | '/404'
     | '/_auth'
     | '/_protected'
     | '/docs'
+    | '/test-error'
     | '/verify-email'
     | '/_auth/sign-in'
     | '/_auth/sign-out'
     | '/_auth/sign-up'
-    | '/_protected/dashboard'
+    | '/_protected/content'
     | '/docs/ai-coauthor'
     | '/docs/api'
     | '/docs/blocks'
@@ -209,9 +245,12 @@ export interface FileRouteTypes {
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  SplatRoute: typeof SplatRoute
+  R404Route: typeof R404Route
   AuthRoute: typeof AuthRouteWithChildren
   ProtectedRoute: typeof ProtectedRouteWithChildren
   DocsRoute: typeof DocsRouteWithChildren
+  TestErrorRoute: typeof TestErrorRoute
   VerifyEmailRoute: typeof VerifyEmailRoute
 }
 
@@ -222,6 +261,13 @@ declare module '@tanstack/react-router' {
       path: '/verify-email'
       fullPath: '/verify-email'
       preLoaderRoute: typeof VerifyEmailRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/test-error': {
+      id: '/test-error'
+      path: '/test-error'
+      fullPath: '/test-error'
+      preLoaderRoute: typeof TestErrorRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/docs': {
@@ -243,6 +289,20 @@ declare module '@tanstack/react-router' {
       path: ''
       fullPath: ''
       preLoaderRoute: typeof AuthRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/404': {
+      id: '/404'
+      path: '/404'
+      fullPath: '/404'
+      preLoaderRoute: typeof R404RouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/$': {
+      id: '/$'
+      path: '/$'
+      fullPath: '/$'
+      preLoaderRoute: typeof SplatRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/': {
@@ -301,11 +361,11 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof DocsAiCoauthorRouteImport
       parentRoute: typeof DocsRoute
     }
-    '/_protected/dashboard': {
-      id: '/_protected/dashboard'
-      path: '/dashboard'
-      fullPath: '/dashboard'
-      preLoaderRoute: typeof ProtectedDashboardRouteImport
+    '/_protected/content': {
+      id: '/_protected/content'
+      path: '/content'
+      fullPath: '/content'
+      preLoaderRoute: typeof ProtectedContentRouteImport
       parentRoute: typeof ProtectedRoute
     }
     '/_auth/sign-up': {
@@ -347,11 +407,11 @@ const AuthRouteChildren: AuthRouteChildren = {
 const AuthRouteWithChildren = AuthRoute._addFileChildren(AuthRouteChildren)
 
 interface ProtectedRouteChildren {
-  ProtectedDashboardRoute: typeof ProtectedDashboardRoute
+  ProtectedContentRoute: typeof ProtectedContentRoute
 }
 
 const ProtectedRouteChildren: ProtectedRouteChildren = {
-  ProtectedDashboardRoute: ProtectedDashboardRoute,
+  ProtectedContentRoute: ProtectedContentRoute,
 }
 
 const ProtectedRouteWithChildren = ProtectedRoute._addFileChildren(
@@ -382,9 +442,12 @@ const DocsRouteWithChildren = DocsRoute._addFileChildren(DocsRouteChildren)
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  SplatRoute: SplatRoute,
+  R404Route: R404Route,
   AuthRoute: AuthRouteWithChildren,
   ProtectedRoute: ProtectedRouteWithChildren,
   DocsRoute: DocsRouteWithChildren,
+  TestErrorRoute: TestErrorRoute,
   VerifyEmailRoute: VerifyEmailRoute,
 }
 export const routeTree = rootRouteImport

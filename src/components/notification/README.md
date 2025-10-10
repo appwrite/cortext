@@ -80,7 +80,7 @@ The notifications collection includes the following fields:
      title: 'New Article Published',
      message: 'Your article has been successfully published.',
      type: 'success',
-     actionUrl: '/dashboard',
+     actionUrl: '/content',
      actionText: 'View Article'
    })
    ```

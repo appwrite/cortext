@@ -68,7 +68,7 @@ function Nav() {
                         <div className="animate-in fade-in duration-300">
                             {user ? (
                                 <div className="flex items-center gap-3">
-                                    <Link to="/dashboard" className="px-3 py-2 rounded-md text-sm font-medium border hover:bg-foreground/5 transition-colors">Dashboard</Link>
+                                    <Link to="/content" className="px-3 py-2 rounded-md text-sm font-medium border hover:bg-foreground/5 transition-colors">Content</Link>
                                     <UserAvatar user={user} onSignOut={() => signOut.mutate()} />
                                 </div>
                             ) : (
@@ -158,7 +158,7 @@ function DocsLayoutContent() {
                         <a className="text-foreground/60 hover:text-foreground" href="/#pricing">Pricing</a>
                         <Link className="text-foreground/60 hover:text-foreground" to="/docs">Docs</Link>
                         {!isLoading && (
-                            <Link className="text-foreground/60 hover:text-foreground" to={user ? "/dashboard" : "/sign-up"}>{user ? "Dashboard" : "Get started"}</Link>
+                            <Link className="text-foreground/60 hover:text-foreground" to={user ? "/content" : "/sign-up"}>{user ? "Content" : "Get started"}</Link>
                         )}
                     </div>
                     <span className="text-foreground/60 order-2 sm:order-1">© {new Date().getFullYear()} Cortext</span>

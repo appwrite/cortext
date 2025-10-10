@@ -357,14 +357,14 @@ await cortext.articles.update(article.id, {
             <section className="text-center py-12 bg-foreground/5 rounded-2xl">
                 <h2 className="text-2xl font-semibold mb-4">Ready to build with blocks?</h2>
                 <p className="text-foreground/70 mb-8 max-w-2xl mx-auto">
-                    Start creating rich content with our flexible block system. Explore the dashboard to see blocks in action.
+                    Start creating rich content with our flexible block system. Explore the content to see blocks in action.
                 </p>
                 <div className="flex flex-col sm:flex-row gap-4 justify-center">
                     <a
-                        href="/dashboard"
+                        href="/content"
                         className="inline-flex items-center gap-2 px-6 py-3 rounded-md text-sm font-semibold text-white bg-neutral-900 hover:bg-neutral-800 dark:bg-white dark:text-neutral-900 dark:hover:bg-white/90 transition-colors"
                     >
-                        Open Dashboard
+                        Open Content
                         <ArrowRight className="w-4 h-4" />
                     </a>
                     <a

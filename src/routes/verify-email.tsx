@@ -79,7 +79,7 @@ function RouteComponent() {
                 </p>
               </div>
               <Button onClick={handleContinue} className="w-full">
-                Continue to Dashboard
+                Continue to Content
               </Button>
             </>
           )}

@@ -55,7 +55,7 @@ export function CreateTeamModal({ isOpen, onClose, userId, onTeamCreated }: Crea
             team.$id,
             [member.role],
             member.email,
-            `${window.location.origin}/dashboard?team=${team.$id}`
+            `${window.location.origin}/content?team=${team.$id}`
           )
         } catch (error) {
           console.warn(`Failed to invite ${member.email}:`, error)

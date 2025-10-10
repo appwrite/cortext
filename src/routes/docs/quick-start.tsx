@@ -43,7 +43,7 @@ CORTEXT_PROJECT_ID=your_project_id`,
         },
         {
             title: "Create your first article",
-            description: "Use the dashboard to create and edit your first piece of content.",
+            description: "Use the content to create and edit your first piece of content.",
             code: `// Example: Creating an article programmatically
 const article = await cortext.articles.create({
   title: "Welcome to Cortext",
@@ -159,7 +159,7 @@ const article = await cortext.articles.create({
                                 Success! Your Cortext installation is complete.
                             </h3>
                             <p className="text-foreground/70 text-sm mb-3">
-                                You should now be able to access your dashboard at <code className="bg-foreground/10 px-2 py-1 rounded text-xs">http://localhost:3000</code> and see the welcome screen.
+                                You should now be able to access your content at <code className="bg-foreground/10 px-2 py-1 rounded text-xs">http://localhost:3000</code> and see the welcome screen.
                             </p>
                             <div className="space-y-1 text-xs text-foreground/70">
                                 <p>• Development server running</p>
