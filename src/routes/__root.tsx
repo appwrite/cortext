@@ -3,10 +3,11 @@ import { createRootRouteWithContext, Outlet, ErrorComponent } from "@tanstack/re
 import { FullscreenLoader } from "@/components/ui/loader";
 import { useInitialLoader } from "@/hooks/use-initial-loader";
 import { motion } from "framer-motion";
-import { Brain, RefreshCw, Home } from "lucide-react";
+import { Brain, RefreshCw, Home, AlertTriangle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Link } from "@tanstack/react-router";
 import { useDocumentTitle } from "@/hooks/use-document-title";
+import { Toaster } from "@/components/ui/toaster";
 
 export const Route = createRootRouteWithContext<RouterContext>()({
   beforeLoad: async () => {
@@ -18,6 +19,7 @@ export const Route = createRootRouteWithContext<RouterContext>()({
       <>
         <FullscreenLoader isVisible={isLoading} />
         <Outlet />
+        <Toaster />
         {/* <TanStackRouterDevtools /> */}
       </>
     );
@@ -49,9 +51,9 @@ function AppErrorComponent({ error, reset }: { error: Error; reset: () => void }
             initial={{ scale: 0.8 }}
             animate={{ scale: 1 }}
             transition={{ delay: 0.4, duration: 0.3 }}
-            className="text-3xl mb-2 text-destructive"
+            className="text-3xl mb-2 text-black dark:text-white"
           >
-            ⚠️
+            <AlertTriangle className="h-12 w-12 mx-auto" />
           </motion.div>
           
           {/* Error Message */}

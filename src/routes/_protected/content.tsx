@@ -22,7 +22,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { Separator } from '@/components/ui/separator'
 import { toast } from '@/hooks/use-toast'
-import { Image as ImageIcon, Plus, Trash2, Save, Video, MapPin, Type as TypeIcon, Upload, ArrowLeft, LogOut, GripVertical, Brain, Loader2, Heading1, Quote, Pin as PinIcon, FileText, Quote as QuoteIcon, Code, ChevronLeft, ChevronRight, MoreHorizontal, Copy, MessageCircle, Eye, EyeOff, Archive, BookOpen } from 'lucide-react'
+import { Image as ImageIcon, Plus, Trash2, Save, Video, MapPin, Type as TypeIcon, Upload, ArrowLeft, LogOut, GripVertical, Brain, Loader2, Heading1, Quote, Pin as PinIcon, FileText, Quote as QuoteIcon, Code, ChevronLeft, ChevronRight, MoreHorizontal, Copy, MessageCircle, Eye, EyeOff, Archive, BookOpen, FileDown } from 'lucide-react'
 import { AgentChat } from '@/components/agent/agent-chat'
 import { AuthorSelector } from '@/components/author'
 import { CategorySelector } from '@/components/category'
@@ -41,10 +41,146 @@ import { useDocumentTitle } from '@/hooks/use-document-title'
 import { formatDateForDisplay, formatDateCompact, formatDateRelative } from '@/lib/date-utils'
 import { cn } from '@/lib/utils'
 import { CommentableInput, CommentableSection, useCommentCounts, useAllComments, CommentPopover, CommentsSidebar } from '@/components/comments'
+import { useThemeContext } from '@/contexts/theme-context'
 
 export const Route = createFileRoute('/_protected/content')({
     component: RouteComponent,
 })
+
+// Helper function to convert article sections to markdown
+function convertSectionsToMarkdown(sections: any[], articleTitle?: string, articleSubtitle?: string, articleTrailer?: string): string {
+    let markdown = ''
+    
+    // Add article metadata
+    if (articleTitle) {
+        markdown += `# ${articleTitle}\n\n`
+    }
+    
+    if (articleSubtitle) {
+        markdown += `*${articleSubtitle}*\n\n`
+    }
+    
+    if (articleTrailer) {
+        markdown += `> ${articleTrailer}\n\n`
+    }
+    
+    // Convert each section
+    sections.forEach((section) => {
+        switch (section.type) {
+            case 'title':
+                if (section.content) {
+                    markdown += `## ${section.content}\n\n`
+                }
+                break
+                
+            case 'text':
+            case 'paragraph':
+                if (section.content) {
+                    markdown += `${section.content}\n\n`
+                }
+                break
+                
+            case 'quote':
+                if (section.content) {
+                    markdown += `> ${section.content}`
+                    if (section.speaker) {
+                        markdown += `\n> \n> — ${section.speaker}`
+                    }
+                    markdown += '\n\n'
+                }
+                break
+                
+            case 'code':
+                if (section.content) {
+                    const language = section.language || ''
+                    markdown += `\`\`\`${language}\n${section.content}\n\`\`\`\n\n`
+                }
+                break
+                
+            case 'image':
+                if (section.imageIds && section.imageIds.length > 0) {
+                    // For images, we'll include a placeholder since we don't have the actual image URLs
+                    markdown += `![Image](${section.imageIds[0]})`
+                    if (section.caption) {
+                        markdown += `\n*${section.caption}*`
+                    }
+                    markdown += '\n\n'
+                } else if (section.mediaId) {
+                    markdown += `![Image](${section.mediaId})`
+                    if (section.caption) {
+                        markdown += `\n*${section.caption}*`
+                    }
+                    markdown += '\n\n'
+                }
+                break
+                
+            case 'video':
+                if (section.url) {
+                    markdown += `[Video: ${section.url}](${section.url})`
+                    if (section.caption) {
+                        markdown += `\n*${section.caption}*`
+                    }
+                    markdown += '\n\n'
+                }
+                break
+                
+            case 'map':
+                if (section.location) {
+                    markdown += `[Map: ${section.location}](${section.location})`
+                    if (section.caption) {
+                        markdown += `\n*${section.caption}*`
+                    }
+                    markdown += '\n\n'
+                }
+                break
+                
+            default:
+                // For unknown section types, try to include any content
+                if (section.content) {
+                    markdown += `${section.content}\n\n`
+                }
+                break
+        }
+    })
+    
+    return markdown.trim()
+}
+
+// Helper function to create ChatGPT-specific markdown with prompt
+function createChatGPTMarkdown(sections: any[], articleTitle?: string, articleSubtitle?: string, articleTrailer?: string): string {
+    const markdown = convertSectionsToMarkdown(sections, articleTitle, articleSubtitle, articleTrailer)
+    
+    return `Please help me improve this article content. Here's the current article in markdown format:
+
+${markdown}
+
+Please provide suggestions for:
+1. Content improvements and clarity
+2. Better structure and flow
+3. SEO optimization
+4. Engaging headlines and subheadings
+5. Call-to-action recommendations
+
+Focus on making the content more engaging and valuable for readers.`
+}
+
+// Helper function to create Claude-specific markdown with prompt
+function createClaudeMarkdown(sections: any[], articleTitle?: string, articleSubtitle?: string, articleTrailer?: string): string {
+    const markdown = convertSectionsToMarkdown(sections, articleTitle, articleSubtitle, articleTrailer)
+    
+    return `I'd like your help reviewing and improving this article content. Here's the current article in markdown format:
+
+${markdown}
+
+Please analyze this content and provide:
+1. Content quality assessment
+2. Structural improvements
+3. Writing style enhancements
+4. Fact-checking suggestions
+5. Additional research recommendations
+
+Help me create a more compelling and well-structured article that provides real value to readers.`
+}
 
 // Helper function to get section type icon
 function getSectionTypeIcon(type: string) {
@@ -874,6 +1010,7 @@ function ArticleEditor({ articleId, userId, user, onBack }: { articleId: string;
     }
     const navigate = useNavigate()
     const { currentBlog, currentTeam } = useTeamBlogContext()
+    const { effectiveTheme } = useThemeContext()
     const [isMenuOpen, setIsMenuOpen] = useState(false)
     const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
     const [showReleaseConfirm, setShowReleaseConfirm] = useState(false)
@@ -2255,7 +2392,7 @@ function ArticleEditor({ articleId, userId, user, onBack }: { articleId: string;
                             <>
                                 {/* Arrow pointing to the button */}
                                 <div className="absolute right-3 top-full w-0 h-0 border-l-[6px] border-r-[6px] border-b-[6px] border-l-transparent border-r-transparent border-b-border z-50" />
-                                <div className="absolute right-0 top-full mt-1 w-56 bg-background border rounded-lg shadow-lg z-50 animate-in fade-in-0 zoom-in-95 duration-200">
+                                <div className="absolute right-0 top-full mt-1 w-64 bg-background border rounded-lg shadow-lg z-50 animate-in fade-in-0 zoom-in-95 duration-200">
                                     <div className="p-1">
                                         <Button
                                             variant="ghost"
@@ -2282,12 +2419,115 @@ function ArticleEditor({ articleId, userId, user, onBack }: { articleId: string;
                                         
                                         <Separator className="my-1" />
                                         
-                                        <div className="flex items-center justify-between px-3 py-2">
+                                        {/* Copy Operations Group */}
+                                        <Button
+                                            variant="ghost"
+                                            size="sm"
+                                            onClick={() => {
+                                                const markdown = convertSectionsToMarkdown(
+                                                    localSections || [],
+                                                    title,
+                                                    subtitle,
+                                                    trailer
+                                                )
+                                                navigator.clipboard.writeText(markdown).then(() => {
+                                                    setIsMenuOpen(false)
+                                                    toast({
+                                                        title: "Copied to clipboard",
+                                                        description: "Article content copied as markdown",
+                                                    })
+                                                }).catch((error) => {
+                                                    console.error('Clipboard write failed:', error)
+                                                    setIsMenuOpen(false)
+                                                    toast({
+                                                        title: "Copy failed",
+                                                        description: "Failed to copy to clipboard",
+                                                        variant: "destructive",
+                                                    })
+                                                })
+                                            }}
+                                            className="w-full justify-start cursor-pointer hover:bg-accent"
+                                        >
+                                            <FileDown className="h-4 w-4 mr-2" />
+                                            Copy as Markdown
+                                        </Button>
+                                        
+                                        <Button
+                                            variant="ghost"
+                                            size="sm"
+                                            onClick={() => {
+                                                const chatgptMarkdown = createChatGPTMarkdown(
+                                                    localSections || [],
+                                                    title,
+                                                    subtitle,
+                                                    trailer
+                                                )
+                                                navigator.clipboard.writeText(chatgptMarkdown).then(() => {
+                                                    toast({
+                                                        title: "Copied for ChatGPT",
+                                                        description: "Article content with ChatGPT prompt copied to clipboard",
+                                                    })
+                                                }).catch(() => {
+                                                    toast({
+                                                        title: "Copy failed",
+                                                        description: "Failed to copy to clipboard",
+                                                        variant: "destructive",
+                                                    })
+                                                })
+                                                setIsMenuOpen(false)
+                                            }}
+                                            className="w-full justify-start cursor-pointer hover:bg-accent"
+                                        >
+                                            <img 
+                                                src={effectiveTheme === 'dark' ? '/icons/openai-icon-dark.svg' : '/icons/openai-icon-light.svg'} 
+                                                alt="ChatGPT" 
+                                                className="h-4 w-4 mr-2" 
+                                            />
+                                            Copy for ChatGPT
+                                        </Button>
+                                        
+                                        <Button
+                                            variant="ghost"
+                                            size="sm"
+                                            onClick={() => {
+                                                const claudeMarkdown = createClaudeMarkdown(
+                                                    localSections || [],
+                                                    title,
+                                                    subtitle,
+                                                    trailer
+                                                )
+                                                navigator.clipboard.writeText(claudeMarkdown).then(() => {
+                                                    toast({
+                                                        title: "Copied for Claude",
+                                                        description: "Article content with Claude prompt copied to clipboard",
+                                                    })
+                                                }).catch(() => {
+                                                    toast({
+                                                        title: "Copy failed",
+                                                        description: "Failed to copy to clipboard",
+                                                        variant: "destructive",
+                                                    })
+                                                })
+                                                setIsMenuOpen(false)
+                                            }}
+                                            className="w-full justify-start cursor-pointer hover:bg-accent"
+                                        >
+                                            <img 
+                                                src={effectiveTheme === 'dark' ? '/icons/claude-icon-dark.svg' : '/icons/claude-icon-light.svg'} 
+                                                alt="Claude" 
+                                                className="h-4 w-4 mr-2" 
+                                            />
+                                            Copy for Claude
+                                        </Button>
+                                        
+                                        <Separator className="my-1" />
+                                        
+                                        <div className="flex items-center justify-between w-full px-3 py-2 hover:bg-accent rounded-sm cursor-pointer">
                                             <div className="flex items-center gap-2">
                                                 {hideComments ? (
-                                                    <EyeOff className="h-4 w-4 text-muted-foreground" />
+                                                    <EyeOff className="h-4 w-4 mr-2" />
                                                 ) : (
-                                                    <MessageCircle className="h-4 w-4 text-muted-foreground" />
+                                                    <MessageCircle className="h-4 w-4 mr-2" />
                                                 )}
                                                 <span className="text-sm">Hide Comments</span>
                                             </div>
@@ -2633,7 +2873,7 @@ function ArticleEditor({ articleId, userId, user, onBack }: { articleId: string;
                                 blogId={currentBlog?.$id || ''}
                                 targetType="trailer"
                                  commentCount={trailerCommentCount?.count || 0}
-                                hasNewComments={trailerCommentCount.hasNewComments}
+                                hasNewComments={trailerCommentCount?.hasNewComments || false}
                                 className="items-center"
                             >
                                 <Input id="trailer" value={trailer} onChange={handleTrailerChange} placeholder="Breaking news, Exclusive..." disabled={isInRevertMode} />
@@ -2658,7 +2898,7 @@ function ArticleEditor({ articleId, userId, user, onBack }: { articleId: string;
                                     blogId={currentBlog?.$id || ''}
                                     targetType="title"
                                      commentCount={titleCommentCount?.count || 0}
-                                    hasNewComments={titleCommentCount.hasNewComments}
+                                    hasNewComments={titleCommentCount?.hasNewComments || false}
                                     className="items-center"
                                 >
                                     <Input 
@@ -2697,7 +2937,7 @@ function ArticleEditor({ articleId, userId, user, onBack }: { articleId: string;
                                 blogId={currentBlog?.$id || ''}
                                 targetType="subtitle"
                                  commentCount={subtitleCommentCount?.count || 0}
-                                hasNewComments={subtitleCommentCount.hasNewComments}
+                                hasNewComments={subtitleCommentCount?.hasNewComments || false}
                                 className="items-start"
                             >
                                 <Textarea 
@@ -2917,8 +3157,8 @@ function ArticleEditor({ articleId, userId, user, onBack }: { articleId: string;
                                             blogId={currentBlog?.$id || ''}
                                             targetType="section"
                                             targetId={s.id}
-                                            commentCount={getCommentCount('section', s.id).count}
-                                            hasNewComments={getCommentCount('section', s.id).hasNewComments}
+                                            commentCount={getCommentCount('section', s.id)?.count || 0}
+                                            hasNewComments={getCommentCount('section', s.id)?.hasNewComments || false}
                                             side="left"
                                             onOpen={() => handlePopoverOpen(s.id)}
                                             onClose={handlePopoverClose}
@@ -2942,7 +3182,7 @@ function ArticleEditor({ articleId, userId, user, onBack }: { articleId: string;
                                 blogId={currentBlog?.$id || ''}
                                 targetType="redirect"
                                  commentCount={redirectCommentCount?.count || 0}
-                                hasNewComments={redirectCommentCount.hasNewComments}
+                                hasNewComments={redirectCommentCount?.hasNewComments || false}
                                 className="items-center"
                             >
                                 <Input id="redirect" value={redirect} onChange={handleRedirectChange} placeholder="Redirect URL (optional)" disabled={isInRevertMode} />
