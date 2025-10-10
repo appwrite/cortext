@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import React, { useState, useRef, useEffect } from 'react'
 import { CheckCircle, ChevronDown, ChevronUp } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
@@ -70,6 +70,9 @@ function CommandRenderer({ command, isStreaming }: { command: AICommand; isStrea
 
 function ArticleChanges({ data, isStreaming }: { data: any; isStreaming: boolean }) {
   const [isExpanded, setIsExpanded] = useState(false)
+  const [showCollapseButton, setShowCollapseButton] = useState(false)
+  const contentRef = useRef<HTMLDivElement>(null)
+  
   const changes = Object.entries(data).map(([key, value]) => ({
     field: key,
     value: value,
@@ -77,6 +80,27 @@ function ArticleChanges({ data, isStreaming }: { data: any; isStreaming: boolean
   }))
 
   const changesText = changes.map(change => `${change.label}: ${typeof change.value === 'string' ? `"${change.value}"` : String(change.value)}`).join(', ')
+
+  useEffect(() => {
+    const checkIfTruncated = () => {
+      if (contentRef.current) {
+        // Check if the element has overflow (scrollHeight > clientHeight)
+        // This indicates that line-clamp is actually truncating content
+        const hasOverflow = contentRef.current.scrollHeight > contentRef.current.clientHeight
+        setShowCollapseButton(hasOverflow)
+      }
+    }
+
+    // Use a small delay to ensure DOM is fully rendered
+    const timeoutId = setTimeout(checkIfTruncated, 0)
+    
+    // Re-check on window resize
+    window.addEventListener('resize', checkIfTruncated)
+    return () => {
+      clearTimeout(timeoutId)
+      window.removeEventListener('resize', checkIfTruncated)
+    }
+  }, [changesText])
 
   return (
     <div className="bg-green-50 dark:bg-green-950/20 rounded-md p-2.5">
@@ -91,20 +115,22 @@ function ArticleChanges({ data, isStreaming }: { data: any; isStreaming: boolean
             <div className={cn(
               "flex-1 min-w-0",
               !isExpanded && "line-clamp-2"
-            )}>
+            )} ref={contentRef}>
               Article: {changesText}
             </div>
-            <button
-              onClick={() => setIsExpanded(!isExpanded)}
-              className="flex-shrink-0 ml-1 p-0.5 hover:bg-green-100 dark:hover:bg-green-900/30 rounded transition-colors"
-              aria-label={isExpanded ? 'Collapse' : 'Expand'}
-            >
-              {isExpanded ? (
-                <ChevronUp className="h-3 w-3" />
-              ) : (
-                <ChevronDown className="h-3 w-3" />
-              )}
-            </button>
+            {showCollapseButton && (
+              <button
+                onClick={() => setIsExpanded(!isExpanded)}
+                className="flex-shrink-0 ml-1 p-0.5 hover:bg-green-100 dark:hover:bg-green-900/30 rounded transition-colors cursor-pointer"
+                aria-label={isExpanded ? 'Collapse' : 'Expand'}
+              >
+                {isExpanded ? (
+                  <ChevronUp className="h-3 w-3" />
+                ) : (
+                  <ChevronDown className="h-3 w-3" />
+                )}
+              </button>
+            )}
           </div>
         </div>
       </div>
@@ -135,6 +161,9 @@ function getTypeText(type: string) {
 
 function SectionChanges({ data, isStreaming }: { data: any[]; isStreaming: boolean }) {
   const [isExpanded, setIsExpanded] = useState(false)
+  const [showCollapseButton, setShowCollapseButton] = useState(false)
+  const contentRef = useRef<HTMLDivElement>(null)
+  
   const changes = data.map((section, index) => ({
     ...section,
     id: section.id || `section-${index}`
@@ -146,6 +175,27 @@ function SectionChanges({ data, isStreaming }: { data: any[]; isStreaming: boole
     const contentText = change.content ? `"${change.content.length > 20 ? change.content.substring(0, 20) + '...' : change.content}"` : ''
     return `${actionText} ${typeText}${contentText ? ` ${contentText}` : ''}`
   }).join(', ')
+
+  useEffect(() => {
+    const checkIfTruncated = () => {
+      if (contentRef.current) {
+        // Check if the element has overflow (scrollHeight > clientHeight)
+        // This indicates that line-clamp is actually truncating content
+        const hasOverflow = contentRef.current.scrollHeight > contentRef.current.clientHeight
+        setShowCollapseButton(hasOverflow)
+      }
+    }
+
+    // Use a small delay to ensure DOM is fully rendered
+    const timeoutId = setTimeout(checkIfTruncated, 0)
+    
+    // Re-check on window resize
+    window.addEventListener('resize', checkIfTruncated)
+    return () => {
+      clearTimeout(timeoutId)
+      window.removeEventListener('resize', checkIfTruncated)
+    }
+  }, [changesText])
 
   return (
     <div className="bg-green-50 dark:bg-green-950/20 rounded-md p-2.5">
@@ -160,20 +210,22 @@ function SectionChanges({ data, isStreaming }: { data: any[]; isStreaming: boole
             <div className={cn(
               "flex-1 min-w-0",
               !isExpanded && "line-clamp-2"
-            )}>
+            )} ref={contentRef}>
               Content: {changesText}
             </div>
-            <button
-              onClick={() => setIsExpanded(!isExpanded)}
-              className="flex-shrink-0 ml-1 p-0.5 hover:bg-green-100 dark:hover:bg-green-900/30 rounded transition-colors"
-              aria-label={isExpanded ? 'Collapse' : 'Expand'}
-            >
-              {isExpanded ? (
-                <ChevronUp className="h-3 w-3" />
-              ) : (
-                <ChevronDown className="h-3 w-3" />
-              )}
-            </button>
+            {showCollapseButton && (
+              <button
+                onClick={() => setIsExpanded(!isExpanded)}
+                className="flex-shrink-0 ml-1 p-0.5 hover:bg-green-100 dark:hover:bg-green-900/30 rounded transition-colors cursor-pointer"
+                aria-label={isExpanded ? 'Collapse' : 'Expand'}
+              >
+                {isExpanded ? (
+                  <ChevronUp className="h-3 w-3" />
+                ) : (
+                  <ChevronDown className="h-3 w-3" />
+                )}
+              </button>
+            )}
           </div>
         </div>
       </div>
