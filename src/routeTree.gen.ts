@@ -24,7 +24,6 @@ import { Route as DocsCollaborationRouteImport } from './routes/docs/collaborati
 import { Route as DocsBlocksRouteImport } from './routes/docs/blocks'
 import { Route as DocsApiRouteImport } from './routes/docs/api'
 import { Route as DocsAiCoauthorRouteImport } from './routes/docs/ai-coauthor'
-import { Route as ProtectedDashboardRouteImport } from './routes/_protected/dashboard'
 import { Route as ProtectedContentRouteImport } from './routes/_protected/content'
 import { Route as AuthSignUpRouteImport } from './routes/_auth/sign-up'
 import { Route as AuthSignOutRouteImport } from './routes/_auth/sign-out'
@@ -103,11 +102,6 @@ const DocsAiCoauthorRoute = DocsAiCoauthorRouteImport.update({
   path: '/ai-coauthor',
   getParentRoute: () => DocsRoute,
 } as any)
-const ProtectedDashboardRoute = ProtectedDashboardRouteImport.update({
-  id: '/dashboard',
-  path: '/dashboard',
-  getParentRoute: () => ProtectedRoute,
-} as any)
 const ProtectedContentRoute = ProtectedContentRouteImport.update({
   id: '/content',
   path: '/content',
@@ -140,7 +134,6 @@ export interface FileRoutesByFullPath {
   '/sign-out': typeof AuthSignOutRoute
   '/sign-up': typeof AuthSignUpRoute
   '/content': typeof ProtectedContentRoute
-  '/dashboard': typeof ProtectedDashboardRoute
   '/docs/ai-coauthor': typeof DocsAiCoauthorRoute
   '/docs/api': typeof DocsApiRoute
   '/docs/blocks': typeof DocsBlocksRoute
@@ -159,7 +152,6 @@ export interface FileRoutesByTo {
   '/sign-out': typeof AuthSignOutRoute
   '/sign-up': typeof AuthSignUpRoute
   '/content': typeof ProtectedContentRoute
-  '/dashboard': typeof ProtectedDashboardRoute
   '/docs/ai-coauthor': typeof DocsAiCoauthorRoute
   '/docs/api': typeof DocsApiRoute
   '/docs/blocks': typeof DocsBlocksRoute
@@ -182,7 +174,6 @@ export interface FileRoutesById {
   '/_auth/sign-out': typeof AuthSignOutRoute
   '/_auth/sign-up': typeof AuthSignUpRoute
   '/_protected/content': typeof ProtectedContentRoute
-  '/_protected/dashboard': typeof ProtectedDashboardRoute
   '/docs/ai-coauthor': typeof DocsAiCoauthorRoute
   '/docs/api': typeof DocsApiRoute
   '/docs/blocks': typeof DocsBlocksRoute
@@ -204,7 +195,6 @@ export interface FileRouteTypes {
     | '/sign-out'
     | '/sign-up'
     | '/content'
-    | '/dashboard'
     | '/docs/ai-coauthor'
     | '/docs/api'
     | '/docs/blocks'
@@ -223,7 +213,6 @@ export interface FileRouteTypes {
     | '/sign-out'
     | '/sign-up'
     | '/content'
-    | '/dashboard'
     | '/docs/ai-coauthor'
     | '/docs/api'
     | '/docs/blocks'
@@ -245,7 +234,6 @@ export interface FileRouteTypes {
     | '/_auth/sign-out'
     | '/_auth/sign-up'
     | '/_protected/content'
-    | '/_protected/dashboard'
     | '/docs/ai-coauthor'
     | '/docs/api'
     | '/docs/blocks'
@@ -373,13 +361,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof DocsAiCoauthorRouteImport
       parentRoute: typeof DocsRoute
     }
-    '/_protected/dashboard': {
-      id: '/_protected/dashboard'
-      path: '/dashboard'
-      fullPath: '/dashboard'
-      preLoaderRoute: typeof ProtectedDashboardRouteImport
-      parentRoute: typeof ProtectedRoute
-    }
     '/_protected/content': {
       id: '/_protected/content'
       path: '/content'
@@ -427,12 +408,10 @@ const AuthRouteWithChildren = AuthRoute._addFileChildren(AuthRouteChildren)
 
 interface ProtectedRouteChildren {
   ProtectedContentRoute: typeof ProtectedContentRoute
-  ProtectedDashboardRoute: typeof ProtectedDashboardRoute
 }
 
 const ProtectedRouteChildren: ProtectedRouteChildren = {
   ProtectedContentRoute: ProtectedContentRoute,
-  ProtectedDashboardRoute: ProtectedDashboardRoute,
 }
 
 const ProtectedRouteWithChildren = ProtectedRoute._addFileChildren(

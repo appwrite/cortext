@@ -1075,6 +1075,7 @@ function ArticleEditor({ articleId, userId, user, onBack }: { articleId: string;
 
     // Manual save functionality
     const [isSaving, setIsSaving] = useState(false)
+    const isSavingRef = useRef(false) // Additional protection against race conditions
 
     // Helper function to get descriptive version name
     const getRevisionVersionName = (revision: any) => {
@@ -1640,9 +1641,10 @@ function ArticleEditor({ articleId, userId, user, onBack }: { articleId: string;
 
     // Manual save function
     const handleSave = useCallback(async () => {
-        if (isSaving) return
+        if (isSaving || isSavingRef.current) return
         
         setIsSaving(true)
+        isSavingRef.current = true
         try {
             const articleData = {
                 title,
@@ -1661,7 +1663,8 @@ function ArticleEditor({ articleId, userId, user, onBack }: { articleId: string;
                 createdBy: article?.createdBy || userId,
             }
             
-            // Create revision
+            // Always create a revision (force creation even without changes)
+            console.log('Starting revision creation for article:', articleId);
             const revision = await createUpdateRevision(
                 articleId,
                 article || {} as Articles,
@@ -1672,26 +1675,34 @@ function ArticleEditor({ articleId, userId, user, onBack }: { articleId: string;
                     userId, 
                     userName: user?.name || '', 
                     userEmail: user?.email || '' 
-                }
+                },
+                true // Force creation
             )
+            console.log('Revision creation result:', revision);
 
             if (revision) {
-                // Update the article
-                await db.articles.update(articleId, {
-                    ...articleData,
-                    activeRevisionId: revision.$id
-                })
-                
-                // Update cache
-                qc.setQueryData(['article', articleId], (oldData: any) => {
-                    if (!oldData) return oldData
-                    return {
-                        ...oldData,
+                // Only update the article if article status is not 'publish'
+                if (article?.status !== 'publish') {
+                    console.log('Updating article:', articleId, 'with data:', { ...articleData, activeRevisionId: revision.$id });
+                    await db.articles.update(articleId, {
                         ...articleData,
-                        activeRevisionId: revision.$id,
-                        $updatedAt: new Date().toISOString()
-                    }
-                })
+                        activeRevisionId: revision.$id
+                    })
+                    
+                    // Update cache
+                    qc.setQueryData(['article', articleId], (oldData: any) => {
+                        if (!oldData) return oldData
+                        return {
+                            ...oldData,
+                            ...articleData,
+                            activeRevisionId: revision.$id,
+                            $updatedAt: new Date().toISOString()
+                        }
+                    })
+                } else {
+                    // For published articles, don't update activeRevisionId - just create the revision
+                    // This preserves the published state and allows hasUnpublishedChanges to work correctly
+                }
 
                 // Invalidate related queries
                 qc.invalidateQueries({ queryKey: ['articles'] })
@@ -1700,7 +1711,6 @@ function ArticleEditor({ articleId, userId, user, onBack }: { articleId: string;
                 
                 updateChanges(false)
                 setLastSaveTimestamp(new Date())
-                toast({ title: 'Article saved successfully' })
             }
         } catch (error) {
             console.error('Save failed:', error)
@@ -1711,6 +1721,7 @@ function ArticleEditor({ articleId, userId, user, onBack }: { articleId: string;
             })
         } finally {
             setIsSaving(false)
+            isSavingRef.current = false
         }
     }, [isSaving, title, subtitle, trailer, status, live, redirect, authors, categories, localSections, article, userId, currentTeam?.$id, user, qc, articleId])
 
@@ -2111,9 +2122,7 @@ function ArticleEditor({ articleId, userId, user, onBack }: { articleId: string;
                 // Invalidate queries to refresh the data
                 qc.invalidateQueries({ queryKey: ['article', articleId] })
                 qc.invalidateQueries({ queryKey: ['latest-revision', articleId] })
-                qc.invalidateQueries({ queryKey: ['revisions', articleId] })
-                
-                toast({ title: 'Article released successfully' })
+                qc.invalidateQueries({ queryKey: ['revisions', articleId] })                
             } else {
                 toast({ title: 'No changes to release' })
             }

@@ -379,11 +379,12 @@ export const createUpdateRevision = async (
   newArticle: Articles, 
   teamId?: string,
   messageId?: string,
-  userInfo?: { userId: string; userName: string; userEmail: string }
+  userInfo?: { userId: string; userName: string; userEmail: string },
+  force: boolean = false
 ) => {
   const { changes, changedAttributes } = detectChanges(oldArticle, newArticle);
   
-  if (changes.length === 0) {
+  if (!force && changes.length === 0) {
     return null; // No changes detected
   }
 
@@ -429,10 +430,11 @@ export const createUpdateRevision = async (
       changedAttributes,
       timestamp: new Date().toISOString()
     }),
-    changes: changes,
+    changes: changes.length > 0 ? changes : ['Manual save'],
     parentRevisionId: currentRevisions.documents[0]?.$id || null,
   };
 
+  console.log('Creating revision for article:', articleId, 'version:', nextVersion);
   return db.revisions.create(revisionData, teamId);
 };
 
