@@ -37,11 +37,9 @@ import { OnboardingJourney } from '@/components/onboarding'
 import { TeamBlogProvider, useTeamBlogContext } from '@/contexts/team-blog-context'
 import { useDebugMode } from '@/contexts/debug-context'
 import { useDocumentTitle } from '@/hooks/use-document-title'
-import { useAutoSave } from '@/hooks/use-auto-save'
 import { formatDateForDisplay, formatDateCompact, formatDateRelative } from '@/lib/date-utils'
 import { cn } from '@/lib/utils'
 import { CommentableInput, CommentableSection, useCommentCounts, useAllComments, CommentPopover } from '@/components/comments'
-import { AutoSaveIndicator } from '@/components/auto-save'
 
 export const Route = createFileRoute('/_protected/dashboard')({
     component: RouteComponent,

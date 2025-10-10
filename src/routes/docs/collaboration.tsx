@@ -47,8 +47,7 @@ function Collaboration() {
             details: [
                 "Real-time collaboration",
                 "Conflict resolution",
-                "Change indicators",
-                "Auto-save"
+                "Change indicators"
             ]
         }
     ];

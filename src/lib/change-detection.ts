@@ -179,33 +179,6 @@ export function detectArticleChanges(
 }
 
 /**
- * Check if changes are significant enough to warrant auto-save
- */
-export function shouldAutoSave(
-  changes: string[],
-  changedFields: string[],
-  isHumanChange: boolean
-): boolean {
-  // Always save human changes
-  if (isHumanChange) {
-    return true
-  }
-
-  // Don't auto-save system changes
-  if (!isHumanChange) {
-    return false
-  }
-
-  // Check for significant content changes
-  const significantFields = ['title', 'subtitle', 'body', 'trailer']
-  const hasSignificantChanges = changedFields.some(field => 
-    significantFields.includes(field)
-  )
-
-  return hasSignificantChanges
-}
-
-/**
  * Create a change object for storage
  */
 export function createChangeObject(

@@ -106,7 +106,7 @@ function Index() {
     const workflowFeatures: { title: string; desc: string; Icon: React.ComponentType<{ className?: string; "aria-hidden"?: boolean }> }[] = [
         { title: 'Drafts', desc: 'Work in private or shared drafts before publishing.', Icon: FileEdit },
         { title: 'Reviews', desc: 'Request reviews, track comments, and resolve threads.', Icon: MessageSquare },
-        { title: 'Versioning', desc: 'Auto-saved versions with diffs and easy restore.', Icon: History },
+        { title: 'Versioning', desc: 'Manual versions with diffs and easy restore.', Icon: History },
     ];
 
     return (

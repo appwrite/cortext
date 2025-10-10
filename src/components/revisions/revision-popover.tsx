@@ -396,7 +396,7 @@ export function RevisionPopover({
                       if (revisionData.isRevert) return '↩️ Revert'
                       if (selectedRevisionForJson?.messageId) return '🤖 AI Assistant'
                       if (selectedRevisionForJson?.userId) return '👤 User Action'
-                      return '💾 Auto-save'
+                      return '💾 Manual Save'
                     })()}
                   </div>
                 </div>
