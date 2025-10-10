@@ -68,7 +68,6 @@ function Blocks() {
             example: `{
   "type": "code",
   "data": {
-    "code": "function hello() {\n  console.log('Hello, World!');\n}",
     "language": "javascript",
     "showLineNumbers": true
   }

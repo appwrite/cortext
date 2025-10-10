@@ -212,7 +212,6 @@ export function AgentChat({
     // Streaming state callbacks for the consolidated realtime system
     const streamingCallbacks = useMemo(() => ({
         onStreamingStart: (messageId: string, metadata: any) => {
-            console.log('🤖 Assistant message created via realtime:', messageId)
             setIsWaitingForStream(false)
             setIsStreaming(true)
             setStreamingMessageId(messageId)
@@ -341,19 +340,11 @@ export function AgentChat({
             .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())[0]
 
         // Look for revisionId in the message (not metadata)
-        console.log('🔍 Checking latest assistant message:', {
-            hasMessage: !!latestAssistantMessage,
-            revisionId: latestAssistantMessage?.revisionId,
-            lastProcessed: lastProcessedRevisionId,
-            messageId: latestAssistantMessage?.id
-        })
-        
         if (latestAssistantMessage?.revisionId) {
             const newRevisionId = latestAssistantMessage.revisionId
             
             // Only process if this is a new revision we haven't seen before
             if (newRevisionId !== lastProcessedRevisionId) {
-                console.log('🔄 New AI revision detected:', newRevisionId)
                 
                 // Apply AI revision
                 applyAIRevision(newRevisionId)
@@ -361,19 +352,15 @@ export function AgentChat({
                 // Update the last processed revision ID
                 setLastProcessedRevisionId(newRevisionId)
                 
-                console.log('✅ AI revision applied:', newRevisionId)
             } else {
-                console.log('⏭️ Revision already processed:', newRevisionId)
             }
         } else {
-            console.log('❌ No revisionId found in latest assistant message')
         }
     }, [messages, lastProcessedRevisionId, articleId, queryClient])
 
     // Function to apply AI revision
     const applyAIRevision = useCallback(async (revisionId: string) => {
         try {
-            console.log('🤖 Applying AI revision:', revisionId)
             
             if (onApplyAIRevision) {
                 // Use the parent callback to apply the revision
@@ -622,14 +609,12 @@ export function AgentChat({
 
         try {
             // Create user message in background
-            console.log('📝 Creating user message:', text.substring(0, 50))
             const userMessage = await createMessage({
                 role: 'user',
                 content: text,
                 userId: user?.$id || '',
                 revisionId: latestRevision?.$id || null,
             })
-            console.log('📝 User message created:', userMessage.$id)
 
             // Scroll immediately for better UX
             setTimeout(() => {

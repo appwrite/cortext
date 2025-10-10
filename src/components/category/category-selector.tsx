@@ -131,7 +131,6 @@ export function CategorySelector({ selectedCategoryIds, onCategoriesChange, user
   const { data: allCategoriesData, isPending, error } = useQuery({
     queryKey: ['categories', currentBlog?.$id],
     queryFn: async () => {
-      console.log('Fetching categories for blog:', currentBlog?.$id)
       if (!currentBlog?.$id) return { documents: [], total: 0 }
       return db.categories.list([
         Query.equal('blogId', currentBlog.$id)
@@ -144,7 +143,6 @@ export function CategorySelector({ selectedCategoryIds, onCategoriesChange, user
   const allCategories = allCategoriesData?.documents || []
   
   // Debug logging (commented out to reduce console noise)
-  // console.log('Categories query result:', { isPending, error, allCategoriesData, allCategories })
 
   // Memoize selected categories to prevent unnecessary re-renders
   // This should only change when selectedCategoryIds changes, not during search
@@ -404,12 +402,10 @@ function NewCategoryModal({ open, onOpenChange, onCategoryCreated, userId }: New
 
   const createCategory = useMutation({
     mutationFn: async (data: Omit<Categories, keyof Models.Document>) => {
-      console.log('Creating category with data:', data)
       // Ensure no ID is accidentally passed
       const cleanData = { ...data }
       delete (cleanData as any).$id
       delete (cleanData as any).id
-      console.log('Clean data for creation:', cleanData)
       return db.categories.create(cleanData, currentTeam?.$id)
     },
     onSuccess: (newCategory) => {
@@ -523,7 +519,6 @@ function EditCategoryModal({ category, open, onOpenChange, onCategoryUpdated, cu
 
   const updateCategory = useMutation({
     mutationFn: async (data: Partial<Omit<Categories, keyof Models.Document>>) => {
-      console.log('Updating category with data:', data)
       return db.categories.update(category.$id, data)
     },
     onSuccess: () => {

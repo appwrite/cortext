@@ -254,7 +254,6 @@ export function useMessagesWithNotifications(
   const messagesQuery = useQuery({
     queryKey: ['messages', conversationId],
     queryFn: () => {
-      console.log('🔍 useMessagesWithNotifications: Fetching last 200 messages for conversation:', conversationId)
       return db.messages.list([
         Query.equal('conversationId', conversationId!),
         Query.orderDesc('$createdAt'),
@@ -272,12 +271,6 @@ export function useMessagesWithNotifications(
     }
 
     const newMessages = messagesQuery.data.documents
-
-    console.log('📨 Processing messages data:', {
-      conversationId,
-      newMessagesCount: newMessages.length,
-      currentMessagesCount: allMessages.length
-    })
 
     // Replace all messages with the latest batch
     setAllMessages(newMessages)
@@ -300,16 +293,13 @@ export function useMessagesWithNotifications(
   // Handle conversation changes with caching
   useEffect(() => {
     if (conversationId) {
-      console.log('🔄 useMessagesWithNotifications: Conversation changed to:', conversationId)
       
       // Check if we have cached data for this conversation
       const cached = conversationCache.get(conversationId)
       if (cached) {
-        console.log('📦 Loading from cache for conversation:', conversationId)
         setAllMessages(cached)
         setIsSwitchingConversation(false)
       } else {
-        console.log('🔄 No cache found, resetting for conversation:', conversationId)
         setIsSwitchingConversation(true)
         // Force refetch when switching conversations
         queryClient.invalidateQueries({ queryKey: ['messages', conversationId] })

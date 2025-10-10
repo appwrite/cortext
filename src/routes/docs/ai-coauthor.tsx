@@ -112,9 +112,7 @@ const response = await cortext.ai.generate({
     tone: "professional",
     includeHeadings: true
   }
-});
-
-console.log(response.content);`
+});`
         },
         {
             title: "Content Optimization",
@@ -123,9 +121,7 @@ const optimized = await cortext.ai.optimize({
   content: "Your existing content here...",
   goals: ["seo", "readability", "engagement"],
   targetAudience: "developers"
-});
-
-console.log(optimized.suggestions);`
+});`
         },
         {
             title: "Batch Processing",

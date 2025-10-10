@@ -48,18 +48,12 @@ export function useAutoSave(
 
   // Debug status changes
   useEffect(() => {
-    console.log('🔄 Auto-save status changed:', state.status, {
-      hasUnsavedChanges: state.hasUnsavedChanges,
-      lastSaved: state.lastSaved,
-      error: state.error
-    })
-  }, [state.status, state.hasUnsavedChanges, state.lastSaved, state.error])
+    }, [state.status, state.hasUnsavedChanges, state.lastSaved, state.error])
 
   // Auto-reset stuck "saving" status
   useEffect(() => {
     if (state.status === 'saving') {
       const timeout = setTimeout(() => {
-        console.log('⚠️ Auto-save status stuck on "saving", resetting to idle')
         setState(prev => ({
           ...prev,
           status: 'idle',
@@ -93,45 +87,25 @@ export function useAutoSave(
   // Initialize lastSavedDataRef with first data that comes in
   const initializeLastSavedData = useCallback((data: any) => {
     if (!lastSavedDataRef.current && data) {
-      console.log('🔄 Initializing lastSavedDataRef with first data:', data.title)
       lastSavedDataRef.current = data
     }
   }, [])
 
   // Debug auto-save hook state
   useEffect(() => {
-    console.log('🔧 Auto-save hook state:', {
-      articleId,
-      hasLastSavedData: !!lastSavedDataRef.current,
-      lastSavedDataId: lastSavedDataRef.current?.title,
-      state: state.status,
-      hasUnsavedChanges: state.hasUnsavedChanges
-    })
-  }, [articleId, state.status, state.hasUnsavedChanges])
+    }, [articleId, state.status, state.hasUnsavedChanges])
 
   /**
    * Save changes to the server
    */
   const saveToServer = useCallback(async (data: any, isHumanChange: boolean = true) => {
-    console.log('🔄 saveToServer called:', {
-      articleId,
-      isHumanChange,
-      isSaving: isSavingRef.current,
-      hasData: !!data
-    })
-
     if (isSavingRef.current) {
-      console.log('⏭️ Already saving, skipping')
       return false
     }
 
     try {
       isSavingRef.current = true
       setState(prev => ({ ...prev, status: 'saving' }))
-      console.log('💾 Starting server save...')
-
-      console.log('📄 Using article data from form:', data.title)
-      
       // Create revision if there are changes
       const revision = await createUpdateRevision(
         articleId,
@@ -146,16 +120,12 @@ export function useAutoSave(
         } : undefined
       )
 
-      console.log('📝 Revision creation result:', revision ? 'success' : 'no changes')
-
       if (revision) {
         // Update the article
         await db.articles.update(articleId, {
           ...data,
           activeRevisionId: revision.$id
         })
-        console.log('✅ Article updated with revision:', revision.$id)
-
         // Update cache
         queryClient.setQueryData(['article', articleId], (oldData: any) => {
           if (!oldData) return oldData
@@ -171,8 +141,6 @@ export function useAutoSave(
         queryClient.invalidateQueries({ queryKey: ['articles'] })
         queryClient.invalidateQueries({ queryKey: ['latest-revision', articleId] })
         queryClient.invalidateQueries({ queryKey: ['revisions', articleId] })
-        console.log('🔄 Cache invalidated')
-
         setState(prev => ({
           ...prev,
           status: 'saved',
@@ -183,11 +151,9 @@ export function useAutoSave(
 
         lastSavedDataRef.current = data
         retryCountRef.current = 0
-        console.log('✅ Server save completed successfully')
         return true
       }
 
-      console.log('⏭️ No revision created, no changes to save')
       return false
     } catch (error) {
       console.error('❌ Auto-save failed:', error)
@@ -202,12 +168,9 @@ export function useAutoSave(
       // Retry logic
       if (retryCountRef.current < finalConfig.maxRetries) {
         retryCountRef.current++
-        console.log(`🔄 Retrying save (attempt ${retryCountRef.current}/${finalConfig.maxRetries})`)
         setTimeout(async () => {
           await saveToServer(data, isHumanChange)
         }, finalConfig.retryDelay)
-      } else {
-        console.log('❌ Max retries reached, giving up')
       }
 
       return false
@@ -218,8 +181,7 @@ export function useAutoSave(
         ...prev,
         status: prev.status === 'saving' ? 'idle' : prev.status
       }))
-      console.log('🏁 Server save process finished')
-    }
+      }
   }, [articleId, userId, teamId, queryClient, finalConfig.maxRetries, finalConfig.retryDelay])
 
 
@@ -235,14 +197,6 @@ export function useAutoSave(
       isInitialLoad?: boolean
     }
   ) => {
-    console.log('🔄 Auto-save processChanges called:', {
-      articleId,
-      hasNewData: !!newData,
-      context,
-      isFullyLoaded: true, // This should be passed from the component
-      currentStatus: state.status
-    })
-
     // Initialize lastSavedDataRef if not already done
     initializeLastSavedData(newData)
 
@@ -255,38 +209,20 @@ export function useAutoSave(
       isInitialLoad: context?.isInitialLoad
     })
 
-    console.log('🔍 Change source detected:', changeSource)
-
     // Detect what changed
     const { hasChanges, changes, changedFields } = detectArticleChanges(
       lastSavedDataRef.current,
       newData
     )
 
-    console.log('📊 Change detection:', {
-      hasChanges,
-      changes,
-      changedFields,
-      lastSavedData: lastSavedDataRef.current ? 'exists' : 'null'
-    })
-
     if (!hasChanges) {
-      console.log('⏭️ No changes detected, skipping auto-save')
       return // No changes to save
     }
 
     // Check if we should auto-save
     const shouldSave = shouldAutoSave(changes, changedFields, changeSource.isHumanChange)
 
-    console.log('🤔 Should auto-save?', {
-      shouldSave,
-      isHumanChange: changeSource.isHumanChange,
-      changesCount: changes.length,
-      changedFieldsCount: changedFields.length
-    })
-
     if (!shouldSave) {
-      console.log('⏭️ Auto-save skipped - not a saveable change type')
       return // Don't save this type of change
     }
 
@@ -299,33 +235,19 @@ export function useAutoSave(
     // Clear existing timers
     if (debounceTimerRef.current) {
       clearTimeout(debounceTimerRef.current)
-      console.log('🧹 Cleared existing debounce timer')
     }
     if (saveTimerRef.current) {
       clearTimeout(saveTimerRef.current)
-      console.log('🧹 Cleared existing save timer')
     }
 
     // Set up debounced save to server
-    console.log('⏰ Setting up debounced save:', {
-      debounceDelay: finalConfig.debounceDelay,
-      saveInterval: finalConfig.saveInterval,
-      isSaving: isSavingRef.current
-    })
-
     debounceTimerRef.current = setTimeout(() => {
-      console.log('⏰ Debounce timer fired, checking conditions...')
       if (!isSavingRef.current) {
-        console.log('✅ Conditions met, setting up server save timer')
         saveTimerRef.current = setTimeout(async () => {
-          console.log('🚀 Server save timer fired, triggering save')
           await saveToServer(newData, changeSource.isHumanChange)
         }, finalConfig.saveInterval)
       } else {
-        console.log('❌ Conditions not met for server save:', {
-          isSaving: isSavingRef.current
-        })
-      }
+        }
     }, finalConfig.debounceDelay)
   }, [userId, finalConfig.debounceDelay, finalConfig.saveInterval])
 

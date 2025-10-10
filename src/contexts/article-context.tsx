@@ -67,17 +67,6 @@ export function ArticleProvider({ articleId, children }: ArticleProviderProps) {
 
   // Debug article context state
   React.useEffect(() => {
-    console.log('🔧 ArticleContext state:', {
-      articleId,
-      hasArticleData: !!articleData,
-      articleDataId: articleData?.$id,
-      isLoadingArticle,
-      articleError,
-      hasRevisionsData: !!revisionsData,
-      revisionsCount: revisionsData?.documents?.length || 0,
-      isLoadingRevisions,
-      revisionsError
-    })
   }, [articleId, articleData, isLoadingArticle, articleError, revisionsData, isLoadingRevisions, revisionsError])
 
   // Update state when data changes

@@ -42,7 +42,6 @@ export function PageActions({ className }: PageActionsProps) {
       icon: FileText,
       onClick: () => {
         // TODO: Implement markdown view
-        console.log('View as Markdown');
         setIsOpen(false);
       }
     },

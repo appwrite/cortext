@@ -119,21 +119,13 @@ export function detectArticleChanges(
   const changes: string[] = []
   const changedFields: string[] = []
 
-  console.log('🔍 detectArticleChanges called:', {
-    hasOldArticle: !!oldArticle,
-    hasNewArticle: !!newArticle,
-    oldArticleKeys: oldArticle ? Object.keys(oldArticle) : 'none',
-    newArticleKeys: newArticle ? Object.keys(newArticle) : 'none'
-  })
 
   if (!newArticle) {
-    console.log('❌ No new article, returning no changes')
     return { hasChanges: false, changes: [], changedFields: [] }
   }
 
   // If there's no old article, treat this as a new article with all fields as changes
   if (!oldArticle) {
-    console.log('🆕 No old article, treating as new article')
     const fieldsToCompare = [
       'title', 'subtitle', 'trailer', 'status', 'live', 'pinned',
       'redirect', 'slug', 'authors', 'categories', 'images', 'body'
@@ -147,7 +139,6 @@ export function detectArticleChanges(
       }
     })
     
-    console.log('🆕 New article changes detected:', { changes, changedFields })
     return { 
       hasChanges: changedFields.length > 0, 
       changes, 

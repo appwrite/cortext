@@ -184,9 +184,7 @@ const cortext = new Cortext({
     }
   ],
   status: "draft"
-});
-
-console.log('Article created:', article.id);`
+});`
         },
         {
             title: "AI Content Generation",
@@ -198,9 +196,7 @@ console.log('Article created:', article.id);`
     tone: "professional",
     includeHeadings: true
   }
-});
-
-console.log('Generated content:', generated.content);`
+});`
         },
         {
             title: "Team Collaboration",

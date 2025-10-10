@@ -143,9 +143,7 @@ const invitation = await cortext.team.invite({
   email: "newmember@example.com",
   role: "writer",
   message: "Welcome to our content team!"
-});
-
-console.log('Invitation sent:', invitation.id);`
+});`
         },
         {
             title: "Add Comment",

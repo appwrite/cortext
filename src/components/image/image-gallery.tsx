@@ -145,7 +145,6 @@ export function ImageGallery({ selectedImageIds, onImagesChange, userId, disable
   const { data: allImagesData, isPending, error } = useQuery({
     queryKey: ['images', currentBlog?.$id],
     queryFn: async () => {
-      console.log('Fetching images for blog:', currentBlog?.$id)
       if (!currentBlog?.$id) return { documents: [], total: 0 }
       return db.images.list([
         Query.equal('blogId', currentBlog.$id)
@@ -158,7 +157,6 @@ export function ImageGallery({ selectedImageIds, onImagesChange, userId, disable
   const allImages = allImagesData?.documents || []
   
   // Debug logging (commented out to reduce console noise)
-  // console.log('Images query result:', { isPending, error, allImagesData, allImages })
 
   // Memoize selected images to prevent unnecessary re-renders
   const selectedImages = useMemo(() => {
@@ -343,7 +341,6 @@ export function ImageGallery({ selectedImageIds, onImagesChange, userId, disable
                 placeholder="Search images..." 
                 value={searchValue}
                 onValueChange={(value) => {
-                  console.log('CommandInput onValueChange:', value)
                   setSearchValue(value)
                 }}
                 className="w-full pr-8"
@@ -453,12 +450,10 @@ function NewImageModal({ open, onOpenChange, onImageCreated, userId }: NewImageM
 
   const createImage = useMutation({
     mutationFn: async (data: Omit<Images, keyof Models.Document>) => {
-      console.log('Creating image with data:', data)
       // Ensure no ID is accidentally passed
       const cleanData = { ...data }
       delete (cleanData as any).$id
       delete (cleanData as any).id
-      console.log('Clean data for creation:', cleanData)
       return db.images.create(cleanData, currentTeam?.$id)
     },
     onSuccess: (newImage) => {
@@ -508,7 +503,6 @@ function NewImageModal({ open, onOpenChange, onImageCreated, userId }: NewImageM
         blogId: currentBlog?.$id || null,
       }
       
-      console.log('Form data before submission:', cleanedData)
       createImage.mutate(cleanedData)
     } catch (error) {
       console.error('Upload error:', error)

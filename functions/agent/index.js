@@ -354,7 +354,6 @@ function buildArticleContext(article, maxTokens = 150000) {
     
     // Truncate if too long - but prioritize showing all section IDs
     if (contextStr.length > maxTokens) {
-        console.log(`Article context too long: ${contextStr.length} chars (limit: ${maxTokens}), truncating...`);
         
         // If we're over the limit, try a more aggressive approach
         // First, build a minimal context with just section IDs
@@ -366,18 +365,14 @@ function buildArticleContext(article, maxTokens = 150000) {
             });
         }
         
-        console.log(`Minimal context length: ${minimalContext.length} chars`);
         
         // If even the minimal context is too long, truncate it
         if (minimalContext.length > maxTokens) {
             contextStr = minimalContext.substring(0, maxTokens - 50) + '...';
-            console.log(`Context truncated to ${contextStr.length} chars (was ${minimalContext.length})`);
         } else {
             contextStr = minimalContext;
-            console.log(`Using minimal context: ${contextStr.length} chars`);
         }
     } else {
-        console.log(`Article context size: ${contextStr.length} chars (within limit: ${maxTokens})`);
     }
     
     return contextStr;

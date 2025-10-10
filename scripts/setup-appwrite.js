@@ -404,7 +404,6 @@ const APPWRITE_FUNCTIONS = {
 // Utility functions
 function log(message, type = 'info') {
   const icons = { info: 'ℹ️', success: '✅', warning: '⚠️', error: '❌' };
-  console.log(`${icons[type]} ${message}`);
 }
 
 async function sleep(ms) {

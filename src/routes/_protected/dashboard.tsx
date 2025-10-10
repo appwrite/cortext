@@ -763,14 +763,7 @@ function ArticleEditor({ articleId, userId, user, onBack }: { articleId: string;
 
     // Debug auto-save initialization
     useEffect(() => {
-        console.log('🔧 Auto-save initialized:', {
-            articleId,
-            userId,
-            teamId: currentTeam?.$id,
-            userInfo,
-            autoSaveStatus: autoSave.status,
-            hasUnsavedChanges: autoSave.hasUnsavedChanges
-        })
+        // Auto-save initialized
     }, [articleId, userId, currentTeam?.$id, userInfo, autoSave.status, autoSave.hasUnsavedChanges])
 
 
@@ -1255,7 +1248,6 @@ function ArticleEditor({ articleId, userId, user, onBack }: { articleId: string;
     
     // Debug wrapper for hasUserInteracted
     const setHasUserInteractedDebug = useCallback((value: boolean, reason: string) => {
-        console.log(`🔍 hasUserInteracted: ${hasUserInteracted} → ${value} (${reason})`)
         setHasUserInteracted(value)
     }, [hasUserInteracted])
     const [isDataLoaded, setIsDataLoaded] = useState(false)
@@ -1285,8 +1277,6 @@ function ArticleEditor({ articleId, userId, user, onBack }: { articleId: string;
                 setLocalSections(parsedSections)
                 // Store initial sections for comparison
                 setInitialSections(parsedSections)
-                
-                console.log('✅ Sections state updated')
                 
                 // Update the last processed revision ID
                 if (latestFormData.activeRevisionId) {
@@ -1436,18 +1426,11 @@ function ArticleEditor({ articleId, userId, user, onBack }: { articleId: string;
     }, [isFullyLoaded, title, subtitle, status, live, redirect, authors, categories, article, userId, localSections, autoSave])
 
     const handleTitleChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
-        console.log('🎯 handleTitleChange called:', {
-            value: e.target.value,
-            isFullyLoaded,
-            hasAutoSave: !!autoSave
-        })
-        
         setTitle(e.target.value)
         setHasUserInteractedDebug(true, 'handleTitleChange')
         
         // Trigger auto-save
         if (isFullyLoaded) {
-            console.log('✅ isFullyLoaded is true, proceeding with auto-save')
             const articleData = {
                 title: e.target.value,
                 subtitle,
@@ -1464,10 +1447,7 @@ function ArticleEditor({ articleId, userId, user, onBack }: { articleId: string;
                 body: JSON.stringify(localSections),
                 createdBy: article?.createdBy || userId,
             }
-            console.log('📝 Calling autoSave.processChanges with data:', articleData)
             autoSave.processChanges(articleData, { isInitialLoad: false })
-        } else {
-            console.log('❌ isFullyLoaded is false, skipping auto-save')
         }
     }, [isFullyLoaded, subtitle, trailer, status, live, redirect, authors, categories, article, userId, localSections, autoSave])
 
@@ -1646,40 +1626,16 @@ function ArticleEditor({ articleId, userId, user, onBack }: { articleId: string;
     }, [hasUnpublishedChanges, saving])
 
     useEffect(() => {
-        console.log('🔄 Form data loading effect triggered:', {
-            hasLatestFormData: !!latestFormData,
-            isDataLoaded,
-            revisionId: latestFormData?.activeRevisionId,
-            revisionUpdatedAt: latestFormData?.$updatedAt,
-            bodyLength: latestFormData?.body?.length,
-            lastProcessedRevisionId,
-            formDataTitle: latestFormData?.title,
-            formDataSubtitle: latestFormData?.subtitle
-        })
+        if (!latestFormData || !isDataLoaded || isFullyLoaded || isRevertingRef.current) {
+            return
+        }
         
         // Allow updates if this is a new revision (revision ID changed) OR if data hasn't been loaded yet
         const isNewRevision = latestFormData?.activeRevisionId && latestFormData.activeRevisionId !== lastProcessedRevisionId
         
-        console.log('🔍 Revision check:', {
-            currentRevisionId: latestFormData?.activeRevisionId,
-            lastProcessedRevisionId,
-            isNewRevision,
-            isDataLoaded,
-            willUpdate: latestFormData?.body && (isNewRevision || !isDataLoaded)
-        })
-        
         if (latestFormData && (isNewRevision || !isDataLoaded)) {
             // Set flag to prevent data loading conflicts
             isRevertingRef.current = true
-            
-            console.log('📥 Loading form data from server:', {
-                title: latestFormData.title,
-                subtitle: latestFormData.subtitle,
-                trailer: latestFormData.trailer,
-                revisionId: latestFormData.activeRevisionId,
-                bodyLength: latestFormData.body?.length,
-                isNewRevision
-            })
             
             setTrailer(latestFormData.trailer ?? '')
             setTitle(latestFormData.title ?? '')
@@ -1690,11 +1646,6 @@ function ArticleEditor({ articleId, userId, user, onBack }: { articleId: string;
             setCategories(latestFormData.categories ?? [])
             setStatus(latestFormData.status ?? 'draft')
             
-            console.log('✅ Form state updated with:', {
-                title: latestFormData.title,
-                subtitle: latestFormData.subtitle,
-                trailer: latestFormData.trailer
-            })
             
             // Update the last processed revision ID
             if (latestFormData.activeRevisionId) {
@@ -1704,7 +1655,6 @@ function ArticleEditor({ articleId, userId, user, onBack }: { articleId: string;
             // Update the entire article to match the latest revision if it's not in publish state
             // This ensures the article is in sync with the latest revision data
             if (latestFormData.activeRevisionId && article && article.status !== 'publish') {
-                console.log('🔄 Updating entire article to match latest revision:', latestFormData.activeRevisionId)
                 
                 // Prepare the updated article data with all the revision data
                 const updatedArticleData = {
@@ -1726,7 +1676,6 @@ function ArticleEditor({ articleId, userId, user, onBack }: { articleId: string;
                 
                 // Update the article directly
                 db.articles.update(articleId, updatedArticleData).then(() => {
-                    console.log('✅ Article updated to match latest revision')
                     
                     // Update the article cache to reflect all the changes
                     qc.setQueryData(['article', articleId], (oldData: any) => {
@@ -1747,11 +1696,7 @@ function ArticleEditor({ articleId, userId, user, onBack }: { articleId: string;
                 isRevertingRef.current = false
             }, 100)
         } else {
-            console.log('⏭️ Skipping form update:', {
-                hasLatestFormData: !!latestFormData,
-                isNewRevision,
-                reason: !latestFormData ? 'No form data' : 'Unknown'
-            })
+            // Skip form update
         }
     }, [latestFormData?.$id, latestFormData?.$updatedAt, latestFormData?.body, latestFormData?.title, latestFormData?.subtitle, latestFormData?.activeRevisionId, lastProcessedRevisionId, isDataLoaded]) // Update when revision ID changes
 
@@ -1863,7 +1808,6 @@ function ArticleEditor({ articleId, userId, user, onBack }: { articleId: string;
     // Handle reverting to a specific revision
     // Handle AI revision application
     const handleApplyAIRevision = async (revisionId: string) => {
-        console.log('🤖 Applying AI revision:', revisionId)
         
         try {
             // Disable data loading temporarily during AI revision application
@@ -1881,9 +1825,7 @@ function ArticleEditor({ articleId, userId, user, onBack }: { articleId: string;
             setLastProcessedRevisionId(null) // Reset to force detection of new revision
             
             // Clear any cached data when LLM creates new revision
-            console.log('🧹 Clearing cached data for AI revision')
             
-            console.log('✅ AI revision queries refetched and form reload triggered')
             
         } catch (error) {
             console.error('❌ Error applying AI revision:', error)
@@ -1905,11 +1847,9 @@ function ArticleEditor({ articleId, userId, user, onBack }: { articleId: string;
             if (!revision) {
                 throw new Error('Revision not found')
             }
-            console.log('Revision fetched:', revision)
             
             const revisionData = JSON.parse(revision.data)
             const revisionAttributes = revisionData.attributes || revisionData
-            console.log('Revision attributes:', revisionAttributes)
             
             // Create a new revision with the reverted data
             const revertedFormData = {
@@ -1930,7 +1870,6 @@ function ArticleEditor({ articleId, userId, user, onBack }: { articleId: string;
             }
             
             // Create a new revision with the reverted data
-            console.log('Creating new revision...')
             const newRevision = await createRevertRevision(
                 articleId,
                 article!,
@@ -1958,7 +1897,6 @@ function ArticleEditor({ articleId, userId, user, onBack }: { articleId: string;
                 }
                 
                 // Clear revert state
-                console.log('Clearing revert state...')
                 setSelectedRevisionId(null)
                 setShowRevertConfirmation(false)
                 setRevertFormData(null)
@@ -1967,7 +1905,6 @@ function ArticleEditor({ articleId, userId, user, onBack }: { articleId: string;
                 // Invalidate only the revisions query to refresh the revision list
                 qc.invalidateQueries({ queryKey: ['revisions', articleId] })
                 
-                console.log('Revert completed successfully')
                 toast({ title: `Reverted to version ${revision.version}` })
             } else {
                 console.error('Failed to create new revision')
@@ -1980,12 +1917,10 @@ function ArticleEditor({ articleId, userId, user, onBack }: { articleId: string;
                 variant: 'destructive'
             })
         } finally {
-            console.log('Revert process finished, resetting state')
             setIsReverting(false)
             isRevertingRef.current = false
             
             // Clear any cached data when reverting to prevent interference
-            console.log('🧹 Clearing cached data for revert')
         }
     }
 
@@ -1994,7 +1929,6 @@ function ArticleEditor({ articleId, userId, user, onBack }: { articleId: string;
         try {
             const revision = await db.revisions.get(revisionId)
             if (!revision) {
-                console.log('Revision not found:', revisionId)
                 return
             }
             
@@ -2454,7 +2388,6 @@ function ArticleEditor({ articleId, userId, user, onBack }: { articleId: string;
                                     size="sm" 
                                     variant="outline" 
                                     onClick={() => {
-                                        console.log('🧪 Manual auto-save trigger')
                                         const articleData = {
                                             title,
                                             subtitle,
@@ -2481,7 +2414,6 @@ function ArticleEditor({ articleId, userId, user, onBack }: { articleId: string;
                                     size="sm" 
                                     variant="outline" 
                                     onClick={async () => {
-                                        console.log('🧪 Manual force save trigger')
                                         const articleData = {
                                             title,
                                             subtitle,
@@ -2508,10 +2440,6 @@ function ArticleEditor({ articleId, userId, user, onBack }: { articleId: string;
                                     size="sm" 
                                     variant="outline" 
                                     onClick={() => {
-                                        console.log('🧪 Basic Auto-Save Test')
-                                        console.log('🔧 Auto-save object:', autoSave)
-                                        console.log('🔧 isFullyLoaded:', isFullyLoaded)
-                                        console.log('🔧 hasUserInteracted:', hasUserInteracted)
                                         
                                         // Test basic data
                                         const testData = {
@@ -2531,7 +2459,6 @@ function ArticleEditor({ articleId, userId, user, onBack }: { articleId: string;
                                             createdBy: userId,
                                         }
                                         
-                                        console.log('🧪 Calling processChanges with test data...')
                                         autoSave.processChanges(testData, { isInitialLoad: false })
                                     }}
                                     className="h-6 px-2 text-xs text-purple-600 border-purple-300 hover:bg-purple-200 dark:text-purple-400 dark:border-purple-700 dark:hover:bg-purple-800"
@@ -3073,14 +3000,6 @@ const TitleEditor = memo(({ section, onLocalChange, disabled = false }: { sectio
 })
 
 const QuoteEditor = memo(({ section, onLocalChange, disabled = false }: { section: any; onLocalChange: (data: Partial<any>) => void; disabled?: boolean }) => {
-    console.log('🎭 QuoteEditor rendered with section:', {
-        id: section.id,
-        type: section.type,
-        content: section.content,
-        speaker: section.speaker,
-        fullSection: section
-    })
-    
     const [quote, setQuote] = useState(section.content ?? '')
     const [speaker, setSpeaker] = useState(section.speaker ?? '')
     const onLocalChangeRef = useRef(onLocalChange)
@@ -3096,22 +3015,10 @@ const QuoteEditor = memo(({ section, onLocalChange, disabled = false }: { sectio
 
     // Sync external changes to local state (when section content changes externally)
     useEffect(() => {
-        console.log('🔄 QuoteEditor sync effect triggered:', {
-            sectionId: section.id,
-            sectionContent: section.content,
-            currentQuote: quote,
-            sectionSpeaker: section.speaker,
-            currentSpeaker: speaker,
-            contentChanged: section.content !== quote,
-            speakerChanged: section.speaker !== speaker
-        })
-        
         if (section.content !== quote) {
-            console.log('📝 Updating quote from', quote, 'to', section.content)
             setQuote(section.content ?? '')
         }
         if (section.speaker !== speaker) {
-            console.log('👤 Updating speaker from', speaker, 'to', section.speaker)
             setSpeaker(section.speaker ?? '')
         }
     }, [section.content, section.speaker])

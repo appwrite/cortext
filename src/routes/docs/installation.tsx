@@ -104,7 +104,6 @@ const cortext = new Cortext({
 async function testConnection() {
   try {
     const projects = await cortext.projects.list();
-    console.log('Connected successfully!', projects);
   } catch (error) {
     console.error('Connection failed:', error);
   }

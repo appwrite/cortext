@@ -131,7 +131,6 @@ export function AuthorSelector({ selectedAuthorIds, onAuthorsChange, userId, dis
   const { data: allAuthorsData, isPending, error } = useQuery({
     queryKey: ['authors', currentBlog?.$id],
     queryFn: async () => {
-      console.log('Fetching authors for blog:', currentBlog?.$id)
       if (!currentBlog?.$id) return { documents: [], total: 0 }
       return db.authors.list([
         Query.equal('blogId', currentBlog.$id)
@@ -144,7 +143,6 @@ export function AuthorSelector({ selectedAuthorIds, onAuthorsChange, userId, dis
   const allAuthors = allAuthorsData?.documents || []
   
   // Debug logging (commented out to reduce console noise)
-  // console.log('Authors query result:', { isPending, error, allAuthorsData, allAuthors })
 
   // Memoize selected authors to prevent unnecessary re-renders
   // This should only change when selectedAuthorIds changes, not during search
@@ -336,7 +334,6 @@ export function AuthorSelector({ selectedAuthorIds, onAuthorsChange, userId, dis
                   placeholder="Search authors..." 
                   value={searchValue}
                   onValueChange={(value) => {
-                    console.log('CommandInput onValueChange:', value)
                     setSearchValue(value)
                   }}
                   className="w-full pr-8"
@@ -450,12 +447,10 @@ function NewAuthorModal({ open, onOpenChange, onAuthorCreated, userId }: NewAuth
 
   const createAuthor = useMutation({
     mutationFn: async (data: Omit<Authors, keyof Models.Document>) => {
-      console.log('Creating author with data:', data)
       // Ensure no ID is accidentally passed
       const cleanData = { ...data }
       delete (cleanData as any).$id
       delete (cleanData as any).id
-      console.log('Clean data for creation:', cleanData)
       return db.authors.create(cleanData, currentTeam?.$id)
     },
     onSuccess: (newAuthor) => {
@@ -517,7 +512,6 @@ function NewAuthorModal({ open, onOpenChange, onAuthorCreated, userId }: NewAuth
       blogId: currentBlog?.$id || null,
     }
     
-    console.log('Form data before submission:', cleanedData)
     createAuthor.mutate(cleanedData)
   }
 

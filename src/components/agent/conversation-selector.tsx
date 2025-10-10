@@ -122,7 +122,6 @@ export function ConversationSelector({
                     <div
                       className="flex-1 min-w-0 cursor-pointer"
                       onClick={() => {
-                        console.log('🔄 Switching to conversation:', conversation.$id, conversation.title)
                         onSelectConversation(conversation.$id)
                         setIsOpen(false)
                       }}
