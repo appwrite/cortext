@@ -13,6 +13,13 @@ interface CommentsSidebarProps {
   isOpen: boolean;
   onToggle: () => void;
   className?: string;
+  sections?: Array<{
+    id: string;
+    type: string;
+    content?: string;
+    title?: string;
+    position?: number;
+  }>;
 }
 
 export function CommentsSidebar({
@@ -20,7 +27,8 @@ export function CommentsSidebar({
   blogId,
   isOpen,
   onToggle,
-  className
+  className,
+  sections = []
 }: CommentsSidebarProps) {
   const sidebarRef = useRef<HTMLDivElement>(null);
   const [expandedGroups, setExpandedGroups] = useState<Set<string>>(new Set());
@@ -75,21 +83,72 @@ export function CommentsSidebar({
     switch (targetType) {
       case 'title':
         return 'Title';
+      case 'trailer':
+        return 'Trailer';
+      case 'subtitle':
+        return 'Subtitle';
+      case 'redirect':
+        return 'Redirect Settings';
       case 'section':
+        if (targetId && sections.length > 0) {
+          const section = sections.find(s => s.id === targetId);
+          if (section) {
+            // Create breadcrumb-style names starting with "Body"
+            if (section.type === 'title' && section.content) {
+              // For title sections, use the content as the title
+              const truncatedContent = section.content.length > 30 
+                ? section.content.substring(0, 30) + '...' 
+                : section.content;
+              return `Body › "${truncatedContent}"`;
+            } else if (section.type === 'text' && section.content) {
+              // For text sections, use first few words
+              const words = section.content.split(' ').slice(0, 4).join(' ');
+              const truncatedContent = section.content.length > 40 
+                ? words + '...' 
+                : words;
+              return `Body › Text: "${truncatedContent}"`;
+            } else if (section.type === 'quote' && section.content) {
+              // For quote sections, show speaker if available
+              const speaker = section.speaker || 'Anonymous';
+              const truncatedQuote = section.content.length > 25 
+                ? section.content.substring(0, 25) + '...' 
+                : section.content;
+              return `Body › Quote by ${speaker}: "${truncatedQuote}"`;
+            } else if (section.type === 'code' && section.language) {
+              return `Body › ${section.language.charAt(0).toUpperCase() + section.language.slice(1)} Code`;
+            } else if (section.type === 'image') {
+              return 'Body › Image';
+            } else if (section.type === 'video') {
+              return 'Body › Video';
+            } else if (section.type === 'map') {
+              return 'Body › Map';
+            } else {
+              // Fallback to section type
+              return `Body › ${section.type.charAt(0).toUpperCase() + section.type.slice(1)}`;
+            }
+          }
+        }
+        
+        // Fallback for unknown sections
         switch (targetId) {
           case 'intro':
-            return 'Introduction';
+            return 'Body › Introduction';
           case 'body':
-            return 'Body';
+            return 'Body › Main Content';
           case 'conclusion':
-            return 'Conclusion';
+            return 'Body › Conclusion';
           default:
-            return `Section: ${targetId}`;
+            if (targetId && targetId.length > 8) {
+              return 'Body › Content Section';
+            }
+            return `Body › Section ${targetId}`;
         }
       case 'general':
         return 'General Comments';
       default:
-        return `${targetType}: ${targetId || 'General'}`;
+        // Capitalize the first letter and make it more readable
+        const capitalizedType = targetType.charAt(0).toUpperCase() + targetType.slice(1);
+        return `${capitalizedType}${targetId ? ` (${targetId})` : ''}`;
     }
   };
 

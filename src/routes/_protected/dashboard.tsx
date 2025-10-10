@@ -2062,6 +2062,7 @@ function ArticleEditor({ articleId, userId, user, onBack }: { articleId: string;
                 blogId={currentBlog?.$id || ''}
                 isOpen={isCommentsOpen}
                 onToggle={() => setIsCommentsOpen(!isCommentsOpen)}
+                sections={localSections}
             />
             <div className="sticky top-[4.0625rem] z-5 bg-background/80 backdrop-blur supports-[backdrop-filter]:bg-background/70 border-b h-12">
                     <div className="px-6 h-12 flex items-center justify-between ml-0 lg:ml-[20rem] xl:ml-[24rem]">
