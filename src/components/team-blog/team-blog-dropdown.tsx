@@ -36,38 +36,13 @@ interface TeamBlogDropdownProps {
 export function TeamBlogDropdown({ userId, onClose, onCreateTeam, onCreateBlog, onTeamSettings, onBlogSettings, setCurrentTeam, setCurrentBlog, onBlogSelect, isOpen }: TeamBlogDropdownProps) {
   const [teamSearch, setTeamSearch] = useState('')
   const [blogSearch, setBlogSearch] = useState('')
-  const { currentTeam, currentBlog } = useTeamBlogContext()
+  const { currentTeam, currentBlog, teams, isLoadingTeams } = useTeamBlogContext()
   
   // Initialize with current team from top nav
   const [selectedTeamForBlogs, setSelectedTeamForBlogs] = useState<any>(currentTeam)
   
-  // Refs for scroll containers
-  const teamsScrollRef = useRef<HTMLDivElement>(null)
-  const blogsScrollRef = useRef<HTMLDivElement>(null)
-  
-  // Track if we've already scrolled on this popover open
-  const hasScrolledOnOpen = useRef(false)
-
-  // Update selected team when current team changes
-  useEffect(() => {
-    if (currentTeam && !selectedTeamForBlogs) {
-      setSelectedTeamForBlogs(currentTeam)
-    }
-  }, [currentTeam, selectedTeamForBlogs])
-
-  // Load teams using Appwrite Teams API
-  const { data: teams, isLoading: teamsLoading } = useQuery({
-    queryKey: ['teams', userId],
-    queryFn: async () => {
-      const teamsClient = getTeamsClient()
-      const res = await teamsClient.list()
-      return res.teams
-    },
-    enabled: !!userId
-  })
-
-  // Get blogs for the locally selected team
-  const { data: blogs, isLoading: blogsLoading } = useQuery({
+  // Get blogs for the selected team in dropdown (not necessarily current team)
+  const { data: blogs, isLoading: isLoadingBlogs } = useQuery({
     queryKey: ['blogs', selectedTeamForBlogs?.$id],
     queryFn: async () => {
       if (!selectedTeamForBlogs?.$id) return []
@@ -78,8 +53,24 @@ export function TeamBlogDropdown({ userId, onClose, onCreateTeam, onCreateBlog, 
       ])
       return res.documents
     },
-    enabled: !!selectedTeamForBlogs?.$id
+    enabled: !!selectedTeamForBlogs?.$id,
+    staleTime: 2 * 60 * 1000, // Cache for 2 minutes
+    gcTime: 5 * 60 * 1000, // Keep in cache for 5 minutes
   })
+  
+  // Refs for scroll containers
+  const teamsScrollRef = useRef<HTMLDivElement>(null)
+  const blogsScrollRef = useRef<HTMLDivElement>(null)
+  
+  // Track if we've already scrolled on this popover open
+  const hasScrolledOnOpen = useRef(false)
+
+  // Update selected team when current team changes
+  useEffect(() => {
+    setSelectedTeamForBlogs(currentTeam)
+  }, [currentTeam])
+
+  // Teams and blogs data now come from shared context
 
   // Filter teams and blogs based on search
   const filteredTeams = teams?.filter(team => 
@@ -290,7 +281,7 @@ export function TeamBlogDropdown({ userId, onClose, onCreateTeam, onCreateBlog, 
                   Select a team to view blogs
                 </p>
               </div>
-            ) : blogsLoading ? (
+            ) : isLoadingBlogs ? (
               <div className="h-full min-h-[200px]"></div>
             ) : filteredBlogs.length === 0 ? (
               <div className="flex items-center justify-center h-full min-h-[200px]">

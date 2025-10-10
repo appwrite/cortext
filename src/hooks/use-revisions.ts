@@ -1,22 +1,11 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { db, createUpdateRevision } from '@/lib/appwrite/db'
-import { Query } from 'appwrite'
+import { useArticle } from '@/contexts/article-context'
 import type { Articles, Revisions } from '@/lib/appwrite/appwrite.types'
 
 export function useRevisions(articleId: string) {
   const queryClient = useQueryClient()
-
-  // Get all revisions for an article
-  const revisionsQuery = useQuery({
-    queryKey: ['revisions', articleId],
-    queryFn: () => 
-      db.revisions.list([
-        Query.equal('articleId', articleId),
-        Query.orderDesc('version'),
-        Query.limit(100)
-      ]),
-    enabled: !!articleId,
-  })
+  const { revisions, refreshRevisions } = useArticle()
 
   // Get a specific revision
   const getRevision = useQuery({
@@ -46,7 +35,7 @@ export function useRevisions(articleId: string) {
       return createUpdateRevision(articleId, oldArticle, newArticle, teamId, messageId, userInfo)
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['revisions', articleId] })
+      refreshRevisions()
     },
   })
 
@@ -62,7 +51,7 @@ export function useRevisions(articleId: string) {
       return db.revisions.update(revisionId, data)
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['revisions', articleId] })
+      refreshRevisions()
     },
   })
 
@@ -72,14 +61,14 @@ export function useRevisions(articleId: string) {
       return db.revisions.delete(revisionId)
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['revisions', articleId] })
+      refreshRevisions()
     },
   })
 
   return {
-    revisions: revisionsQuery.data?.documents || [],
-    isLoading: revisionsQuery.isLoading,
-    error: revisionsQuery.error,
+    revisions,
+    isLoading: false, // Data comes from context now
+    error: null,
     createRevision: createRevisionMutation.mutateAsync,
     updateRevision: updateRevisionMutation.mutateAsync,
     deleteRevision: deleteRevisionMutation.mutateAsync,

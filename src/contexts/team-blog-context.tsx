@@ -6,10 +6,23 @@ import { Query } from 'appwrite'
 import type { Blogs } from '@/lib/appwrite/appwrite.types'
 
 interface TeamBlogContextType {
+  // Current selection
   currentTeam: any | null
   currentBlog: Blogs | null
+  
+  // Data
+  teams: any[] | null
+  blogs: Blogs[] | null
+  
+  // Loading states
+  isLoadingTeams: boolean
+  isLoadingBlogs: boolean
+  
+  // Actions
   setCurrentTeam: (team: any | null) => void
   setCurrentBlog: (blog: Blogs | null) => void
+  refreshTeams: () => Promise<void>
+  refreshBlogs: () => Promise<void>
 }
 
 const TeamBlogContext = createContext<TeamBlogContextType | undefined>(undefined)
@@ -24,19 +37,21 @@ export function TeamBlogProvider({ children, userId }: { children: ReactNode; us
   const [currentBlog, setCurrentBlogState] = useState<Blogs | null>(null)
   const queryClient = useQueryClient()
 
-  // Load teams for the user using Appwrite Teams API
-  const { data: teams } = useQuery({
+  // Load teams for the user using Appwrite Teams API - single source of truth
+  const { data: teams, isLoading: isLoadingTeams } = useQuery({
     queryKey: ['teams', userId],
     queryFn: async () => {
       const teamsClient = getTeamsClient()
       const res = await teamsClient.list()
       return res.teams
     },
-    enabled: !!userId
+    enabled: !!userId,
+    staleTime: 5 * 60 * 1000, // Cache for 5 minutes
+    gcTime: 10 * 60 * 1000, // Keep in cache for 10 minutes
   })
 
-  // Load blogs for the current team
-  const { data: blogs } = useQuery({
+  // Load blogs for the current team - single source of truth
+  const { data: blogs, isLoading: isLoadingBlogs } = useQuery({
     queryKey: ['blogs', currentTeam?.$id],
     queryFn: async () => {
       if (!currentTeam?.$id) return []
@@ -47,7 +62,9 @@ export function TeamBlogProvider({ children, userId }: { children: ReactNode; us
       ])
       return res.documents
     },
-    enabled: !!currentTeam?.$id
+    enabled: !!currentTeam?.$id,
+    staleTime: 2 * 60 * 1000, // Cache for 2 minutes
+    gcTime: 5 * 60 * 1000, // Keep in cache for 5 minutes
   })
 
   // Load saved state from localStorage on mount
@@ -86,6 +103,11 @@ export function TeamBlogProvider({ children, userId }: { children: ReactNode; us
     // Clear current blog when team changes
     setCurrentBlogState(null)
     localStorage.removeItem(STORAGE_KEYS.CURRENT_BLOG)
+    
+    // Force refresh blogs for the new team
+    if (team?.$id) {
+      queryClient.invalidateQueries({ queryKey: ['blogs', team.$id] })
+    }
   }
 
   const setCurrentBlog = (blog: Blogs | null) => {
@@ -97,11 +119,35 @@ export function TeamBlogProvider({ children, userId }: { children: ReactNode; us
     }
   }
 
+  // Refresh functions for manual updates
+  const refreshTeams = async () => {
+    await queryClient.invalidateQueries({ queryKey: ['teams', userId] })
+  }
+
+  const refreshBlogs = async () => {
+    if (currentTeam?.$id) {
+      await queryClient.invalidateQueries({ queryKey: ['blogs', currentTeam.$id] })
+    }
+  }
+
   const value = {
+    // Current selection
     currentTeam,
     currentBlog,
+    
+    // Data
+    teams,
+    blogs,
+    
+    // Loading states
+    isLoadingTeams,
+    isLoadingBlogs,
+    
+    // Actions
     setCurrentTeam,
-    setCurrentBlog
+    setCurrentBlog,
+    refreshTeams,
+    refreshBlogs
   }
 
   return (

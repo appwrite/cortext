@@ -28,19 +28,10 @@ export function TeamBlogSelector({ userId }: TeamBlogSelectorProps) {
   const [selectedBlog, setSelectedBlog] = useState<any>(null)
   const [selectedTeamForBlog, setSelectedTeamForBlog] = useState<string>('')
   const containerRef = useRef<HTMLDivElement>(null)
-  const { currentTeam, currentBlog, setCurrentTeam, setCurrentBlog } = useTeamBlogContext()
+  const { currentTeam, currentBlog, setCurrentTeam, setCurrentBlog, teams } = useTeamBlogContext()
   const navigate = useNavigate()
 
-  // Load teams to find team by ID for blog creation
-  const { data: teams } = useQuery({
-    queryKey: ['teams', userId],
-    queryFn: async () => {
-      const teamsClient = getTeamsClient()
-      const res = await teamsClient.list()
-      return res.teams
-    },
-    enabled: !!userId
-  })
+  // Teams data now comes from shared context
 
   // Close dropdown when clicking outside
   useEffect(() => {

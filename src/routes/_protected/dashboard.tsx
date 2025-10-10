@@ -4,6 +4,7 @@ import { useEffect, useMemo, useRef, useState, useCallback, memo } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { db, createInitialRevision, createUpdateRevision, createRevertRevision } from '@/lib/appwrite/db'
 import { useLatestRevision } from '@/hooks/use-latest-revision'
+import { useArticle, ArticleProvider } from '@/contexts/article-context'
 import { files } from '@/lib/appwrite/storage'
 import { getAccountClient } from '@/lib/appwrite'
 import type { Articles } from '@/lib/appwrite/appwrite.types'
@@ -151,7 +152,9 @@ function Dashboard({ userId, user }: { userId: string; user: any }) {
         return (
             <main className="flex-1">
                 <div className="px-12 py-6">
-                    <ArticleEditor key={editingId} articleId={editingId} userId={userId} user={user} onBack={() => navigate({ to: '/dashboard', search: {} })} />
+                    <ArticleProvider articleId={editingId}>
+                        <ArticleEditor key={editingId} articleId={editingId} userId={userId} user={user} onBack={() => navigate({ to: '/dashboard', search: {} })} />
+                    </ArticleProvider>
                 </div>
             </main>
         )
@@ -318,6 +321,7 @@ function ArticlesList({ userId, user }: { userId: string; user: any }) {
 
     const togglePin = useMutation({
         mutationFn: async ({ id, next }: { id: string; next: boolean }) => {
+            // For articles list, we need to fetch the article since we don't have shared state here
             const current = await db.articles.get(id)
             if (current.createdBy !== userId) throw new Error('Forbidden')
             return db.articles.update(id, { pinned: next })
@@ -744,6 +748,7 @@ function ArticleEditor({ articleId, userId, user, onBack }: { articleId: string;
     }, [isMenuOpen])
 
     const { article, formData: latestFormData, hasUnpublishedChanges, latestRevision, isLoading: isLoadingRevision } = useLatestRevision(articleId)
+    const { updateArticle } = useArticle()
     const isPending = isLoadingRevision
 
     // Auto-save functionality
@@ -965,10 +970,13 @@ function ArticleEditor({ articleId, userId, user, onBack }: { articleId: string;
     // Track a newly created section to focus its first relevant input when it renders
     const focusTargetRef = useRef<{ id: string; type: string } | null>(null)
 
-    const updateArticle = useMutation({
+    const updateArticleMutation = useMutation({
         mutationFn: async (data: Partial<Omit<Articles, keyof Models.Document>>) => {
-            const current = await db.articles.get(articleId)
-            if (current.createdBy !== userId) throw new Error('Forbidden')
+            // Use shared state article data
+            if (!article) {
+                throw new Error('Article not found in shared state')
+            }
+            if (article.createdBy !== userId) throw new Error('Forbidden')
             
             // Update the article
             const updatedArticle = await db.articles.update(articleId, sanitizeArticleUpdate(data))
@@ -993,8 +1001,11 @@ function ArticleEditor({ articleId, userId, user, onBack }: { articleId: string;
 
     const deleteArticle = useMutation({
         mutationFn: async () => {
-            const current = await db.articles.get(articleId)
-            if (current.createdBy !== userId) throw new Error('Forbidden')
+            // Use shared state article data
+            if (!article) {
+                throw new Error('Article not found in shared state')
+            }
+            if (article.createdBy !== userId) throw new Error('Forbidden')
             return db.articles.delete(articleId)
         },
         onSuccess: () => {
@@ -1014,29 +1025,32 @@ function ArticleEditor({ articleId, userId, user, onBack }: { articleId: string;
 
     const duplicateArticle = useMutation({
         mutationFn: async () => {
-            const current = await db.articles.get(articleId)
-            if (current.createdBy !== userId) throw new Error('Forbidden')
+            // Use shared state article data
+            if (!article) {
+                throw new Error('Article not found in shared state')
+            }
+            if (article.createdBy !== userId) throw new Error('Forbidden')
             
             // Create a copy of the article with a new ID
             const duplicateData: Omit<Articles, keyof Models.Document> = {
-                trailer: current.trailer,
-                title: `${current.title} (Copy)`,
+                trailer: article.trailer,
+                title: `${article.title} (Copy)`,
                 status: 'draft', // Always create as draft
-                subtitle: current.subtitle,
-                images: current.images,
-                body: current.body, // Copy all sections
-                authors: current.authors,
+                subtitle: article.subtitle,
+                images: article.images,
+                body: article.body, // Copy all sections
+                authors: article.authors,
                 live: false, // Always create as not live
                 pinned: false, // Don't copy pin status
-                redirect: current.redirect,
-                categories: current.categories,
+                redirect: article.redirect,
+                categories: article.categories,
                 createdBy: userId,
                 slug: null, // Will be generated from title
-                blogId: current.blogId,
+                blogId: article.blogId,
                 activeRevisionId: null, // Will be set after revision creation
             }
             
-            const article = await db.articles.create(duplicateData, currentTeam?.$id)
+            const newArticle = await db.articles.create(duplicateData, currentTeam?.$id)
             
             // Create initial revision with user info
             const userInfo = {
@@ -1789,7 +1803,7 @@ function ArticleEditor({ articleId, userId, user, onBack }: { articleId: string;
             
             if (revision) {
                 // Update the article with the latest revision data AND set as deployed
-                await updateArticle.mutateAsync({ 
+                await updateArticleMutation.mutateAsync({ 
                     trailer,
                     title, 
                     slug: slugify(title), 

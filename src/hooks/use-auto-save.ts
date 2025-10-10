@@ -8,6 +8,7 @@ import { useQueryClient } from '@tanstack/react-query'
 import { detectChangeSource, detectArticleChanges, shouldAutoSave } from '../lib/change-detection'
 import { db } from '../lib/appwrite/db'
 import { createUpdateRevision } from '../lib/appwrite/db'
+import type { Articles } from '../lib/appwrite/appwrite.types'
 
 export interface AutoSaveConfig {
   saveInterval?: number // Auto-save interval in milliseconds (default: 5000)
@@ -89,6 +90,25 @@ export function useAutoSave(
     }
   }, [])
 
+  // Initialize lastSavedDataRef with first data that comes in
+  const initializeLastSavedData = useCallback((data: any) => {
+    if (!lastSavedDataRef.current && data) {
+      console.log('🔄 Initializing lastSavedDataRef with first data:', data.title)
+      lastSavedDataRef.current = data
+    }
+  }, [])
+
+  // Debug auto-save hook state
+  useEffect(() => {
+    console.log('🔧 Auto-save hook state:', {
+      articleId,
+      hasLastSavedData: !!lastSavedDataRef.current,
+      lastSavedDataId: lastSavedDataRef.current?.title,
+      state: state.status,
+      hasUnsavedChanges: state.hasUnsavedChanges
+    })
+  }, [articleId, state.status, state.hasUnsavedChanges])
+
   /**
    * Save changes to the server
    */
@@ -110,14 +130,12 @@ export function useAutoSave(
       setState(prev => ({ ...prev, status: 'saving' }))
       console.log('💾 Starting server save...')
 
-      // Get current article for comparison
-      const currentArticle = await db.articles.get(articleId)
-      console.log('📄 Current article fetched:', currentArticle.$id)
+      console.log('📄 Using article data from form:', data.title)
       
       // Create revision if there are changes
       const revision = await createUpdateRevision(
         articleId,
-        currentArticle,
+        lastSavedDataRef.current || data, // Use last saved data as baseline, fallback to current data
         data,
         teamId,
         undefined, // messageId
@@ -224,6 +242,9 @@ export function useAutoSave(
       isFullyLoaded: true, // This should be passed from the component
       currentStatus: state.status
     })
+
+    // Initialize lastSavedDataRef if not already done
+    initializeLastSavedData(newData)
 
     // Detect change source
     const changeSource = detectChangeSource(newData, {
