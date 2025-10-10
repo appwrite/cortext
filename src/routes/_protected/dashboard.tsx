@@ -1241,6 +1241,7 @@ function ArticleEditor({ articleId, userId, user, onBack }: { articleId: string;
     const [trailer, setTrailer] = useState('')
     const [title, setTitle] = useState('')
     const [subtitle, setExcerpt] = useState('')
+    const subtitleRef = useRef<HTMLTextAreaElement | null>(null)
     const [live, setLive] = useState(false)
     const [redirect, setRedirect] = useState('')
     const [authors, setAuthors] = useState<string[]>([])
@@ -1470,7 +1471,23 @@ function ArticleEditor({ articleId, userId, user, onBack }: { articleId: string;
         }
     }, [isFullyLoaded, subtitle, trailer, status, live, redirect, authors, categories, article, userId, localSections, autoSave])
 
-    const handleSubtitleChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    // Function to adjust subtitle textarea height
+    const adjustSubtitleHeight = useCallback(() => {
+        if (!subtitleRef.current) return
+        subtitleRef.current.style.height = 'auto'
+        subtitleRef.current.style.height = subtitleRef.current.scrollHeight + 'px'
+    }, [])
+
+    // Adjust subtitle height when content changes
+    useEffect(() => {
+        const frameId = requestAnimationFrame(() => {
+            adjustSubtitleHeight()
+            setTimeout(adjustSubtitleHeight, 0)
+        })
+        return () => cancelAnimationFrame(frameId)
+    }, [subtitle, adjustSubtitleHeight])
+
+    const handleSubtitleChange = useCallback((e: React.ChangeEvent<HTMLTextAreaElement>) => {
         setExcerpt(e.target.value)
         setHasUserInteractedDebug(true, 'handleSubtitleChange')
         
@@ -1494,7 +1511,7 @@ function ArticleEditor({ articleId, userId, user, onBack }: { articleId: string;
             }
             autoSave.processChanges(articleData, { isInitialLoad: false })
         }
-    }, [isFullyLoaded, title, trailer, status, live, redirect, authors, categories, article, userId, localSections, autoSave])
+    }, [isFullyLoaded, title, trailer, status, live, redirect, authors, categories, article, userId, localSections, autoSave, adjustSubtitleHeight])
 
     const handleLiveChange = useCallback((checked: boolean) => {
         setLive(checked)
@@ -2585,7 +2602,17 @@ function ArticleEditor({ articleId, userId, user, onBack }: { articleId: string;
                     <div>
                         <Label htmlFor="subtitle">Subtitle</Label>
                         {hideComments || isInRevertMode ? (
-                            <Input id="subtitle" value={subtitle} onChange={handleSubtitleChange} placeholder="Short summary (optional)" disabled={isInRevertMode} />
+                            <Textarea 
+                                id="subtitle" 
+                                ref={subtitleRef}
+                                value={subtitle} 
+                                onChange={handleSubtitleChange} 
+                                placeholder="Short summary (optional)" 
+                                disabled={isInRevertMode} 
+                                rows={1}
+                                className="min-h-[40px] text-sm w-full min-w-0"
+                                style={{ overflow: 'hidden', resize: 'none', width: '100%', maxWidth: '100%' }}
+                            />
                         ) : (
                             <CommentableInput
                                 articleId={articleId}
@@ -2593,8 +2620,19 @@ function ArticleEditor({ articleId, userId, user, onBack }: { articleId: string;
                                 targetType="subtitle"
                                 commentCount={getCommentCount('subtitle').count}
                                 hasNewComments={getCommentCount('subtitle').hasNewComments}
+                                className="items-start"
                             >
-                                <Input id="subtitle" value={subtitle} onChange={handleSubtitleChange} placeholder="Short summary (optional)" disabled={isInRevertMode} />
+                                <Textarea 
+                                    id="subtitle" 
+                                    ref={subtitleRef}
+                                    value={subtitle} 
+                                    onChange={handleSubtitleChange} 
+                                    placeholder="Short summary (optional)" 
+                                    disabled={isInRevertMode} 
+                                    rows={1}
+                                    className="min-h-[40px] text-sm w-full min-w-0"
+                                    style={{ overflow: 'hidden', resize: 'none', width: '100%', maxWidth: '100%' }}
+                                />
                             </CommentableInput>
                         )}
                     </div>
