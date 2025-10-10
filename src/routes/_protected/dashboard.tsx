@@ -1326,6 +1326,7 @@ function ArticleEditor({ articleId, userId, user, onBack }: { articleId: string;
     const [initialSections, setInitialSections] = useState<any[]>([])
     const [hasChanges, setHasChanges] = useState(false)
     const [lastChangeTimestamp, setLastChangeTimestamp] = useState<Date | null>(null)
+    const [lastSaveTimestamp, setLastSaveTimestamp] = useState<Date | null>(null)
 
     // Helper function to update changes and timestamp
     const updateChanges = useCallback((hasChanges: boolean) => {
@@ -1338,16 +1339,16 @@ function ArticleEditor({ articleId, userId, user, onBack }: { articleId: string;
     // State to force re-render for timestamp updates
     const [, setTimestampUpdate] = useState(0)
 
-    // Update timestamp display every second when there are changes
+    // Update timestamp display every second when there are changes or saves
     useEffect(() => {
-        if (!hasChanges || !lastChangeTimestamp) return
+        if ((!hasChanges || !lastChangeTimestamp) && !lastSaveTimestamp) return
 
         const interval = setInterval(() => {
             setTimestampUpdate(prev => prev + 1)
         }, 1000)
 
         return () => clearInterval(interval)
-    }, [hasChanges, lastChangeTimestamp])
+    }, [hasChanges, lastChangeTimestamp, lastSaveTimestamp])
 
     // Manual save function
     const handleSave = useCallback(async () => {
@@ -1410,6 +1411,7 @@ function ArticleEditor({ articleId, userId, user, onBack }: { articleId: string;
                 qc.invalidateQueries({ queryKey: ['revisions', articleId] })
                 
                 updateChanges(false)
+                setLastSaveTimestamp(new Date())
                 toast({ title: 'Article saved successfully' })
             }
         } catch (error) {
@@ -2335,7 +2337,7 @@ function ArticleEditor({ articleId, userId, user, onBack }: { articleId: string;
                         </div>
                         
                         <div className="mt-3 pt-2 border-t border-purple-200 dark:border-purple-700">
-                            <div className="font-medium text-purple-700 dark:text-purple-300 mb-2 flex items-center gap-1">
+                            <div className="text-sm font-semibold text-purple-800 dark:text-purple-200 mb-2 flex items-center gap-1">
                                 Save Status
                                 <div className="group relative">
                                     <span className="text-purple-500 dark:text-purple-400 cursor-help text-xs w-3 h-3 rounded-full border border-current flex items-center justify-center text-[8px]">i</span>
@@ -2392,6 +2394,23 @@ function ArticleEditor({ articleId, userId, user, onBack }: { articleId: string;
                                             'text-gray-600 dark:text-gray-400'
                                         }`}>
                                             {isSaving ? 'Saving...' : 'Ready'}
+                                        </span>
+                                    </div>
+                                    <div className="flex justify-between items-center">
+                                        <span className="flex items-center gap-1">
+                                            Last Save
+                                            <div className="group relative">
+                                                <span className="text-purple-500 dark:text-purple-400 cursor-help text-xs w-3 h-3 rounded-full border border-current flex items-center justify-center text-[8px]">i</span>
+                                                <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-2 py-1 bg-gray-900 dark:bg-gray-100 text-white dark:text-gray-900 text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none whitespace-nowrap z-10">
+                                                    When the article was last saved
+                                                </div>
+                                            </div>
+                                        </span>
+                                        <span className="text-gray-600 dark:text-gray-400 font-mono text-xs">
+                                            {lastSaveTimestamp ? 
+                                                `${lastSaveTimestamp.toLocaleTimeString()} (${formatDateRelative(lastSaveTimestamp)})` :
+                                                'Never'
+                                            }
                                         </span>
                                     </div>
                                 </div>

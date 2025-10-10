@@ -146,11 +146,10 @@ function convertSectionsToMarkdown(sections: any[], articleTitle?: string, artic
     return markdown.trim()
 }
 
-// Helper function to create ChatGPT-specific markdown with prompt
-function createChatGPTMarkdown(sections: any[], articleTitle?: string, articleSubtitle?: string, articleTrailer?: string): string {
+// Helper function to create ChatGPT URL with content
+function createChatGPTURL(sections: any[], articleTitle?: string, articleSubtitle?: string, articleTrailer?: string): string {
     const markdown = convertSectionsToMarkdown(sections, articleTitle, articleSubtitle, articleTrailer)
-    
-    return `Please help me improve this article content. Here's the current article in markdown format:
+    const prompt = `Please help me improve this article content. Here's the current article in markdown format:
 
 ${markdown}
 
@@ -162,13 +161,14 @@ Please provide suggestions for:
 5. Call-to-action recommendations
 
 Focus on making the content more engaging and valuable for readers.`
+    
+    return `https://chatgpt.com/?q=${encodeURIComponent(prompt)}`
 }
 
-// Helper function to create Claude-specific markdown with prompt
-function createClaudeMarkdown(sections: any[], articleTitle?: string, articleSubtitle?: string, articleTrailer?: string): string {
+// Helper function to create Claude URL with content
+function createClaudeURL(sections: any[], articleTitle?: string, articleSubtitle?: string, articleTrailer?: string): string {
     const markdown = convertSectionsToMarkdown(sections, articleTitle, articleSubtitle, articleTrailer)
-    
-    return `I'd like your help reviewing and improving this article content. Here's the current article in markdown format:
+    const prompt = `I'd like your help reviewing and improving this article content. Here's the current article in markdown format:
 
 ${markdown}
 
@@ -180,6 +180,8 @@ Please analyze this content and provide:
 5. Additional research recommendations
 
 Help me create a more compelling and well-structured article that provides real value to readers.`
+    
+    return `https://claude.ai/new?q=${encodeURIComponent(prompt)}`
 }
 
 // Helper function to get section type icon
@@ -1612,6 +1614,7 @@ function ArticleEditor({ articleId, userId, user, onBack }: { articleId: string;
     const [initialSections, setInitialSections] = useState<any[]>([])
     const [hasChanges, setHasChanges] = useState(false)
     const [lastChangeTimestamp, setLastChangeTimestamp] = useState<Date | null>(null)
+    const [lastSaveTimestamp, setLastSaveTimestamp] = useState<Date | null>(null)
 
     // Helper function to update changes and timestamp
     const updateChanges = useCallback((hasChanges: boolean) => {
@@ -1624,16 +1627,16 @@ function ArticleEditor({ articleId, userId, user, onBack }: { articleId: string;
     // State to force re-render for timestamp updates
     const [, setTimestampUpdate] = useState(0)
 
-    // Update timestamp display every second when there are changes
+    // Update timestamp display every second when there are changes or saves
     useEffect(() => {
-        if (!hasChanges || !lastChangeTimestamp) return
+        if ((!hasChanges || !lastChangeTimestamp) && !lastSaveTimestamp) return
 
         const interval = setInterval(() => {
             setTimestampUpdate(prev => prev + 1)
         }, 1000)
 
         return () => clearInterval(interval)
-    }, [hasChanges, lastChangeTimestamp])
+    }, [hasChanges, lastChangeTimestamp, lastSaveTimestamp])
 
     // Manual save function
     const handleSave = useCallback(async () => {
@@ -1696,6 +1699,7 @@ function ArticleEditor({ articleId, userId, user, onBack }: { articleId: string;
                 qc.invalidateQueries({ queryKey: ['revisions', articleId] })
                 
                 updateChanges(false)
+                setLastSaveTimestamp(new Date())
                 toast({ title: 'Article saved successfully' })
             }
         } catch (error) {
@@ -2456,25 +2460,18 @@ function ArticleEditor({ articleId, userId, user, onBack }: { articleId: string;
                                             variant="ghost"
                                             size="sm"
                                             onClick={() => {
-                                                const chatgptMarkdown = createChatGPTMarkdown(
+                                                const chatgptURL = createChatGPTURL(
                                                     localSections || [],
                                                     title,
                                                     subtitle,
                                                     trailer
                                                 )
-                                                navigator.clipboard.writeText(chatgptMarkdown).then(() => {
-                                                    toast({
-                                                        title: "Copied for ChatGPT",
-                                                        description: "Article content with ChatGPT prompt copied to clipboard",
-                                                    })
-                                                }).catch(() => {
-                                                    toast({
-                                                        title: "Copy failed",
-                                                        description: "Failed to copy to clipboard",
-                                                        variant: "destructive",
-                                                    })
-                                                })
+                                                window.open(chatgptURL, '_blank', 'noopener,noreferrer')
                                                 setIsMenuOpen(false)
+                                                toast({
+                                                    title: "Opening ChatGPT",
+                                                    description: "Article content opened in ChatGPT for review",
+                                                })
                                             }}
                                             className="w-full justify-start cursor-pointer hover:bg-accent"
                                         >
@@ -2483,32 +2480,25 @@ function ArticleEditor({ articleId, userId, user, onBack }: { articleId: string;
                                                 alt="ChatGPT" 
                                                 className="h-4 w-4 mr-2" 
                                             />
-                                            Copy for ChatGPT
+                                            Open in ChatGPT
                                         </Button>
                                         
                                         <Button
                                             variant="ghost"
                                             size="sm"
                                             onClick={() => {
-                                                const claudeMarkdown = createClaudeMarkdown(
+                                                const claudeURL = createClaudeURL(
                                                     localSections || [],
                                                     title,
                                                     subtitle,
                                                     trailer
                                                 )
-                                                navigator.clipboard.writeText(claudeMarkdown).then(() => {
-                                                    toast({
-                                                        title: "Copied for Claude",
-                                                        description: "Article content with Claude prompt copied to clipboard",
-                                                    })
-                                                }).catch(() => {
-                                                    toast({
-                                                        title: "Copy failed",
-                                                        description: "Failed to copy to clipboard",
-                                                        variant: "destructive",
-                                                    })
-                                                })
+                                                window.open(claudeURL, '_blank', 'noopener,noreferrer')
                                                 setIsMenuOpen(false)
+                                                toast({
+                                                    title: "Opening Claude",
+                                                    description: "Article content opened in Claude for review",
+                                                })
                                             }}
                                             className="w-full justify-start cursor-pointer hover:bg-accent"
                                         >
@@ -2517,7 +2507,7 @@ function ArticleEditor({ articleId, userId, user, onBack }: { articleId: string;
                                                 alt="Claude" 
                                                 className="h-4 w-4 mr-2" 
                                             />
-                                            Copy for Claude
+                                            Open in Claude
                                         </Button>
                                         
                                         <Separator className="my-1" />
@@ -2732,7 +2722,7 @@ function ArticleEditor({ articleId, userId, user, onBack }: { articleId: string;
                         </div>
                         
                         <div className="mt-3 pt-2 border-t border-purple-200 dark:border-purple-700">
-                            <div className="font-medium text-purple-700 dark:text-purple-300 mb-2 flex items-center gap-1">
+                            <div className="text-sm font-semibold text-purple-800 dark:text-purple-200 mb-2 flex items-center gap-1">
                                 Save Status
                                 <div className="group relative">
                                     <span className="text-purple-500 dark:text-purple-400 cursor-help text-xs w-3 h-3 rounded-full border border-current flex items-center justify-center text-[8px]">i</span>
@@ -2789,6 +2779,23 @@ function ArticleEditor({ articleId, userId, user, onBack }: { articleId: string;
                                             'text-gray-600 dark:text-gray-400'
                                         }`}>
                                             {isSaving ? 'Saving...' : 'Ready'}
+                                        </span>
+                                    </div>
+                                    <div className="flex justify-between items-center">
+                                        <span className="flex items-center gap-1">
+                                            Last Save
+                                            <div className="group relative">
+                                                <span className="text-purple-500 dark:text-purple-400 cursor-help text-xs w-3 h-3 rounded-full border border-current flex items-center justify-center text-[8px]">i</span>
+                                                <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-2 py-1 bg-gray-900 dark:bg-gray-100 text-white dark:text-gray-900 text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none whitespace-nowrap z-10">
+                                                    When the article was last saved
+                                                </div>
+                                            </div>
+                                        </span>
+                                        <span className="text-gray-600 dark:text-gray-400 font-mono text-xs">
+                                            {lastSaveTimestamp ? 
+                                                `${lastSaveTimestamp.toLocaleTimeString()} (${formatDateRelative(lastSaveTimestamp)})` :
+                                                'Never'
+                                            }
                                         </span>
                                     </div>
                                 </div>
