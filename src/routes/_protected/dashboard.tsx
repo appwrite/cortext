@@ -36,9 +36,12 @@ import { OnboardingJourney } from '@/components/onboarding'
 import { TeamBlogProvider, useTeamBlogContext } from '@/contexts/team-blog-context'
 import { useDebugMode } from '@/contexts/debug-context'
 import { useDocumentTitle } from '@/hooks/use-document-title'
+import { useAutoSave } from '@/hooks/use-auto-save'
+import { offlineStorage } from '@/lib/offline-storage'
 import { formatDateForDisplay, formatDateCompact, formatDateRelative } from '@/lib/date-utils'
 import { cn } from '@/lib/utils'
 import { CommentableInput, CommentableSection, useCommentCounts, useAllComments, CommentPopover } from '@/components/comments'
+import { AutoSaveIndicator } from '@/components/auto-save'
 
 export const Route = createFileRoute('/_protected/dashboard')({
     component: RouteComponent,
@@ -116,7 +119,7 @@ function Header({ userId, onSignOut, user }: { userId: string; onSignOut: () => 
                             onClick={toggleDebugMode}
                             className={`p-2 rounded-md transition-colors ${
                                 isDebugMode 
-                                    ? 'bg-purple-100 text-purple-700 dark:bg-purple-900 dark:text-purple-300' 
+                                    ? 'bg-purple-50/90 text-purple-700 dark:bg-purple-950/50 dark:text-purple-300 backdrop-blur-sm' 
                                     : 'hover:bg-foreground/5'
                             }`}
                             title={`Debug Mode ${isDebugMode ? 'ON' : 'OFF'} (Cmd+. or Ctrl+.)`}
@@ -155,10 +158,10 @@ function Dashboard({ userId, user }: { userId: string; user: any }) {
         )
     }
 
-    return <ArticlesList key={currentBlog?.$id || 'no-blog'} userId={userId} />
+    return <ArticlesList key={currentBlog?.$id || 'no-blog'} userId={userId} user={user} />
 }
 
-function EmptyArticlesState({ currentBlog, userId }: { currentBlog: any; userId: string }) {
+function EmptyArticlesState({ currentBlog, userId, user }: { currentBlog: any; userId: string; user: any }) {
     const navigate = useNavigate()
     const { currentTeam } = useTeamBlogContext()
     
@@ -201,8 +204,13 @@ function EmptyArticlesState({ currentBlog, userId }: { currentBlog: any; userId:
                             }
                             const article = await db.articles.create(payload, currentTeam?.$id)
                             
-                            // Create initial revision
-                            const revision = await createInitialRevision(article, currentTeam?.$id)
+                            // Create initial revision with user info
+                            const userInfo = {
+                                userId: user.$id,
+                                userName: user.name || '',
+                                userEmail: user.email || ''
+                            }
+                            const revision = await createInitialRevision(article, currentTeam?.$id, userInfo)
                             
                             // Update article with revision ID
                             await db.articles.update(article.$id, { activeRevisionId: revision.$id })
@@ -262,7 +270,7 @@ const SearchInput = memo(({
 
 SearchInput.displayName = 'SearchInput'
 
-function ArticlesList({ userId }: { userId: string }) {
+function ArticlesList({ userId, user }: { userId: string; user: any }) {
     const qc = useQueryClient()
     const navigate = useNavigate()
     const { currentBlog, currentTeam } = useTeamBlogContext()
@@ -421,8 +429,13 @@ function ArticlesList({ userId }: { userId: string }) {
                       }
                       const article = await db.articles.create(payload, currentTeam?.$id)
                       
-                      // Create initial revision
-                      const revision = await createInitialRevision(article, currentTeam?.$id)
+                      // Create initial revision with user info
+                      const userInfo = {
+                        userId: user.$id,
+                        userName: user.name || '',
+                        userEmail: user.email || ''
+                      }
+                      const revision = await createInitialRevision(article, currentTeam?.$id, userInfo)
                       
                       // Update article with revision ID
                       await db.articles.update(article.$id, { activeRevisionId: revision.$id })
@@ -480,8 +493,13 @@ function ArticlesList({ userId }: { userId: string }) {
                                 }
                                 const article = await db.articles.create(payload, currentTeam?.$id)
                                 
-                                // Create initial revision
-                                const revision = await createInitialRevision(article, currentTeam?.$id)
+                                // Create initial revision with user info
+                                const userInfo = {
+                                    userId: user.$id,
+                                    userName: user.name || '',
+                                    userEmail: user.email || ''
+                                }
+                                const revision = await createInitialRevision(article, currentTeam?.$id, userInfo)
                                 
                                 // Update article with revision ID
                                 await db.articles.update(article.$id, { activeRevisionId: revision.$id })
@@ -503,7 +521,7 @@ function ArticlesList({ userId }: { userId: string }) {
                 {loadingArticles && !articleList ? (
                     <div className="text-sm text-muted-foreground">Loading…</div>
                 ) : all.length === 0 ? (
-                    <EmptyArticlesState currentBlog={currentBlog} userId={userId} />
+                    <EmptyArticlesState currentBlog={currentBlog} userId={userId} user={user} />
                 ) : (
                     <div className="space-y-6">
                         {pinned.length > 0 && (
@@ -728,6 +746,30 @@ function ArticleEditor({ articleId, userId, user, onBack }: { articleId: string;
 
     const { article, formData: latestFormData, hasUnpublishedChanges, latestRevision, isLoading: isLoadingRevision } = useLatestRevision(articleId)
     const isPending = isLoadingRevision
+
+    // Auto-save functionality
+    const userInfo = {
+        userName: user?.name || '',
+        userEmail: user?.email || ''
+    }
+    const autoSave = useAutoSave(articleId, userId, currentTeam?.$id, {
+        saveInterval: 5000, // 5 seconds
+        debounceDelay: 1000, // 1 second debounce
+    }, userInfo)
+
+    // Debug auto-save initialization
+    useEffect(() => {
+        console.log('🔧 Auto-save initialized:', {
+            articleId,
+            userId,
+            teamId: currentTeam?.$id,
+            userInfo,
+            autoSaveStatus: autoSave.status,
+            hasUnsavedChanges: autoSave.hasUnsavedChanges,
+            isOnline: autoSave.isOnline
+        })
+    }, [articleId, userId, currentTeam?.$id, userInfo, autoSave.status, autoSave.hasUnsavedChanges, autoSave.isOnline])
+
 
 
     // Helper function to get descriptive version name
@@ -998,8 +1040,13 @@ function ArticleEditor({ articleId, userId, user, onBack }: { articleId: string;
             
             const article = await db.articles.create(duplicateData, currentTeam?.$id)
             
-            // Create initial revision
-            const revision = await createInitialRevision(article, currentTeam?.$id)
+            // Create initial revision with user info
+            const userInfo = {
+                userId: user.$id,
+                userName: user.name || '',
+                userEmail: user.email || ''
+            }
+            const revision = await createInitialRevision(article, currentTeam?.$id, userInfo)
             
             // Update article with revision ID
             await db.articles.update(article.$id, { activeRevisionId: revision.$id })
@@ -1192,9 +1239,57 @@ function ArticleEditor({ articleId, userId, user, onBack }: { articleId: string;
     const [bannerWasVisible, setBannerWasVisible] = useState(false)
     const [isInitialLoad, setIsInitialLoad] = useState(true)
     const [hasUserInteracted, setHasUserInteracted] = useState(false)
+    
+    // Debug wrapper for hasUserInteracted
+    const setHasUserInteractedDebug = useCallback((value: boolean, reason: string) => {
+        console.log(`🔍 hasUserInteracted: ${hasUserInteracted} → ${value} (${reason})`)
+        setHasUserInteracted(value)
+    }, [hasUserInteracted])
     const [isDataLoaded, setIsDataLoaded] = useState(false)
     const [isFullyLoaded, setIsFullyLoaded] = useState(false)
     const [initialSections, setInitialSections] = useState<any[]>([])
+
+    // Restore offline changes when component loads
+    useEffect(() => {
+        if (isFullyLoaded && autoSave.hasUnsavedChanges) {
+            console.log('🔄 Restoring offline changes...')
+            try {
+                const changes = JSON.parse(localStorage.getItem(`cortext_offline_${articleId}`) || '[]')
+                const latestChange = changes.find((change: any) => change.isHumanChange)
+                
+                if (latestChange && latestChange.data) {
+                    console.log('📥 Restoring data from offline storage:', latestChange.data)
+                    
+                    // Restore form data
+                    if (latestChange.data.title) setTitle(latestChange.data.title)
+                    if (latestChange.data.subtitle) setExcerpt(latestChange.data.subtitle)
+                    if (latestChange.data.trailer) setTrailer(latestChange.data.trailer)
+                    if (latestChange.data.status) setStatus(latestChange.data.status)
+                    if (latestChange.data.live !== undefined) setLive(latestChange.data.live)
+                    if (latestChange.data.redirect) setRedirect(latestChange.data.redirect)
+                    if (latestChange.data.authors) setAuthors(latestChange.data.authors)
+                    if (latestChange.data.categories) setCategories(latestChange.data.categories)
+                    
+                    // Restore sections
+                    if (latestChange.data.body) {
+                        try {
+                            const sections = JSON.parse(latestChange.data.body)
+                            if (Array.isArray(sections)) {
+                                setLocalSections(sections)
+                                console.log('📝 Restored sections:', sections.length)
+                            }
+                        } catch (error) {
+                            console.error('❌ Error parsing sections from offline data:', error)
+                        }
+                    }
+                    
+                    console.log('✅ Offline changes restored successfully')
+                }
+            } catch (error) {
+                console.error('❌ Error restoring offline changes:', error)
+            }
+        }
+    }, [isFullyLoaded, autoSave.hasUnsavedChanges, articleId, setTitle, setExcerpt, setTrailer, setStatus, setLive, setRedirect, setAuthors, setCategories, setLocalSections])
 
     // Track the last processed revision ID to detect new revisions
     const [lastProcessedRevisionId, setLastProcessedRevisionId] = useState<string | null>(null)
@@ -1243,21 +1338,46 @@ function ArticleEditor({ articleId, userId, user, onBack }: { articleId: string;
         setLocalSections(updatedSections)
         // Only set hasUserInteracted if we're not in initial load
         if (isFullyLoaded) {
-            setHasUserInteracted(true)
+            setHasUserInteractedDebug(true, 'createSection')
         }
         // Focus the first input after the component re-renders
         focusTargetRef.current = { id: newSection.id, type: String(type) }
     }
 
     const updateSection = useCallback((id: string, data: any) => {
-        setLocalSections(prev => prev.map(section => 
-            section.id === id ? { ...section, ...data } : section
-        ))
-        // Only set hasUserInteracted if we're not in initial load
-        if (isFullyLoaded) {
-            setHasUserInteracted(true)
-        }
-    }, [isFullyLoaded])
+        setLocalSections(prev => {
+            const updated = prev.map(section => 
+                section.id === id ? { ...section, ...data } : section
+            )
+            
+            // Trigger auto-save for human changes
+            if (isFullyLoaded) {
+                setHasUserInteractedDebug(true, 'updateSection')
+                
+                // Create article data for auto-save
+                const articleData = {
+                    title,
+                    subtitle,
+                    trailer,
+                    status,
+                    live,
+                    pinned: article?.pinned || false,
+                    redirect,
+                    slug: slugify(title),
+                    authors,
+                    categories,
+                    images: article?.images || null,
+                    blogId: article?.blogId || null,
+                    body: JSON.stringify(updated),
+                    createdBy: article?.createdBy || userId,
+                }
+                
+                autoSave.processChanges(articleData, { isInitialLoad: false })
+            }
+            
+            return updated
+        })
+    }, [isFullyLoaded, title, subtitle, trailer, status, live, redirect, authors, categories, article, userId, autoSave])
 
     // Create onLocalChange handler that doesn't depend on localSections
     const createOnLocalChangeHandler = useCallback((sectionId: string) => {
@@ -1269,7 +1389,7 @@ function ArticleEditor({ articleId, userId, user, onBack }: { articleId: string;
         setLocalSections(prev => prev.filter(section => section.id !== id))
         // Only set hasUserInteracted if we're not in initial load
         if (isFullyLoaded) {
-            setHasUserInteracted(true)
+            setHasUserInteractedDebug(true, 'deleteSection')
         }
     }
 
@@ -1278,7 +1398,7 @@ function ArticleEditor({ articleId, userId, user, onBack }: { articleId: string;
         setLocalSections(updatedSections)
         // Only set hasUserInteracted if we're not in initial load
         if (isFullyLoaded) {
-            setHasUserInteracted(true)
+            setHasUserInteractedDebug(true, 'persistOrder')
         }
     }
 
@@ -1286,44 +1406,222 @@ function ArticleEditor({ articleId, userId, user, onBack }: { articleId: string;
 
     const handleStatusChange = useCallback((newStatus: string) => {
         setStatus(newStatus)
-        setHasUserInteracted(true)
-    }, [])
+        setHasUserInteractedDebug(true, 'handleStatusChange')
+        
+        // Trigger auto-save
+        if (isFullyLoaded) {
+            const articleData = {
+                title,
+                subtitle,
+                trailer,
+                status: newStatus,
+                live,
+                pinned: article?.pinned || false,
+                redirect,
+                slug: slugify(title),
+                authors,
+                categories,
+                images: article?.images || null,
+                blogId: article?.blogId || null,
+                body: JSON.stringify(localSections),
+                createdBy: article?.createdBy || userId,
+            }
+            autoSave.processChanges(articleData, { isInitialLoad: false })
+        }
+    }, [isFullyLoaded, title, subtitle, trailer, live, redirect, authors, categories, article, userId, localSections, autoSave])
 
     // Wrapper functions to track user interaction
     const handleTrailerChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
         setTrailer(e.target.value)
-        setHasUserInteracted(true)
-    }, [])
+        setHasUserInteractedDebug(true, 'handleTrailerChange')
+        
+        // Trigger auto-save
+        if (isFullyLoaded) {
+            const articleData = {
+                title,
+                subtitle,
+                trailer: e.target.value,
+                status,
+                live,
+                pinned: article?.pinned || false,
+                redirect,
+                slug: slugify(title),
+                authors,
+                categories,
+                images: article?.images || null,
+                blogId: article?.blogId || null,
+                body: JSON.stringify(localSections),
+                createdBy: article?.createdBy || userId,
+            }
+            autoSave.processChanges(articleData, { isInitialLoad: false })
+        }
+    }, [isFullyLoaded, title, subtitle, status, live, redirect, authors, categories, article, userId, localSections, autoSave])
 
     const handleTitleChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+        console.log('🎯 handleTitleChange called:', {
+            value: e.target.value,
+            isFullyLoaded,
+            hasAutoSave: !!autoSave
+        })
+        
         setTitle(e.target.value)
-        setHasUserInteracted(true)
-    }, [])
+        setHasUserInteractedDebug(true, 'handleTitleChange')
+        
+        // Trigger auto-save
+        if (isFullyLoaded) {
+            console.log('✅ isFullyLoaded is true, proceeding with auto-save')
+            const articleData = {
+                title: e.target.value,
+                subtitle,
+                trailer,
+                status,
+                live,
+                pinned: article?.pinned || false,
+                redirect,
+                slug: slugify(e.target.value),
+                authors,
+                categories,
+                images: article?.images || null,
+                blogId: article?.blogId || null,
+                body: JSON.stringify(localSections),
+                createdBy: article?.createdBy || userId,
+            }
+            console.log('📝 Calling autoSave.processChanges with data:', articleData)
+            autoSave.processChanges(articleData, { isInitialLoad: false })
+        } else {
+            console.log('❌ isFullyLoaded is false, skipping auto-save')
+        }
+    }, [isFullyLoaded, subtitle, trailer, status, live, redirect, authors, categories, article, userId, localSections, autoSave])
 
     const handleSubtitleChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
         setExcerpt(e.target.value)
-        setHasUserInteracted(true)
-    }, [])
+        setHasUserInteractedDebug(true, 'handleSubtitleChange')
+        
+        // Trigger auto-save
+        if (isFullyLoaded) {
+            const articleData = {
+                title,
+                subtitle: e.target.value,
+                trailer,
+                status,
+                live,
+                pinned: article?.pinned || false,
+                redirect,
+                slug: slugify(title),
+                authors,
+                categories,
+                images: article?.images || null,
+                blogId: article?.blogId || null,
+                body: JSON.stringify(localSections),
+                createdBy: article?.createdBy || userId,
+            }
+            autoSave.processChanges(articleData, { isInitialLoad: false })
+        }
+    }, [isFullyLoaded, title, trailer, status, live, redirect, authors, categories, article, userId, localSections, autoSave])
 
     const handleLiveChange = useCallback((checked: boolean) => {
         setLive(checked)
-        setHasUserInteracted(true)
-    }, [])
+        setHasUserInteractedDebug(true, 'handleLiveChange')
+        
+        // Trigger auto-save
+        if (isFullyLoaded) {
+            const articleData = {
+                title,
+                subtitle,
+                trailer,
+                status,
+                live: checked,
+                pinned: article?.pinned || false,
+                redirect,
+                slug: slugify(title),
+                authors,
+                categories,
+                images: article?.images || null,
+                blogId: article?.blogId || null,
+                body: JSON.stringify(localSections),
+                createdBy: article?.createdBy || userId,
+            }
+            autoSave.processChanges(articleData, { isInitialLoad: false })
+        }
+    }, [isFullyLoaded, title, subtitle, trailer, status, redirect, authors, categories, article, userId, localSections, autoSave])
 
     const handleRedirectChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
         setRedirect(e.target.value)
-        setHasUserInteracted(true)
-    }, [])
+        setHasUserInteractedDebug(true, 'handleRedirectChange')
+        
+        // Trigger auto-save
+        if (isFullyLoaded) {
+            const articleData = {
+                title,
+                subtitle,
+                trailer,
+                status,
+                live,
+                pinned: article?.pinned || false,
+                redirect: e.target.value,
+                slug: slugify(title),
+                authors,
+                categories,
+                images: article?.images || null,
+                blogId: article?.blogId || null,
+                body: JSON.stringify(localSections),
+                createdBy: article?.createdBy || userId,
+            }
+            autoSave.processChanges(articleData, { isInitialLoad: false })
+        }
+    }, [isFullyLoaded, title, subtitle, trailer, status, live, authors, categories, article, userId, localSections, autoSave])
 
     const handleAuthorsChange = useCallback((authors: string[]) => {
         setAuthors(authors)
-        setHasUserInteracted(true)
-    }, [])
+        setHasUserInteractedDebug(true, 'handleAuthorsChange')
+        
+        // Trigger auto-save
+        if (isFullyLoaded) {
+            const articleData = {
+                title,
+                subtitle,
+                trailer,
+                status,
+                live,
+                pinned: article?.pinned || false,
+                redirect,
+                slug: slugify(title),
+                authors,
+                categories,
+                images: article?.images || null,
+                blogId: article?.blogId || null,
+                body: JSON.stringify(localSections),
+                createdBy: article?.createdBy || userId,
+            }
+            autoSave.processChanges(articleData, { isInitialLoad: false })
+        }
+    }, [isFullyLoaded, title, subtitle, trailer, status, live, redirect, categories, article, userId, localSections, autoSave])
 
     const handleCategoriesChange = useCallback((categories: string[]) => {
         setCategories(categories)
-        setHasUserInteracted(true)
-    }, [])
+        setHasUserInteractedDebug(true, 'handleCategoriesChange')
+        
+        // Trigger auto-save
+        if (isFullyLoaded) {
+            const articleData = {
+                title,
+                subtitle,
+                trailer,
+                status,
+                live,
+                pinned: article?.pinned || false,
+                redirect,
+                slug: slugify(title),
+                authors,
+                categories,
+                images: article?.images || null,
+                blogId: article?.blogId || null,
+                body: JSON.stringify(localSections),
+                createdBy: article?.createdBy || userId,
+            }
+            autoSave.processChanges(articleData, { isInitialLoad: false })
+        }
+    }, [isFullyLoaded, title, subtitle, trailer, status, live, redirect, authors, article, userId, localSections, autoSave])
 
     // Memoized selectors to prevent unnecessary re-renders
     const memoizedAuthorSelector = useMemo(() => (
@@ -1470,7 +1768,7 @@ function ArticleEditor({ articleId, userId, user, onBack }: { articleId: string;
             // Add a small delay to ensure all data is settled
             const timer = setTimeout(() => {
                 setIsFullyLoaded(true)
-                    setHasUserInteracted(true)
+                // Don't set hasUserInteracted here - only set it when user actually makes changes
             }, 200)
             return () => clearTimeout(timer)
         }
@@ -1936,7 +2234,7 @@ function ArticleEditor({ articleId, userId, user, onBack }: { articleId: string;
 
                 {/* Debug panel */}
                 {showDebug && (
-                    <div className="mb-6 p-4 bg-purple-100 dark:bg-purple-900 rounded-lg">
+                    <div className="mb-6 p-4 bg-purple-50/90 dark:bg-purple-950/50 backdrop-blur-sm rounded-lg">
                         <div className="flex items-center justify-between mb-3">
                             <h3 className="text-sm font-semibold text-purple-800 dark:text-purple-200">
                                 Debug
@@ -1974,16 +2272,12 @@ function ArticleEditor({ articleId, userId, user, onBack }: { articleId: string;
                                     <div className="flex justify-between items-center">
                                         <span className="flex items-center gap-1">
                                             Auto-save
-                                            <div className="group relative">
-                                                <span className="text-purple-500 dark:text-purple-400 cursor-help text-xs w-3 h-3 rounded-full border border-current flex items-center justify-center text-[8px]">i</span>
-                                                <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-2 py-1 bg-gray-900 dark:bg-gray-100 text-white dark:text-gray-900 text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none whitespace-nowrap z-10">
-                                                    Current state of automatic saving to the server
-                                                </div>
-                                            </div>
                                         </span>
-                                        <span className="text-green-600 dark:text-green-400">
-                                            Saved
-                                        </span>
+                                        <AutoSaveIndicator 
+                                            state={autoSave} 
+                                            compact={true}
+                                            showTooltip={true}
+                                        />
                                     </div>
                                     <div className="flex justify-between items-center">
                                         <span className="flex items-center gap-1">
@@ -2057,19 +2351,393 @@ function ArticleEditor({ articleId, userId, user, onBack }: { articleId: string;
                         </div>
                         
                         <div className="mt-3 pt-2 border-t border-purple-200 dark:border-purple-700">
-                            <div className="flex items-center justify-between text-xs">
-                                <div className="flex items-center gap-4">
-                                    <div className="font-medium text-purple-700 dark:text-purple-300 flex items-center gap-1">
-                                        Backups
-                                        <div className="group relative">
-                                            <span className="text-purple-500 dark:text-purple-400 cursor-help text-xs w-3 h-3 rounded-full border border-current flex items-center justify-center text-[8px]">i</span>
-                                            <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-2 py-1 bg-gray-900 dark:bg-gray-100 text-white dark:text-gray-900 text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none whitespace-nowrap z-10">
-                                                Local data stored in your browser for data recovery
+                            <div className="font-medium text-purple-700 dark:text-purple-300 mb-2 flex items-center gap-1">
+                                Auto-Save Debug
+                                <div className="group relative">
+                                    <span className="text-purple-500 dark:text-purple-400 cursor-help text-xs w-3 h-3 rounded-full border border-current flex items-center justify-center text-[8px]">i</span>
+                                    <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-2 py-1 bg-gray-900 dark:bg-gray-100 text-white dark:text-gray-900 text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none whitespace-nowrap z-10">
+                                        Debug information for auto-save and offline functionality
+                                    </div>
+                                </div>
+                            </div>
+                            <div className="grid grid-cols-2 gap-4 text-xs">
+                                <div className="space-y-1">
+                                    <div className="flex justify-between items-center">
+                                        <span className="flex items-center gap-1">
+                                            Auto-Save Status
+                                            <div className="group relative">
+                                                <span className="text-purple-500 dark:text-purple-400 cursor-help text-xs w-3 h-3 rounded-full border border-current flex items-center justify-center text-[8px]">i</span>
+                                                <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-2 py-1 bg-gray-900 dark:bg-gray-100 text-white dark:text-gray-900 text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none whitespace-nowrap z-10">
+                                                    Current state of the auto-save process
+                                                </div>
                                             </div>
+                                        </span>
+                                        <span className={`font-mono ${
+                                            autoSave.status === 'saving' ? 'text-blue-600 dark:text-blue-400' :
+                                            autoSave.status === 'saved' ? 'text-green-600 dark:text-green-400' :
+                                            autoSave.status === 'error' ? 'text-red-600 dark:text-red-400' :
+                                            autoSave.status === 'offline' ? 'text-orange-600 dark:text-orange-400' :
+                                            'text-gray-600 dark:text-gray-400'
+                                        }`}>
+                                            {autoSave.status}
+                                        </span>
+                                    </div>
+                                    <div className="flex justify-between items-center">
+                                        <span className="flex items-center gap-1">
+                                            Online Status
+                                            <div className="group relative">
+                                                <span className="text-purple-500 dark:text-purple-400 cursor-help text-xs w-3 h-3 rounded-full border border-current flex items-center justify-center text-[8px]">i</span>
+                                                <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-2 py-1 bg-gray-900 dark:bg-gray-100 text-white dark:text-gray-900 text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none whitespace-nowrap z-10">
+                                                    Whether the browser is connected to the internet
+                                                </div>
+                                            </div>
+                                        </span>
+                                        <span className={autoSave.isOnline ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}>
+                                            {autoSave.isOnline ? 'Online' : 'Offline'}
+                                        </span>
+                                    </div>
+                                    <div className="flex justify-between items-center">
+                                        <span className="flex items-center gap-1">
+                                            Unsaved Changes
+                                            <div className="group relative">
+                                                <span className="text-purple-500 dark:text-purple-400 cursor-help text-xs w-3 h-3 rounded-full border border-current flex items-center justify-center text-[8px]">i</span>
+                                                <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-2 py-1 bg-gray-900 dark:bg-gray-100 text-white dark:text-gray-900 text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none whitespace-nowrap z-10">
+                                                    Whether there are changes waiting to be saved
+                                                </div>
+                                            </div>
+                                        </span>
+                                        <span className={autoSave.hasUnsavedChanges ? 'text-orange-600 dark:text-orange-400' : 'text-green-600 dark:text-green-400'}>
+                                            {autoSave.hasUnsavedChanges ? 'Yes' : 'No'}
+                                        </span>
+                                    </div>
+                                    <div className="flex justify-between items-center">
+                                        <span className="flex items-center gap-1">
+                                            Change Count
+                                            <div className="group relative">
+                                                <span className="text-purple-500 dark:text-purple-400 cursor-help text-xs w-3 h-3 rounded-full border border-current flex items-center justify-center text-[8px]">i</span>
+                                                <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-2 py-1 bg-gray-900 dark:bg-gray-100 text-white dark:text-gray-900 text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none whitespace-nowrap z-10">
+                                                    Number of changes stored offline
+                                                </div>
+                                            </div>
+                                        </span>
+                                        <span className="font-mono">
+                                            {autoSave.getUnsavedChangesCount()}
+                                        </span>
+                                    </div>
+                                </div>
+                                <div className="space-y-1">
+                                    <div className="flex justify-between items-center">
+                                        <span className="flex items-center gap-1">
+                                            Last Saved
+                                            <div className="group relative">
+                                                <span className="text-purple-500 dark:text-purple-400 cursor-help text-xs w-3 h-3 rounded-full border border-current flex items-center justify-center text-[8px]">i</span>
+                                                <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-2 py-1 bg-gray-900 dark:bg-gray-100 text-white dark:text-gray-900 text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none whitespace-nowrap z-10">
+                                                    When the last successful save occurred
+                                                </div>
+                                            </div>
+                                        </span>
+                                        <span className="font-mono text-xs">
+                                            {autoSave.lastSaved ? 
+                                                new Date(autoSave.lastSaved).toLocaleTimeString() : 
+                                                'Never'
+                                            }
+                                        </span>
+                                    </div>
+                                    <div className="flex justify-between items-center">
+                                        <span className="flex items-center gap-1">
+                                            Storage Available
+                                            <div className="group relative">
+                                                <span className="text-purple-500 dark:text-purple-400 cursor-help text-xs w-3 h-3 rounded-full border border-current flex items-center justify-center text-[8px]">i</span>
+                                                <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-2 py-1 bg-gray-900 dark:bg-gray-100 text-white dark:text-gray-900 text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none whitespace-nowrap z-10">
+                                                    Whether localStorage is available for offline storage
+                                                </div>
+                                            </div>
+                                        </span>
+                                        <span className={typeof Storage !== 'undefined' ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}>
+                                            {typeof Storage !== 'undefined' ? 'Yes' : 'No'}
+                                        </span>
+                                    </div>
+                                    <div className="flex justify-between items-center">
+                                        <span className="flex items-center gap-1">
+                                            User Interacted
+                                            <div className="group relative">
+                                                <span className="text-purple-500 dark:text-purple-400 cursor-help text-xs w-3 h-3 rounded-full border border-current flex items-center justify-center text-[8px]">i</span>
+                                                <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-2 py-1 bg-gray-900 dark:bg-gray-100 text-white dark:text-gray-900 text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none whitespace-nowrap z-10">
+                                                    Whether the user has made any changes to the form
+                                                </div>
+                                            </div>
+                                        </span>
+                                        <span className={hasUserInteracted ? 'text-blue-600 dark:text-blue-400' : 'text-gray-600 dark:text-gray-400'}>
+                                            {hasUserInteracted ? 'Yes' : 'No'}
+                                        </span>
+                                    </div>
+                                    <div className="flex justify-between items-center">
+                                        <span className="flex items-center gap-1">
+                                            Fully Loaded
+                                            <div className="group relative">
+                                                <span className="text-purple-500 dark:text-purple-400 cursor-help text-xs w-3 h-3 rounded-full border border-current flex items-center justify-center text-[8px]">i</span>
+                                                <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-2 py-1 bg-gray-900 dark:bg-gray-100 text-white dark:text-gray-900 text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none whitespace-nowrap z-10">
+                                                    Whether the component has finished loading all data
+                                                </div>
+                                            </div>
+                                        </span>
+                                        <span className={isFullyLoaded ? 'text-green-600 dark:text-green-400' : 'text-orange-600 dark:text-orange-400'}>
+                                            {isFullyLoaded ? 'Yes' : 'No'}
+                                        </span>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            {autoSave.error && (
+                                <div className="mt-2 p-2 bg-red-50 dark:bg-red-900/20 rounded text-xs">
+                                    <div className="font-medium text-red-700 dark:text-red-400 mb-1">Auto-Save Error:</div>
+                                    <div className="text-red-600 dark:text-red-300 font-mono break-all">
+                                        {autoSave.error}
+                                    </div>
+                                </div>
+                            )}
+                            
+                            <div className="mt-2">
+                                <div className="font-medium text-purple-700 dark:text-purple-300 mb-2 flex items-center gap-1">
+                                    Recent Changes
+                                    <div className="group relative">
+                                        <span className="text-purple-500 dark:text-purple-400 cursor-help text-xs w-3 h-3 rounded-full border border-current flex items-center justify-center text-[8px]">i</span>
+                                        <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-2 py-1 bg-gray-900 dark:bg-gray-100 text-white dark:text-gray-900 text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none whitespace-nowrap z-10">
+                                            Recent offline changes stored locally
                                         </div>
                                     </div>
+                                </div>
+                                <div className="space-y-1">
+                                    {(() => {
+                                        try {
+                                            const changes = JSON.parse(localStorage.getItem(`cortext_offline_${articleId}`) || '[]')
+                                            return changes.length > 0 ? 
+                                                changes.slice(0, 3).map((change: any, index: number) => {
+                                                    const timeAgo = new Date(change.timestamp)
+                                                    const now = new Date()
+                                                    const diffMs = now.getTime() - timeAgo.getTime()
+                                                    const diffMins = Math.floor(diffMs / 60000)
+                                                    const diffSecs = Math.floor((diffMs % 60000) / 1000)
+                                                    
+                                                    return (
+                                                        <div key={change.id} className="flex justify-between items-center text-xs">
+                                                            <span className="flex items-center gap-1">
+                                                                <span className={`px-1 rounded text-xs ${
+                                                                    change.isHumanChange 
+                                                                        ? 'bg-blue-50/90 dark:bg-blue-950/50 text-blue-700 dark:text-blue-300 backdrop-blur-sm' 
+                                                                        : 'bg-purple-50/90 dark:bg-purple-950/50 text-purple-700 dark:text-purple-300 backdrop-blur-sm'
+                                                                }`}>
+                                                                    {change.isHumanChange ? 'Human' : 'AI'}
+                                                                </span>
+                                                                <span className="font-mono text-xs">
+                                                                    v{change.version}
+                                                                </span>
+                                                            </span>
+                                                            <span className="text-gray-500">
+                                                                {diffMins > 0 ? `${diffMins}m ${diffSecs}s ago` : `${diffSecs}s ago`}
+                                                            </span>
                                                         </div>
-                                                    </div>
+                                                    )
+                                                }) :
+                                                <div className="text-gray-500 italic text-xs">No offline changes</div>
+                                        } catch (error) {
+                                            return (
+                                                <div className="text-red-500 italic text-xs">
+                                                    Error: {error instanceof Error ? error.message : 'Unknown error'}
+                                                </div>
+                                            )
+                                        }
+                                    })()}
+                                </div>
+                            </div>
+                            
+                            <div className="mt-2 flex gap-2 flex-wrap">
+                                <Button 
+                                    size="sm" 
+                                    variant="outline" 
+                                    onClick={() => {
+                                        console.log('🧪 Manual auto-save trigger')
+                                        const articleData = {
+                                            title,
+                                            subtitle,
+                                            trailer,
+                                            status,
+                                            live,
+                                            pinned: article?.pinned || false,
+                                            redirect,
+                                            slug: slugify(title),
+                                            authors,
+                                            categories,
+                                            images: article?.images || null,
+                                            blogId: article?.blogId || null,
+                                            body: JSON.stringify(localSections),
+                                            createdBy: article?.createdBy || userId,
+                                        }
+                                        autoSave.processChanges(articleData, { isInitialLoad: false })
+                                    }}
+                                    className="h-6 px-2 text-xs text-purple-600 border-purple-300 hover:bg-purple-200 dark:text-purple-400 dark:border-purple-700 dark:hover:bg-purple-800"
+                                >
+                                    Test Auto-Save
+                                </Button>
+                                <Button 
+                                    size="sm" 
+                                    variant="outline" 
+                                    onClick={async () => {
+                                        console.log('🧪 Manual force save trigger')
+                                        const articleData = {
+                                            title,
+                                            subtitle,
+                                            trailer,
+                                            status,
+                                            live,
+                                            pinned: article?.pinned || false,
+                                            redirect,
+                                            slug: slugify(title),
+                                            authors,
+                                            categories,
+                                            images: article?.images || null,
+                                            blogId: article?.blogId || null,
+                                            body: JSON.stringify(localSections),
+                                            createdBy: article?.createdBy || userId,
+                                        }
+                                        await autoSave.forceSave(articleData, true)
+                                    }}
+                                    className="h-6 px-2 text-xs text-purple-600 border-purple-300 hover:bg-purple-200 dark:text-purple-400 dark:border-purple-700 dark:hover:bg-purple-800"
+                                >
+                                    Force Save
+                                </Button>
+                                <Button 
+                                    size="sm" 
+                                    variant="outline" 
+                                    onClick={() => {
+                                        console.log('🧪 Clear offline changes')
+                                        autoSave.clearUnsavedChanges()
+                                    }}
+                                    className="h-6 px-2 text-xs text-purple-600 border-purple-300 hover:bg-purple-200 dark:text-purple-400 dark:border-purple-700 dark:hover:bg-purple-800"
+                                >
+                                    Clear Changes
+                                </Button>
+                                <Button 
+                                    size="sm" 
+                                    variant="outline" 
+                                    onClick={() => {
+                                        console.log('🔍 Debug Offline Storage')
+                                        try {
+                                            const key = `cortext_offline_${articleId}`
+                                            const rawData = localStorage.getItem(key)
+                                            console.log('📦 Raw localStorage data:', rawData)
+                                            
+                                            if (rawData) {
+                                                const changes = JSON.parse(rawData)
+                                                console.log('📦 Parsed changes:', changes)
+                                                console.log('📦 Changes count:', changes.length)
+                                                
+                                                changes.forEach((change: any, index: number) => {
+                                                    console.log(`📦 Change ${index + 1}:`, {
+                                                        id: change.id,
+                                                        timestamp: new Date(change.timestamp).toISOString(),
+                                                        isHumanChange: change.isHumanChange,
+                                                        version: change.version,
+                                                        hasData: !!change.data,
+                                                        dataKeys: change.data ? Object.keys(change.data) : 'no data'
+                                                    })
+                                                })
+                                            } else {
+                                                console.log('📦 No offline data found for key:', key)
+                                            }
+                                            
+                                            // Also check all cortext keys
+                                            const allKeys = Object.keys(localStorage).filter(k => k.startsWith('cortext_offline_'))
+                                            console.log('📦 All cortext offline keys:', allKeys)
+                                            
+                                        } catch (error) {
+                                            console.error('❌ Error reading offline storage:', error)
+                                        }
+                                    }}
+                                    className="h-6 px-2 text-xs text-purple-600 border-purple-300 hover:bg-purple-200 dark:text-purple-400 dark:border-purple-700 dark:hover:bg-purple-800"
+                                >
+                                    Debug Storage
+                                </Button>
+                                <Button 
+                                    size="sm" 
+                                    variant="outline" 
+                                    onClick={() => {
+                                        console.log('🧪 Basic Auto-Save Test')
+                                        console.log('🔧 Auto-save object:', autoSave)
+                                        console.log('🔧 isFullyLoaded:', isFullyLoaded)
+                                        console.log('🔧 hasUserInteracted:', hasUserInteracted)
+                                        
+                                        // Test basic data
+                                        const testData = {
+                                            title: 'Test Title',
+                                            subtitle: 'Test Subtitle',
+                                            trailer: '',
+                                            status: 'draft',
+                                            live: false,
+                                            pinned: false,
+                                            redirect: '',
+                                            slug: 'test-title',
+                                            authors: [],
+                                            categories: [],
+                                            images: null,
+                                            blogId: article?.blogId || null,
+                                            body: JSON.stringify([{ id: '1', type: 'text', content: 'Test content' }]),
+                                            createdBy: userId,
+                                        }
+                                        
+                                        console.log('🧪 Calling processChanges with test data...')
+                                        autoSave.processChanges(testData, { isInitialLoad: false })
+                                    }}
+                                    className="h-6 px-2 text-xs text-purple-600 border-purple-300 hover:bg-purple-200 dark:text-purple-400 dark:border-purple-700 dark:hover:bg-purple-800"
+                                >
+                                    Basic Test
+                                </Button>
+                                <Button 
+                                    size="sm" 
+                                    variant="outline" 
+                                    onClick={() => {
+                                        console.log('🧪 Test Offline Restore')
+                                        
+                                        // Create test offline data
+                                        const testData = {
+                                            title: 'Offline Test Title',
+                                            subtitle: 'Offline Test Subtitle',
+                                            trailer: 'Offline trailer',
+                                            status: 'draft',
+                                            live: true,
+                                            pinned: false,
+                                            redirect: 'https://example.com',
+                                            slug: 'offline-test-title',
+                                            authors: ['author1'],
+                                            categories: ['category1'],
+                                            images: null,
+                                            blogId: article?.blogId || null,
+                                            body: JSON.stringify([
+                                                { id: '1', type: 'text', content: 'Offline test content' },
+                                                { id: '2', type: 'title', content: 'Offline test heading' }
+                                            ]),
+                                            createdBy: userId,
+                                        }
+                                        
+                                        // Store offline
+                                        const changeId = offlineStorage.storeChange({
+                                            articleId,
+                                            data: testData,
+                                            isHumanChange: true,
+                                            version: 1
+                                        })
+                                        
+                                        console.log('💾 Stored test offline change:', changeId)
+                                        console.log('🔄 Now reload the page to test offline restore!')
+                                        
+                                        // Show alert
+                                        alert('Test offline data stored! Reload the page to test offline restore functionality.')
+                                    }}
+                                    className="h-6 px-2 text-xs text-purple-600 border-purple-300 hover:bg-purple-200 dark:text-purple-400 dark:border-purple-700 dark:hover:bg-purple-800"
+                                >
+                                    Test Offline
+                                </Button>
+                            </div>
                         </div>
                     </div>
                 )}

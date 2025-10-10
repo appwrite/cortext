@@ -836,7 +836,7 @@ I've made several changes to your content including creating new paragraphs, upd
             <ScrollArea ref={scrollAreaRef} className="flex-1">
                 {/* Debug panel - sticky to top */}
                 {showDebugPanel && (
-                    <div className="sticky top-0 z-10 p-4 mb-4 bg-purple-100/80 dark:bg-purple-900/80 backdrop-blur-sm">
+                    <div className="sticky top-0 z-10 p-4 mb-4 bg-purple-50/90 dark:bg-purple-950/50 backdrop-blur-sm">
                         <div className="flex items-center justify-between mb-3">
                             <h3 className="text-sm font-semibold text-purple-800 dark:text-purple-200">
                                 Debug
@@ -1047,7 +1047,7 @@ I've made several changes to your content including creating new paragraphs, upd
                                 {/* Debug Mode: Show revision ID for each message */}
                                 {showDebugPanel && m.revisionId && (
                                     <div className={`mt-1 ${m.role === 'assistant' ? 'ml-6' : 'flex justify-end'}`}>
-                                        <div className="inline-flex items-center gap-1 px-2 py-1 bg-purple-100 dark:bg-purple-900 rounded-md text-xs">
+                                        <div className="inline-flex items-center gap-1 px-2 py-1 bg-purple-50/90 dark:bg-purple-950/50 backdrop-blur-sm rounded-md text-xs">
                                             <span className="text-purple-700 dark:text-purple-300 font-medium">Revision:</span>
                                             <span className="text-purple-600 dark:text-purple-400 font-mono">
                                                 {m.revisionId}
@@ -1070,7 +1070,7 @@ I've made several changes to your content including creating new paragraphs, upd
                                         <Button
                                             variant="ghost"
                                             size="sm"
-                                            className="h-6 px-2 text-purple-600 bg-purple-100 hover:bg-purple-200 dark:text-purple-400 dark:bg-purple-900 dark:hover:bg-purple-800 text-xs"
+                                            className="h-6 px-2 text-purple-600 bg-purple-50/90 hover:bg-purple-100/90 dark:text-purple-400 dark:bg-purple-950/50 dark:hover:bg-purple-900/50 backdrop-blur-sm text-xs"
                                             onClick={() => handleViewRawMessage(m)}
                                             title="View raw message data"
                                         >
@@ -1107,7 +1107,7 @@ I've made several changes to your content including creating new paragraphs, upd
                         
                         {/* Debug Mode: Mock Message Buttons */}
                         {debugMode && (
-                            <div className="sticky top-0 z-10 p-4 mb-4 bg-purple-100 dark:bg-purple-900 rounded-lg">
+                            <div className="sticky top-0 z-10 p-4 mb-4 bg-purple-50/90 dark:bg-purple-950/50 backdrop-blur-sm rounded-lg">
                                 <div className="flex items-center justify-between mb-3">
                                     <h3 className="text-sm font-semibold text-purple-800 dark:text-purple-200">
                                         Debug

@@ -282,7 +282,7 @@ export function RevisionPopover({
                         <Button
                           variant="ghost"
                           size="sm"
-                          className="h-7 w-7 p-0 text-purple-600 bg-purple-100 hover:bg-purple-200 dark:text-purple-400 dark:bg-purple-900 dark:hover:bg-purple-800"
+                          className="h-7 w-7 p-0 text-purple-600 bg-purple-50/90 hover:bg-purple-100/90 dark:text-purple-400 dark:bg-purple-950/50 dark:hover:bg-purple-900/50 backdrop-blur-sm"
                           onClick={(e) => {
                             e.stopPropagation()
                             handleViewJson(revision)
@@ -351,7 +351,7 @@ export function RevisionPopover({
           </DialogHeader>
           <div className="flex-1 overflow-hidden">
             <ScrollArea className="h-[60vh] w-full">
-              <pre className="text-xs bg-purple-100 dark:bg-purple-900 p-4 rounded-md overflow-auto text-purple-800 dark:text-purple-200">
+              <pre className="text-xs bg-purple-50/90 dark:bg-purple-950/50 backdrop-blur-sm p-4 rounded-md overflow-auto text-purple-800 dark:text-purple-200">
                 {selectedRevisionForJson ? JSON.stringify(selectedRevisionForJson, null, 2) : ''}
               </pre>
             </ScrollArea>
