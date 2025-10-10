@@ -338,23 +338,152 @@ export function RevisionPopover({
         </AlertDialogContent>
       </AlertDialog>
 
-      {/* JSON Data Dialog */}
+      {/* Enhanced Revision Debug Dialog */}
       <Dialog open={jsonDialogOpen} onOpenChange={setJsonDialogOpen}>
-        <DialogContent className="max-w-4xl max-h-[80vh] overflow-hidden bg-purple-50 dark:bg-purple-950 border-purple-200 dark:border-purple-800">
-          <DialogHeader>
+        <DialogContent className="max-w-6xl h-[90vh] bg-purple-50 dark:bg-purple-950 border-purple-200 dark:border-purple-800 flex flex-col">
+          <DialogHeader className="flex-shrink-0 pb-4">
             <DialogTitle className="text-purple-800 dark:text-purple-200">
-              Revision JSON Data - Version {selectedRevisionForJson?.version}
+              Revision Debug - Version {selectedRevisionForJson?.version}
             </DialogTitle>
             <div className="text-sm text-purple-600 dark:text-purple-400 font-mono">
               ID: {selectedRevisionForJson?.$id}
             </div>
           </DialogHeader>
-          <div className="flex-1 overflow-hidden">
-            <ScrollArea className="h-[60vh] w-full">
-              <pre className="text-xs bg-purple-50/90 dark:bg-purple-950/50 backdrop-blur-sm p-4 rounded-md overflow-auto text-purple-800 dark:text-purple-200">
+          
+          <div className="flex-1 overflow-y-auto pr-2">
+            <div className="space-y-4">
+            {/* Metadata Section */}
+            <div className="bg-purple-100/50 dark:bg-purple-900/30 rounded-lg p-4">
+              <h4 className="text-sm font-semibold text-purple-800 dark:text-purple-200 mb-3">Revision Metadata</h4>
+              <div className="grid grid-cols-2 gap-4 text-xs">
+                <div>
+                  <span className="font-medium text-purple-700 dark:text-purple-300">Created:</span>
+                  <div className="text-purple-600 dark:text-purple-400 font-mono">
+                    {selectedRevisionForJson?.$createdAt ? new Date(selectedRevisionForJson.$createdAt).toLocaleString() : 'N/A'}
+                  </div>
+                </div>
+                <div>
+                  <span className="font-medium text-purple-700 dark:text-purple-300">Updated:</span>
+                  <div className="text-purple-600 dark:text-purple-400 font-mono">
+                    {selectedRevisionForJson?.$updatedAt ? new Date(selectedRevisionForJson.$updatedAt).toLocaleString() : 'N/A'}
+                  </div>
+                </div>
+                <div>
+                  <span className="font-medium text-purple-700 dark:text-purple-300">Status:</span>
+                  <div className="text-purple-600 dark:text-purple-400">
+                    {selectedRevisionForJson?.status || 'draft'}
+                  </div>
+                </div>
+                <div>
+                  <span className="font-medium text-purple-700 dark:text-purple-300">Parent Revision:</span>
+                  <div className="text-purple-600 dark:text-purple-400 font-mono">
+                    {selectedRevisionForJson?.parentRevisionId || 'None (initial)'}
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Trigger Information */}
+            <div className="bg-purple-100/50 dark:bg-purple-900/30 rounded-lg p-4">
+              <h4 className="text-sm font-semibold text-purple-800 dark:text-purple-200 mb-3">Trigger Information</h4>
+              <div className="grid grid-cols-2 gap-4 text-xs">
+                <div>
+                  <span className="font-medium text-purple-700 dark:text-purple-300">Trigger Type:</span>
+                  <div className="text-purple-600 dark:text-purple-400">
+                    {(() => {
+                      const revisionData = selectedRevisionForJson?.data ? JSON.parse(selectedRevisionForJson.data) : {}
+                      if (revisionData.initial) return '🆕 Initial Creation'
+                      if (revisionData.isRevert) return '↩️ Revert'
+                      if (selectedRevisionForJson?.messageId) return '🤖 AI Assistant'
+                      if (selectedRevisionForJson?.userId) return '👤 User Action'
+                      return '💾 Auto-save'
+                    })()}
+                  </div>
+                </div>
+                <div>
+                  <span className="font-medium text-purple-700 dark:text-purple-300">User:</span>
+                  <div className="text-purple-600 dark:text-purple-400">
+                    {selectedRevisionForJson?.userName || selectedRevisionForJson?.userEmail || 'System'}
+                  </div>
+                </div>
+                <div>
+                  <span className="font-medium text-purple-700 dark:text-purple-300">Message ID:</span>
+                  <div className="text-purple-600 dark:text-purple-400 font-mono">
+                    {selectedRevisionForJson?.messageId || 'N/A'}
+                  </div>
+                </div>
+                <div>
+                  <span className="font-medium text-purple-700 dark:text-purple-300">Applied to Article:</span>
+                  <div className="text-purple-600 dark:text-purple-400">
+                    {(() => {
+                      const revisionData = selectedRevisionForJson?.data ? JSON.parse(selectedRevisionForJson.data) : {}
+                      return revisionData.appliedToArticle === true ? '✅ Yes' : revisionData.appliedToArticle === false ? '❌ No' : '❓ Unknown'
+                    })()}
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Changes Summary */}
+            <div className="bg-purple-100/50 dark:bg-purple-900/30 rounded-lg p-4">
+              <h4 className="text-sm font-semibold text-purple-800 dark:text-purple-200 mb-3">Changes Summary</h4>
+              <div className="text-xs">
+                {selectedRevisionForJson?.changes && selectedRevisionForJson.changes.length > 0 ? (
+                  <ul className="space-y-1">
+                    {selectedRevisionForJson.changes.map((change: string, index: number) => (
+                      <li key={index} className="text-purple-600 dark:text-purple-400">
+                        • {change}
+                      </li>
+                    ))}
+                  </ul>
+                ) : (
+                  <div className="text-purple-500 dark:text-purple-500 italic">No changes recorded</div>
+                )}
+              </div>
+            </div>
+
+            {/* Field Changes */}
+            <div className="bg-purple-100/50 dark:bg-purple-900/30 rounded-lg p-4">
+              <h4 className="text-sm font-semibold text-purple-800 dark:text-purple-200 mb-3">Field Changes</h4>
+              <div className="text-xs">
+                {(() => {
+                  const revisionData = selectedRevisionForJson?.data ? JSON.parse(selectedRevisionForJson.data) : {}
+                  const changedAttributes = revisionData.changedAttributes || {}
+                  const fields = Object.keys(changedAttributes)
+                  
+                  if (fields.length === 0) {
+                    return <div className="text-purple-500 dark:text-purple-500 italic">No field changes detected</div>
+                  }
+                  
+                  return (
+                    <div className="space-y-2">
+                      {fields.map(field => (
+                        <div key={field} className="border-l-2 border-purple-300 dark:border-purple-700 pl-3">
+                          <div className="font-medium text-purple-700 dark:text-purple-300">{field}:</div>
+                          <div className="text-purple-600 dark:text-purple-400 font-mono text-xs">
+                            {typeof changedAttributes[field] === 'object' 
+                              ? JSON.stringify(changedAttributes[field], null, 2)
+                              : String(changedAttributes[field])
+                            }
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )
+                })()}
+              </div>
+            </div>
+
+            {/* Raw JSON Data */}
+            <div className="bg-purple-100/50 dark:bg-purple-900/30 rounded-lg p-4">
+              <h4 className="text-sm font-semibold text-purple-800 dark:text-purple-200 mb-3">Raw JSON Data</h4>
+              <div className="max-h-[300px] overflow-auto">
+                <pre className="text-xs bg-purple-50/90 dark:bg-purple-950/50 backdrop-blur-sm p-4 rounded-md text-purple-800 dark:text-purple-200">
                 {selectedRevisionForJson ? JSON.stringify(selectedRevisionForJson, null, 2) : ''}
               </pre>
-            </ScrollArea>
+              </div>
+            </div>
+            </div>
           </div>
         </DialogContent>
       </Dialog>

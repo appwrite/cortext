@@ -512,7 +512,7 @@ export function AgentChat({
                 // Only clear loading state when the message has actual content (not just placeholder)
                 const hasRealContent = lastDbMessage.content && 
                     lastDbMessage.content.trim().length > 0 && 
-                    lastDbMessage.content !== 'Thinking...'
+                    lastDbMessage.content !== ''
                 
                 // Clear immediately when real AI message arrives (no timeout needed)
                 if (hasRealContent) {

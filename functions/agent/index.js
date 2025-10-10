@@ -709,7 +709,7 @@ export default async function ({ req, res, log, error }) {
           ServerID.unique(),
           {
             conversationId,
-            content: 'Thinking...', // Start with a visual indicator
+            content: '', // Start with a visual indicator
             role: 'assistant',
             userId: messageUserId || null,
             agentId: agentId || 'cortext-agent',
