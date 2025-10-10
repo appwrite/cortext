@@ -6,7 +6,7 @@ import { ScrollArea } from '@/components/ui/scroll-area'
 import { Drawer, DrawerContent, DrawerHeader, DrawerTitle } from '@/components/ui/drawer'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { MarkdownRenderer } from '@/components/ui/markdown-renderer'
-import { Brain, Sparkles, Send, MessageCircle, CornerDownLeft, Code, Copy, Check } from 'lucide-react'
+import { Brain, Send, MessageCircle, CornerDownLeft, Code, Copy, Check } from 'lucide-react'
 import { useIsMobile } from '@/hooks/use-mobile'
 import { useConversationManager, useMessagesWithNotifications } from '@/hooks/use-conversations'
 import { ConversationSelector } from './conversation-selector'
@@ -1223,7 +1223,7 @@ I've made several changes to your content including creating new paragraphs, upd
                         onClick={applySEOTitle}
                         disabled={isPromptLocked}
                     >
-                        <Sparkles className="h-3 w-3" /> Optimize SEO title
+                        Optimize SEO title
                     </Button>
                     <Button 
                         variant="secondary" 
@@ -1232,7 +1232,7 @@ I've made several changes to your content including creating new paragraphs, upd
                         onClick={generateMetaDescription}
                         disabled={isPromptLocked}
                     >
-                        <Sparkles className="h-3 w-3" /> Generate meta description
+                        Generate meta description
                     </Button>
                     <Button 
                         variant="secondary" 
@@ -1241,7 +1241,7 @@ I've made several changes to your content including creating new paragraphs, upd
                         onClick={() => send("Improve this title")}
                         disabled={isPromptLocked}
                     >
-                        <Sparkles className="h-3 w-3" /> Improve title
+                        Improve title
                     </Button>
                     <Button 
                         variant="secondary" 
@@ -1250,7 +1250,7 @@ I've made several changes to your content including creating new paragraphs, upd
                         onClick={() => send("Write a better introduction")}
                         disabled={isPromptLocked}
                     >
-                        <Sparkles className="h-3 w-3" /> Better intro
+                        Better intro
                     </Button>
                     <Button 
                         variant="secondary" 
@@ -1259,7 +1259,7 @@ I've made several changes to your content including creating new paragraphs, upd
                         onClick={() => send("Add more sections to structure this content")}
                         disabled={isPromptLocked}
                     >
-                        <Sparkles className="h-3 w-3" /> Add sections
+                        Add sections
                     </Button>
                 </div>
                 <div className="relative">

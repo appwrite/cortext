@@ -69,31 +69,6 @@ export function ConversationPlaceholder({ onSendMessage }: ConversationPlacehold
           ))}
         </div>
       </div>
-
-      {/* Call to action */}
-      <div className="text-center space-y-2">
-        <p className="text-sm text-muted-foreground">Try asking:</p>
-        <div className="flex flex-wrap gap-1 justify-center">
-          <button 
-            onClick={() => onSendMessage?.("Improve this title")}
-            className="text-sm text-accent-foreground bg-accent px-2 py-1 rounded hover:bg-accent/80 transition-colors cursor-pointer"
-          >
-            "Improve this title"
-          </button>
-          <button 
-            onClick={() => onSendMessage?.("Better intro")}
-            className="text-sm text-accent-foreground bg-accent px-2 py-1 rounded hover:bg-accent/80 transition-colors cursor-pointer"
-          >
-            "Better intro"
-          </button>
-          <button 
-            onClick={() => onSendMessage?.("Add sections")}
-            className="text-sm text-accent-foreground bg-accent px-2 py-1 rounded hover:bg-accent/80 transition-colors cursor-pointer"
-          >
-            "Add sections"
-          </button>
-        </div>
-      </div>
     </div>
   )
 }

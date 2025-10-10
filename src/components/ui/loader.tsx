@@ -9,6 +9,52 @@ interface FullscreenLoaderProps {
 
 export function FullscreenLoader({ isVisible, onComplete }: FullscreenLoaderProps) {
   const [shouldRender, setShouldRender] = useState(isVisible);
+  const [welcomeMessage, setWelcomeMessage] = useState("");
+
+  // Array of different welcome messages
+  const welcomeMessages = [
+    "Welcome back",
+    "Ready to create?",
+    "Let's write something amazing",
+    "Time to craft great content",
+    "Your ideas await",
+    "Ready to collaborate?",
+    "Let's build something together",
+    "Welcome to your workspace",
+    "Ready to get started?",
+    "Time to create magic",
+    "Let's make it happen",
+    "Your creativity awaits",
+    "Ready to inspire?",
+    "Let's tell great stories",
+    "Time to shine",
+    "Ready to innovate?",
+    "Let's create something special",
+    "Your voice matters",
+    "Ready to make an impact?",
+    "Let's bring ideas to life",
+    "Time to express yourself",
+    "Ready to explore?",
+    "Let's craft perfection",
+    "Your story begins here",
+    "Ready to connect?",
+    "Let's make it memorable",
+    "Time to be brilliant",
+    "Ready to transform?",
+    "Let's write the future",
+    "Your journey continues",
+    "Ready to discover?",
+    "Let's create together",
+    "Time to be extraordinary",
+    "Ready to inspire others?",
+    "Let's make it count"
+  ];
+
+  // Set a random welcome message when component mounts
+  useEffect(() => {
+    const randomMessage = welcomeMessages[Math.floor(Math.random() * welcomeMessages.length)];
+    setWelcomeMessage(randomMessage);
+  }, []);
 
   useEffect(() => {
     if (isVisible) {
@@ -41,7 +87,7 @@ export function FullscreenLoader({ isVisible, onComplete }: FullscreenLoaderProp
               className="text-center"
             >
               <div className="text-base font-normal text-muted-foreground">
-                Welcome back
+                {welcomeMessage}
               </div>
             </motion.div>
           </div>

@@ -42,7 +42,7 @@ import { formatDateForDisplay, formatDateCompact, formatDateRelative } from '@/l
 import { cn } from '@/lib/utils'
 import { CommentableInput, CommentableSection, useCommentCounts, useAllComments, CommentPopover, CommentsSidebar } from '@/components/comments'
 
-export const Route = createFileRoute('/_protected/content')({
+export const Route = createFileRoute('/_protected/dashboard')({
     component: RouteComponent,
 })
 
@@ -73,8 +73,8 @@ function RouteComponent() {
     const { user, signOut } = useAuth()
     const userId = user?.$id
 
-    // Set document title for content
-    useDocumentTitle('Content')
+    // Set document title for dashboard
+    useDocumentTitle('Dashboard')
 
     if (!userId) {
         return <div className="p-6">Loading...</div>
@@ -84,7 +84,7 @@ function RouteComponent() {
         <TeamBlogProvider userId={userId}>
             <div className="h-dvh overflow-y-auto overscroll-none flex flex-col">
                 <Header userId={userId} onSignOut={() => signOut.mutate()} user={user} />
-                <Content userId={userId} user={user} />
+                <Dashboard userId={userId} user={user} />
             </div>
         </TeamBlogProvider>
     )
@@ -141,7 +141,7 @@ function Header({ userId, onSignOut, user }: { userId: string; onSignOut: () => 
     )
 }
 
-function Content({ userId, user }: { userId: string; user: any }) {
+function Dashboard({ userId, user }: { userId: string; user: any }) {
     const search = useSearch({ strict: false }) as { articleId?: string }
     const navigate = useNavigate()
     const { currentBlog } = useTeamBlogContext()
@@ -151,7 +151,7 @@ function Content({ userId, user }: { userId: string; user: any }) {
         return (
             <main className="flex-1">
                 <ArticleProvider articleId={editingId}>
-                    <ArticleEditor key={editingId} articleId={editingId} userId={userId} user={user} onBack={() => navigate({ to: '/content', search: {} })} />
+                    <ArticleEditor key={editingId} articleId={editingId} userId={userId} user={user} onBack={() => navigate({ to: '/dashboard', search: {} })} />
                 </ArticleProvider>
             </main>
         )
@@ -214,7 +214,7 @@ function EmptyArticlesState({ currentBlog, userId, user }: { currentBlog: any; u
                             // Update article with revision ID
                             await db.articles.update(article.$id, { activeRevisionId: revision.$id })
                             
-                            navigate({ to: '/content', search: { articleId: article.$id } })
+                            navigate({ to: '/dashboard', search: { articleId: article.$id } })
                         } catch (error) {
                             toast({ 
                                 title: 'Failed to create article', 
@@ -279,10 +279,6 @@ function ArticlesList({ userId, user }: { userId: string; user: any }) {
     const pageSize = 10 // Fixed page size
     const [query, setQuery] = useState('')
     const [debouncedQuery, setDebouncedQuery] = useState('')
-    
-    // Bulk selection state
-    const [selectedArticles, setSelectedArticles] = useState<Set<string>>(new Set())
-    const [showBulkDeleteConfirm, setShowBulkDeleteConfirm] = useState(false)
 
     // Debounce search query to avoid excessive API calls
     useEffect(() => {
@@ -333,72 +329,10 @@ function ArticlesList({ userId, user }: { userId: string; user: any }) {
         onError: () => toast({ title: 'Failed to update pin' }),
     })
 
-    const bulkDeleteArticles = useMutation({
-        mutationFn: async (articleIds: string[]) => {
-            // Verify ownership and delete articles
-            const deletePromises = articleIds.map(async (id) => {
-                const article = await db.articles.get(id)
-                if (article.createdBy !== userId) throw new Error(`Forbidden: Article ${id}`)
-                return db.articles.delete(id)
-            })
-            return Promise.all(deletePromises)
-        },
-        onSuccess: () => {
-            qc.invalidateQueries({ queryKey: ['articles', userId, currentBlog?.$id] })
-            setSelectedArticles(new Set())
-            setShowBulkDeleteConfirm(false)
-            toast({ title: 'Articles deleted successfully' })
-        },
-        onError: (error) => {
-            console.error('Bulk delete error:', error)
-            toast({ 
-                title: 'Failed to delete articles', 
-                description: error instanceof Error ? error.message : 'Unknown error',
-                variant: 'destructive'
-            })
-        },
-    })
-
-    // Helper functions for selection
-    const toggleArticleSelection = (articleId: string) => {
-        setSelectedArticles(prev => {
-            const newSet = new Set(prev)
-            if (newSet.has(articleId)) {
-                newSet.delete(articleId)
-            } else {
-                newSet.add(articleId)
-            }
-            return newSet
-        })
-    }
-
-    const selectAllArticles = () => {
-        const allIds = new Set(all.map(a => a.$id))
-        setSelectedArticles(allIds)
-    }
-
-    const clearSelection = () => {
-        setSelectedArticles(new Set())
-    }
-
-    const handleBulkDelete = () => {
-        const articleIds = Array.from(selectedArticles)
-        if (articleIds.length > 0) {
-            bulkDeleteArticles.mutate(articleIds)
-        }
-    }
-
     // Reset to first page when search query changes
     useEffect(() => {
         setCurrentPage(1)
-        // Clear selection when search changes
-        setSelectedArticles(new Set())
     }, [debouncedQuery])
-
-    // Clear selection when page changes
-    useEffect(() => {
-        setSelectedArticles(new Set())
-    }, [currentPage])
 
     const all = articleList?.documents ?? []
     const pinned = all.filter((a) => a.pinned)
@@ -412,74 +346,26 @@ function ArticlesList({ userId, user }: { userId: string; user: any }) {
 
     const ColGroup = () => (
         <colgroup>
-            <col className="w-[24px]" />
-            <col className="w-[76%]" />
+            <col className="w-[85%]" />
             <col className="hidden sm:table-column w-[15%]" />
-            <col className="w-[24px]" />
         </colgroup>
     )
 
-    const ArticlesTable = ({ rows }: { rows: Articles[] }) => {
-        const allRowIds = rows.map(a => a.$id)
-        const selectedRowIds = allRowIds.filter(id => selectedArticles.has(id))
-        const isAllSelected = rows.length > 0 && selectedRowIds.length === rows.length
-        const isIndeterminate = selectedRowIds.length > 0 && selectedRowIds.length < rows.length
-
-        return (
-            <div className="rounded-md border overflow-hidden">
-                <Table className="table-fixed">
-                    <ColGroup />
-                    <TableHeader>
-                        <TableRow>
-                            <TableHead className="w-[24px]">
-                                <Checkbox
-                                    checked={isAllSelected}
-                                    onCheckedChange={(checked) => {
-                                        if (checked) {
-                                            rows.forEach(a => selectedArticles.add(a.$id))
-                                            setSelectedArticles(new Set(selectedArticles))
-                                        } else {
-                                            rows.forEach(a => selectedArticles.delete(a.$id))
-                                            setSelectedArticles(new Set(selectedArticles))
-                                        }
-                                    }}
-                                />
-                            </TableHead>
-                            <TableHead>Title</TableHead>
-                            <TableHead className="hidden sm:table-cell">Updated</TableHead>
-                            <TableHead className="w-[24px]"></TableHead>
-                        </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                        {rows.map((a) => (
-                            <TableRow key={a.$id} className="group">
-                                <TableCell className="w-[24px]">
-                                    <Checkbox
-                                        checked={selectedArticles.has(a.$id)}
-                                        onCheckedChange={() => toggleArticleSelection(a.$id)}
-                                    />
-                                </TableCell>
-                                <TableCell className="max-w-[420px] truncate">
-                                    <div className="flex items-center gap-2">
-                                        <Link to="/content" search={{ articleId: a.$id }} className="hover:underline">
-                                            {a.title || 'Untitled'}
-                                        </Link>
-                                        {a.status === 'draft' && (
-                                            <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-white text-black border border-black/20">
-                                                Draft
-                                            </span>
-                                        )}
-                                        {a.status === 'archive' && (
-                                            <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-white text-black border border-black/20">
-                                                Archive
-                                            </span>
-                                        )}
-                                    </div>
-                                </TableCell>
-                                <TableCell className="hidden sm:table-cell text-muted-foreground text-sm">
-                                    {formatDateRelative(a.$updatedAt)}
-                                </TableCell>
-                                <TableCell className="w-[24px]">
+    const ArticlesTable = ({ rows }: { rows: Articles[] }) => (
+        <div className="rounded-md border overflow-hidden">
+            <Table className="table-fixed">
+                <ColGroup />
+                <TableHeader>
+                    <TableRow>
+                        <TableHead>Title</TableHead>
+                        <TableHead className="hidden sm:table-cell">Updated</TableHead>
+                    </TableRow>
+                </TableHeader>
+                <TableBody>
+                    {rows.map((a) => (
+                        <TableRow key={a.$id} className="group">
+                            <TableCell className="max-w-[420px] truncate">
+                                <div className="flex items-center gap-2">
                                     <Button
                                         variant="ghost"
                                         size="sm"
@@ -492,14 +378,30 @@ function ArticlesList({ userId, user }: { userId: string; user: any }) {
                                             fill={a.pinned ? 'currentColor' : 'none'}
                                         />
                                     </Button>
-                                </TableCell>
-                            </TableRow>
-                        ))}
-                    </TableBody>
-                </Table>
-            </div>
-        )
-    }
+                                    <Link to="/dashboard" search={{ articleId: a.$id }} className="hover:underline">
+                                        {a.title || 'Untitled'}
+                                    </Link>
+                                    {a.status === 'draft' && (
+                                        <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-white text-black border border-black/20">
+                                            Draft
+                                        </span>
+                                    )}
+                                    {a.status === 'archive' && (
+                                        <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-white text-black border border-black/20">
+                                            Archive
+                                        </span>
+                                    )}
+                                </div>
+                            </TableCell>
+                            <TableCell className="hidden sm:table-cell text-muted-foreground text-sm">
+                                {formatDateRelative(a.$updatedAt)}
+                            </TableCell>
+                        </TableRow>
+                    ))}
+                </TableBody>
+            </Table>
+        </div>
+    )
 
     return (
         <main className="flex-1">
@@ -538,7 +440,7 @@ function ArticlesList({ userId, user }: { userId: string; user: any }) {
                       // Update article with revision ID
                       await db.articles.update(article.$id, { activeRevisionId: revision.$id })
                       
-                      navigate({ to: '/content', search: { articleId: article.$id } })
+                      navigate({ to: '/dashboard', search: { articleId: article.$id } })
                     } catch (error) {
                       toast({
                         title: 'Error',
@@ -602,7 +504,7 @@ function ArticlesList({ userId, user }: { userId: string; user: any }) {
                                 // Update article with revision ID
                                 await db.articles.update(article.$id, { activeRevisionId: revision.$id })
                                 
-                                navigate({ to: '/content', search: { articleId: article.$id } })
+                                navigate({ to: '/dashboard', search: { articleId: article.$id } })
                             } catch (error) {
                                 toast({ 
                                     title: 'Failed to create article', 
@@ -702,57 +604,6 @@ function ArticlesList({ userId, user }: { userId: string; user: any }) {
                     </div>
                 )}
             </div>
-            
-            {/* Floating Bottom Menu */}
-            {selectedArticles.size > 0 && (
-                <div className="fixed bottom-6 left-1/2 transform -translate-x-1/2 z-50">
-                    <div className="bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 border rounded-lg shadow-lg px-4 py-3 flex items-center gap-3 animate-in slide-in-from-bottom-2 duration-200">
-                        <span className="text-sm font-medium text-muted-foreground">
-                            {selectedArticles.size} article{selectedArticles.size > 1 ? 's' : ''} selected
-                        </span>
-                        <div className="flex items-center gap-2">
-                            <Button
-                                variant="outline"
-                                size="sm"
-                                onClick={clearSelection}
-                                className="cursor-pointer"
-                            >
-                                Clear
-                            </Button>
-                            <AlertDialog open={showBulkDeleteConfirm} onOpenChange={setShowBulkDeleteConfirm}>
-                                <AlertDialogTrigger asChild>
-                                    <Button 
-                                        size="sm" 
-                                        variant="destructive"
-                                        className="cursor-pointer bg-red-600 hover:bg-red-700 text-white border-red-600 hover:border-red-700"
-                                    >
-                                        <Trash2 className="h-4 w-4 mr-1" /> 
-                                        Delete
-                                    </Button>
-                                </AlertDialogTrigger>
-                                <AlertDialogContent>
-                                    <AlertDialogHeader>
-                                        <AlertDialogTitle>Delete Articles</AlertDialogTitle>
-                                        <AlertDialogDescription>
-                                            Are you sure you want to delete {selectedArticles.size} article{selectedArticles.size > 1 ? 's' : ''}? This action cannot be undone.
-                                        </AlertDialogDescription>
-                                    </AlertDialogHeader>
-                                    <AlertDialogFooter>
-                                        <AlertDialogCancel>Cancel</AlertDialogCancel>
-                                        <AlertDialogAction 
-                                            onClick={handleBulkDelete}
-                                            disabled={bulkDeleteArticles.isPending}
-                                            className="bg-red-600 hover:bg-red-700 text-white border-red-600 hover:border-red-700"
-                                        >
-                                            {bulkDeleteArticles.isPending ? 'Deleting...' : 'Delete'}
-                                        </AlertDialogAction>
-                                    </AlertDialogFooter>
-                                </AlertDialogContent>
-                            </AlertDialog>
-                        </div>
-                    </div>
-                </div>
-            )}
         </main>
     )
 }
@@ -1285,7 +1136,7 @@ function ArticleEditor({ articleId, userId, user, onBack }: { articleId: string;
                 description: `Created "${newArticle.title}"`
             })
             // Navigate to the new article
-            navigate({ to: '/content', search: { articleId: newArticle.$id } })
+            navigate({ to: '/dashboard', search: { articleId: newArticle.$id } })
         },
         onError: (error) => {
             console.error('Article duplication error:', error)
@@ -2191,15 +2042,7 @@ function ArticleEditor({ articleId, userId, user, onBack }: { articleId: string;
     }
 
     if (isPending || !article) {
-        return (
-            <div className="h-dvh flex items-center justify-center">
-                <div className="text-center">
-                    <div className="text-sm text-muted-foreground">
-                        Loading…
-                    </div>
-                </div>
-            </div>
-        )
+        return <div className="text-sm text-muted-foreground">Loading…</div>
     }
 
     return (
@@ -2632,7 +2475,7 @@ function ArticleEditor({ articleId, userId, user, onBack }: { articleId: string;
                                 articleId={articleId}
                                 blogId={currentBlog?.$id || ''}
                                 targetType="trailer"
-                                 commentCount={trailerCommentCount?.count || 0}
+                                commentCount={trailerCommentCount.count}
                                 hasNewComments={trailerCommentCount.hasNewComments}
                                 className="items-center"
                             >
@@ -2657,7 +2500,7 @@ function ArticleEditor({ articleId, userId, user, onBack }: { articleId: string;
                                     articleId={articleId}
                                     blogId={currentBlog?.$id || ''}
                                     targetType="title"
-                                     commentCount={titleCommentCount?.count || 0}
+                                    commentCount={titleCommentCount.count}
                                     hasNewComments={titleCommentCount.hasNewComments}
                                     className="items-center"
                                 >
@@ -2696,7 +2539,7 @@ function ArticleEditor({ articleId, userId, user, onBack }: { articleId: string;
                                 articleId={articleId}
                                 blogId={currentBlog?.$id || ''}
                                 targetType="subtitle"
-                                 commentCount={subtitleCommentCount?.count || 0}
+                                commentCount={subtitleCommentCount.count}
                                 hasNewComments={subtitleCommentCount.hasNewComments}
                                 className="items-start"
                             >
@@ -2894,7 +2737,7 @@ function ArticleEditor({ articleId, userId, user, onBack }: { articleId: string;
                                 const position = rowPositions[s.id]
                                 if (!position) return null // Don't render until position is measured
                                 
-                                const commentCount = getCommentCount('section', s.id)?.count || 0;
+                                const commentCount = getCommentCount('section', s.id).count;
                                 const isHovered = hoveredRowId === s.id;
                                 const isPopoverOpen = openPopoverId === s.id;
                                 return (
@@ -2941,7 +2784,7 @@ function ArticleEditor({ articleId, userId, user, onBack }: { articleId: string;
                                 articleId={articleId}
                                 blogId={currentBlog?.$id || ''}
                                 targetType="redirect"
-                                 commentCount={redirectCommentCount?.count || 0}
+                                commentCount={redirectCommentCount.count}
                                 hasNewComments={redirectCommentCount.hasNewComments}
                                 className="items-center"
                             >
