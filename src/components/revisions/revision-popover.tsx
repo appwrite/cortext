@@ -5,7 +5,7 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
-import { Trash2, History, Code } from 'lucide-react'
+import { Trash2, History, Code, Copy, Check } from 'lucide-react'
 import { useRevisionHistory } from '@/hooks/use-revisions'
 import { formatDateRelative } from '@/lib/date-utils'
 import { cn } from '@/lib/utils'
@@ -41,6 +41,7 @@ export function RevisionPopover({
   const [popoverPosition, setPopoverPosition] = useState<'bottom' | 'top'>('bottom')
   const [jsonDialogOpen, setJsonDialogOpen] = useState(false)
   const [selectedRevisionForJson, setSelectedRevisionForJson] = useState<any>(null)
+  const [copiedContent, setCopiedContent] = useState<string | null>(null)
   const containerRef = useRef<HTMLDivElement>(null)
   const { revisionHistory, isLoading } = useRevisionHistory(articleId)
 
@@ -58,6 +59,18 @@ export function RevisionPopover({
   const handleViewJson = (revision: any) => {
     setSelectedRevisionForJson(revision)
     setJsonDialogOpen(true)
+  }
+
+  // Handle copying content to clipboard
+  const handleCopyToClipboard = async (content: string, contentType: string) => {
+    try {
+      await navigator.clipboard.writeText(content)
+      setCopiedContent(contentType)
+      // Reset the copied state after 2 seconds
+      setTimeout(() => setCopiedContent(null), 2000)
+    } catch (error) {
+      console.error('Failed to copy to clipboard:', error)
+    }
   }
 
   // Calculate popover position and height
@@ -476,7 +489,27 @@ export function RevisionPopover({
 
             {/* Raw JSON Data */}
             <div className="bg-purple-100/50 dark:bg-purple-900/30 rounded-lg p-4">
-              <h4 className="text-sm font-semibold text-purple-800 dark:text-purple-200 mb-3">Raw JSON Data</h4>
+              <div className="flex items-center justify-between mb-3">
+                <h4 className="text-sm font-semibold text-purple-800 dark:text-purple-200">Raw JSON Data</h4>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-6 px-2 text-xs text-purple-600 hover:bg-purple-200 dark:text-purple-400 dark:hover:bg-purple-800"
+                  onClick={() => handleCopyToClipboard(JSON.stringify(selectedRevisionForJson, null, 2), 'raw-json')}
+                >
+                  {copiedContent === 'raw-json' ? (
+                    <>
+                      <Check className="h-3 w-3 mr-1" />
+                      Copied
+                    </>
+                  ) : (
+                    <>
+                      <Copy className="h-3 w-3 mr-1" />
+                      Copy
+                    </>
+                  )}
+                </Button>
+              </div>
               <div className="max-h-[300px] overflow-auto">
                 <pre className="text-xs bg-purple-50/90 dark:bg-purple-950/50 backdrop-blur-sm p-4 rounded-md text-purple-800 dark:text-purple-200">
                 {selectedRevisionForJson ? JSON.stringify(selectedRevisionForJson, null, 2) : ''}

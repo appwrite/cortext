@@ -1043,8 +1043,30 @@ export default async function ({ req, res, log, error }) {
               const currentRevisionData = currentRevision.data ? JSON.parse(currentRevision.data) : {};
               const currentAttributes = currentRevisionData.attributes || currentRevisionData;
               
-              // Create updated article data
-              const updatedArticle = { ...currentArticle };
+              // Create updated article data using ONLY current revision data
+              // The revision contains the complete, most up-to-date content
+              const updatedArticle = {
+                // Use ONLY revision data for all fields
+                title: currentAttributes.title,
+                subtitle: currentAttributes.subtitle,
+                trailer: currentAttributes.trailer,
+                status: currentAttributes.status,
+                live: currentAttributes.live,
+                pinned: currentAttributes.pinned,
+                redirect: currentAttributes.redirect,
+                slug: currentAttributes.slug,
+                authors: currentAttributes.authors,
+                categories: currentAttributes.categories,
+                images: currentAttributes.images,
+                blogId: currentAttributes.blogId,
+                // Keep only essential metadata from current article
+                $id: currentArticle.$id,
+                $createdAt: currentArticle.$createdAt,
+                $updatedAt: currentArticle.$updatedAt,
+                $permissions: currentArticle.$permissions,
+                $databaseId: currentArticle.$databaseId,
+                $collectionId: currentArticle.$collectionId
+              };
               
               // Initialize sections from current revision data
               let sections = currentAttributes.sections || [];

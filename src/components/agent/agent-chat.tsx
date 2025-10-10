@@ -6,7 +6,7 @@ import { ScrollArea } from '@/components/ui/scroll-area'
 import { Drawer, DrawerContent, DrawerHeader, DrawerTitle } from '@/components/ui/drawer'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { MarkdownRenderer } from '@/components/ui/markdown-renderer'
-import { Brain, Sparkles, Send, MessageCircle, CornerDownLeft, Code } from 'lucide-react'
+import { Brain, Sparkles, Send, MessageCircle, CornerDownLeft, Code, Copy, Check } from 'lucide-react'
 import { useIsMobile } from '@/hooks/use-mobile'
 import { useConversationManager, useMessagesWithNotifications } from '@/hooks/use-conversations'
 import { ConversationSelector } from './conversation-selector'
@@ -82,6 +82,7 @@ export function AgentChat({
     const [totalOutputTokens, setTotalOutputTokens] = useState<number>(0)
     const [rawMessageModalOpen, setRawMessageModalOpen] = useState<boolean>(false)
     const [selectedMessageForRaw, setSelectedMessageForRaw] = useState<Message | null>(null)
+    const [copiedContent, setCopiedContent] = useState<string | null>(null)
     const isMobile = useIsMobile()
     const inputRef = useRef<HTMLTextAreaElement>(null)
     const currentConversationIdRef = useRef<string | null>(currentConversationId)
@@ -144,6 +145,18 @@ export function AgentChat({
     const handleViewRawMessage = useCallback((message: Message) => {
         setSelectedMessageForRaw(message)
         setRawMessageModalOpen(true)
+    }, [])
+
+    // Handle copying content to clipboard
+    const handleCopyToClipboard = useCallback(async (content: string, contentType: string) => {
+        try {
+            await navigator.clipboard.writeText(content)
+            setCopiedContent(contentType)
+            // Reset the copied state after 2 seconds
+            setTimeout(() => setCopiedContent(null), 2000)
+        } catch (error) {
+            console.error('Failed to copy to clipboard:', error)
+        }
     }, [])
 
 
@@ -1081,7 +1094,7 @@ I've made several changes to your content including creating new paragraphs, upd
                                                 <div className="w-1 h-1 bg-muted-foreground rounded-full animate-pulse" style={{ animationDelay: '150ms' }}></div>
                                                 <div className="w-1 h-1 bg-muted-foreground rounded-full animate-pulse" style={{ animationDelay: '300ms' }}></div>
                                             </div>
-                                            <span className="text-xs text-muted-foreground">Thinking...</span>
+                                            <span className="text-xs text-muted-foreground">Thinking</span>
                                         </div>
                                     </div>
                                 </div>
@@ -1406,7 +1419,27 @@ I've made several changes to your content including creating new paragraphs, upd
                                 
                                 {/* Content */}
                                 <div className="space-y-2">
-                                    <h4 className="font-medium text-sm">Content:</h4>
+                                    <div className="flex items-center justify-between">
+                                        <h4 className="font-medium text-sm">Content:</h4>
+                                        <Button
+                                            variant="ghost"
+                                            size="sm"
+                                            className="h-6 px-2 text-xs"
+                                            onClick={() => handleCopyToClipboard(selectedMessageForRaw.content, 'content')}
+                                        >
+                                            {copiedContent === 'content' ? (
+                                                <>
+                                                    <Check className="h-3 w-3 mr-1" />
+                                                    Copied
+                                                </>
+                                            ) : (
+                                                <>
+                                                    <Copy className="h-3 w-3 mr-1" />
+                                                    Copy
+                                                </>
+                                            )}
+                                        </Button>
+                                    </div>
                                     <ScrollArea className="h-32 border rounded-md p-3 bg-muted/50">
                                         <pre className="text-xs whitespace-pre-wrap font-mono">
                                             {selectedMessageForRaw.content}
@@ -1417,7 +1450,27 @@ I've made several changes to your content including creating new paragraphs, upd
                                 {/* Metadata */}
                                 {selectedMessageForRaw.metadata && (
                                     <div className="space-y-2">
-                                        <h4 className="font-medium text-sm">Metadata:</h4>
+                                        <div className="flex items-center justify-between">
+                                            <h4 className="font-medium text-sm">Metadata:</h4>
+                                            <Button
+                                                variant="ghost"
+                                                size="sm"
+                                                className="h-6 px-2 text-xs"
+                                                onClick={() => handleCopyToClipboard(JSON.stringify(selectedMessageForRaw.metadata, null, 2), 'metadata')}
+                                            >
+                                                {copiedContent === 'metadata' ? (
+                                                    <>
+                                                        <Check className="h-3 w-3 mr-1" />
+                                                        Copied
+                                                    </>
+                                                ) : (
+                                                    <>
+                                                        <Copy className="h-3 w-3 mr-1" />
+                                                        Copy
+                                                    </>
+                                                )}
+                                            </Button>
+                                        </div>
                                         <ScrollArea className="h-32 border rounded-md p-3 bg-muted/50">
                                             <pre className="text-xs whitespace-pre-wrap font-mono">
                                                 {JSON.stringify(selectedMessageForRaw.metadata, null, 2)}
