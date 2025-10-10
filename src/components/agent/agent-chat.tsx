@@ -653,24 +653,6 @@ export function AgentChat({
         }
     }
 
-    const applySEOTitle = async () => {
-        const next = makeSEOTitle(title)
-        onSetTitle(next)
-        
-        // Send a message about the title update
-        const message = `Update the title to: "${next}"`
-        send(message)
-    }
-
-    const generateMetaDescription = async () => {
-        const base = title || 'this article'
-        const next = `Learn about ${base.toLowerCase()} with practical insights, best practices, and actionable tips. Discover how to implement and optimize for better results.`
-        onSetSubtitle(next)
-        
-        // Send a message about the meta description update
-        const message = `Generate a meta description for this article`
-        send(message)
-    }
 
     // Mock message functions for debug mode
     const addMockUserMessage = async () => {
@@ -1220,7 +1202,7 @@ I've made several changes to your content including creating new paragraphs, upd
                         variant="secondary" 
                         size="sm" 
                         className="gap-1 h-6 px-2 text-[10px]" 
-                        onClick={applySEOTitle}
+                        onClick={() => send("Please optimize this title for SEO by making it more compelling and search-friendly while keeping the core message intact.")}
                         disabled={isPromptLocked}
                     >
                         Optimize SEO title
@@ -1229,7 +1211,7 @@ I've made several changes to your content including creating new paragraphs, upd
                         variant="secondary" 
                         size="sm" 
                         className="gap-1 h-6 px-2 text-[10px]" 
-                        onClick={generateMetaDescription}
+                        onClick={() => send("Generate a compelling meta description that summarizes this article's key value proposition and encourages clicks from search results.")}
                         disabled={isPromptLocked}
                     >
                         Generate meta description
@@ -1238,7 +1220,7 @@ I've made several changes to your content including creating new paragraphs, upd
                         variant="secondary" 
                         size="sm" 
                         className="gap-1 h-6 px-2 text-[10px]" 
-                        onClick={() => send("Improve this title")}
+                        onClick={() => send("Please improve this title to make it more engaging and click-worthy while maintaining accuracy.")}
                         disabled={isPromptLocked}
                     >
                         Improve title
@@ -1247,7 +1229,7 @@ I've made several changes to your content including creating new paragraphs, upd
                         variant="secondary" 
                         size="sm" 
                         className="gap-1 h-6 px-2 text-[10px]" 
-                        onClick={() => send("Write a better introduction")}
+                        onClick={() => send("Write a more compelling introduction that hooks readers and clearly establishes the value they'll get from this article.")}
                         disabled={isPromptLocked}
                     >
                         Better intro
@@ -1256,7 +1238,7 @@ I've made several changes to your content including creating new paragraphs, upd
                         variant="secondary" 
                         size="sm" 
                         className="gap-1 h-6 px-2 text-[10px]" 
-                        onClick={() => send("Add more sections to structure this content")}
+                        onClick={() => send("Help me add more structured sections to improve the flow and readability of this content.")}
                         disabled={isPromptLocked}
                     >
                         Add sections
@@ -1509,10 +1491,3 @@ I've made several changes to your content including creating new paragraphs, upd
 }
 
 
-function makeSEOTitle(t: string) {
-    const base = (t || 'From idea to article with your AI co-writer').trim()
-    const seoStarters = ['Complete Guide to', 'How to', 'Best Practices for', 'Ultimate Guide to', 'Everything You Need to Know About']
-    const s = seoStarters[Math.floor(Math.random() * seoStarters.length)]
-    if (/^(complete guide|how to|best practices|ultimate guide|everything you need)/i.test(base)) return base
-    return `${s} ${base.charAt(0).toLowerCase()}${base.slice(1)}`
-}
