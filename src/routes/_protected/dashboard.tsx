@@ -150,11 +150,9 @@ function Dashboard({ userId, user }: { userId: string; user: any }) {
     if (editingId) {
         return (
             <main className="flex-1">
-                <div className="px-12 py-6">
-                    <ArticleProvider articleId={editingId}>
-                        <ArticleEditor key={editingId} articleId={editingId} userId={userId} user={user} onBack={() => navigate({ to: '/dashboard', search: {} })} />
-                    </ArticleProvider>
-                </div>
+                <ArticleProvider articleId={editingId}>
+                    <ArticleEditor key={editingId} articleId={editingId} userId={userId} user={user} onBack={() => navigate({ to: '/dashboard', search: {} })} />
+                </ArticleProvider>
             </main>
         )
     }
@@ -2065,13 +2063,17 @@ function ArticleEditor({ articleId, userId, user, onBack }: { articleId: string;
                 isOpen={isCommentsOpen}
                 onToggle={() => setIsCommentsOpen(!isCommentsOpen)}
             />
-            <div className="px-6 pt-2 pb-2 ml-0 md:ml-[18rem] lg:ml-[20rem] xl:ml-[24rem]">
-                <div className="flex items-center justify-between">
-                    <Button variant="ghost" size="sm" onClick={onBack}>
-                        <ArrowLeft className="h-4 w-4 mr-1" /> Back to articles
-                    </Button>
-                    
-                    <div className="flex items-center space-x-2">
+            <div className="sticky top-[4.0625rem] z-5 bg-background/80 backdrop-blur supports-[backdrop-filter]:bg-background/70 border-b h-12">
+                    <div className="px-6 h-12 flex items-center justify-between ml-0 lg:ml-[20rem] xl:ml-[24rem]">
+                        {/* Left side */}
+                        <div className="flex items-center gap-6 -ml-2">
+                            <Button variant="ghost" size="sm" onClick={onBack}>
+                                <ArrowLeft className="h-4 w-4 mr-1" /> Back to articles
+                            </Button>
+                        </div>
+                        
+                        {/* Right side */}
+                        <div className="flex items-center space-x-2">
                         <Button 
                             variant="ghost" 
                             size="sm" 
@@ -2174,7 +2176,7 @@ function ArticleEditor({ articleId, userId, user, onBack }: { articleId: string;
             </div>
 
             {/* Sticky banners at the top */}
-            <div className="sticky top-16 z-10 px-6 py-3 ml-0 md:ml-[18rem] lg:ml-[20rem] xl:ml-[24rem]">
+            <div className="sticky top-28 z-10 px-6 py-3 ml-0 lg:ml-[20rem] xl:ml-[24rem]">
                 {/* Unpublished changes banner */}
                 {!isInRevertMode && (
                     <div className={`transition-all duration-500 ease-out ${
@@ -2209,7 +2211,7 @@ function ArticleEditor({ articleId, userId, user, onBack }: { articleId: string;
                 )}
             </div>
 
-            <div className="flex justify-center px-6 py-6 pb-24 ml-0 md:ml-[18rem] lg:ml-[20rem] xl:ml-[24rem]">
+            <div className="flex justify-center px-16 py-6 pb-24 ml-0 lg:ml-[20rem] xl:ml-[24rem]">
                 <div className="w-full max-w-3xl space-y-8">
 
                 {/* Debug panel */}
