@@ -46,17 +46,20 @@ export function useRealtime(subscriptions: RealtimeSubscription[], enabled: bool
         const unsubscribe = client.subscribe(channel, (response) => {
           const { payload, events } = response
 
+          // Debug: Log all realtime events
+          if (channel.includes('messages')) {
+            console.log('🔄 Realtime event:', { channel, events, payload: { id: (payload as any)?.$id, role: (payload as any)?.role, contentLength: (payload as any)?.content?.length, streaming: (payload as any)?.metadata ? JSON.parse((payload as any).metadata).streaming : 'no-metadata' } })
+          }
+
           // Apply filter if provided
           if (filter && !filter(payload)) {
             return
           }
 
-          // Invalidate and refetch queries
-          queryClient.invalidateQueries({ queryKey }).then(() => {
-            // Force refetch to ensure data is updated
-            return queryClient.refetchQueries({ queryKey })
-          }).catch((error) => {
-            // Query invalidation/refetch failed
+          // For streaming updates, skip refetch and rely on optimistic updates
+          // Only invalidate (not refetch) to avoid disrupting streaming
+          queryClient.invalidateQueries({ queryKey }).catch((error) => {
+            // Query invalidation failed
           })
 
           // Call custom event handler if provided
@@ -177,9 +180,13 @@ export function useMessagesRealtime(
 
   // Custom event handler - optimistic updates without API calls
   const onEvent = useMemo(() => (payload: any, events: string[]) => {
+    console.log('🎯 useMessagesRealtime onEvent:', { queryKey, events, payload: { id: payload.$id, role: payload.role, contentLength: payload.content?.length } })
+    
     // Update the existing data optimistically without making API calls
     queryClient.setQueryData(queryKey, (oldData: any) => {
+      console.log('📊 Old data structure:', { hasDocuments: !!oldData?.documents, documentsLength: oldData?.documents?.length, total: oldData?.total })
       if (!oldData?.documents) {
+        console.log('❌ No documents in oldData, returning unchanged')
         return oldData
       }
 
@@ -187,29 +194,38 @@ export function useMessagesRealtime(
       const isCreateEvent = events.some(event => event.includes('.create'))
       const isUpdateEvent = events.some(event => event.includes('.update'))
 
+      console.log('🔄 Event type:', { isCreateEvent, isUpdateEvent, messageId })
+
       if (isCreateEvent) {
         // Add new message to the beginning of the list
-        return {
+        const newData = {
           ...oldData,
           documents: [payload, ...oldData.documents],
           total: oldData.total + 1
         }
+        console.log('✅ Created new message, new total:', newData.total)
+        return newData
       } else if (isUpdateEvent) {
         // Update existing message
         const messageIndex = oldData.documents.findIndex((msg: any) => msg.$id === messageId)
+        console.log('🔍 Message index:', messageIndex)
         if (messageIndex !== -1) {
           const updatedDocuments = [...oldData.documents]
           updatedDocuments[messageIndex] = payload
-          return {
+          const newData = {
             ...oldData,
             documents: updatedDocuments
           }
+          console.log('✅ Updated existing message at index:', messageIndex)
+          return newData
+        } else {
+          console.log('❌ Message not found for update')
         }
       }
 
+      console.log('❌ No changes made, returning oldData')
       return oldData
     })
-
   }, [conversationId, queryClient, queryKey])
 
   // Create subscription for messages collection only to avoid duplicate events
@@ -315,6 +331,11 @@ export function useConsolidatedRealtime(subscriptions: RealtimeSubscription[], e
         const unsubscribe = client.subscribe(channel, (response) => {
           const { payload, events } = response
 
+          // Debug: Log all realtime events
+          if (channel.includes('messages')) {
+            console.log('🔄 Consolidated Realtime event:', { channel, events, payload: { id: (payload as any)?.$id, role: (payload as any)?.role, contentLength: (payload as any)?.content?.length, streaming: (payload as any)?.metadata ? JSON.parse((payload as any).metadata).streaming : 'no-metadata' } })
+          }
+
           // Process each subscription for this channel
           channelSubscriptions.forEach(({ queryKey, filter, onEvent }) => {
             // Apply filter if provided
@@ -322,12 +343,10 @@ export function useConsolidatedRealtime(subscriptions: RealtimeSubscription[], e
               return
             }
 
-            // Invalidate and refetch queries
-            queryClient.invalidateQueries({ queryKey }).then(() => {
-              // Force refetch to ensure data is updated
-              return queryClient.refetchQueries({ queryKey })
-            }).catch((error) => {
-              // Query invalidation/refetch failed
+            // For streaming updates, skip refetch and rely on optimistic updates
+            // Only invalidate (not refetch) to avoid disrupting streaming
+            queryClient.invalidateQueries({ queryKey }).catch((error) => {
+              // Query invalidation failed
             })
 
             // Call custom event handler if provided
@@ -414,9 +433,11 @@ export function useMessagesAndNotificationsRealtime(
   // Messages event handler with race condition protection and streaming state management
   const messagesOnEvent = useMemo(() => (payload: any, events: string[]) => {
     const queryKey = ['messages', conversationId || '']
+    console.log('🎯 Consolidated messagesOnEvent:', { queryKey, events, payload: { id: payload.$id, role: payload.role, contentLength: payload.content?.length } })
     
     // Update the existing data optimistically without making API calls
     queryClient.setQueryData(queryKey, (oldData: any) => {
+      console.log('📊 Consolidated old data structure:', { hasDocuments: !!oldData?.documents, documentsLength: oldData?.documents?.length, total: oldData?.total })
       if (!oldData?.documents) {
         return oldData
       }

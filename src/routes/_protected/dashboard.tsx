@@ -28,6 +28,7 @@ import { AuthorSelector } from '@/components/author'
 import { CategorySelector } from '@/components/category'
 import { ImageGallery } from '@/components/image'
 import { NotificationBell } from '@/components/notification'
+import { useRealtime } from '@/hooks/use-realtime'
 import { TeamBlogSelector } from '@/components/team-blog'
 import { RevisionPopover, UnpublishedChangesBanner, RevertConfirmationBanner } from '@/components/revisions'
 import { CodeEditor } from '@/components/ui/code-editor'
@@ -749,6 +750,42 @@ function ArticleEditor({ articleId, userId, user, onBack }: { articleId: string;
     const { updateArticle } = useArticle()
     const isPending = isLoadingRevision
 
+    // Realtime subscription for messages to detect AI-created revisions
+    useRealtime([
+        {
+            channel: `databases.${import.meta.env.VITE_APPWRITE_DATABASE_ID}.collections.messages.documents`,
+            queryKey: ['messages'], // This will be filtered by conversationId in the existing messages hook
+            filter: (payload: any) => {
+                // Only listen to assistant messages that have a revisionId
+                return payload.role === 'assistant' && payload.revisionId && payload.blogId === currentBlog?.$id
+            },
+            onEvent: (payload: any, events: string[]) => {
+                console.log('🔄 Realtime message with revision event:', { 
+                    events, 
+                    payload: { 
+                        id: payload.$id, 
+                        role: payload.role,
+                        revisionId: payload.revisionId,
+                        blogId: payload.blogId,
+                        conversationId: payload.conversationId
+                    } 
+                })
+                
+                // Check if this is an update event (message completed with revisionId)
+                const isUpdateEvent = events.some(event => event.includes('.update'))
+                console.log('🔄 Event analysis:', { isUpdateEvent, events })
+                
+                if (isUpdateEvent && payload.revisionId) {
+                    console.log('✅ New revision detected via message update, triggering form refresh for revision:', payload.revisionId)
+                    // Trigger the same logic as handleApplyAIRevision
+                    handleApplyAIRevision(payload.revisionId)
+                } else {
+                    console.log('🔄 Non-update message event or no revisionId, ignoring')
+                }
+            }
+        }
+    ], true)
+
     // Manual save functionality
     const [isSaving, setIsSaving] = useState(false)
 
@@ -1289,6 +1326,29 @@ function ArticleEditor({ articleId, userId, user, onBack }: { articleId: string;
     const [isFullyLoaded, setIsFullyLoaded] = useState(false)
     const [initialSections, setInitialSections] = useState<any[]>([])
     const [hasChanges, setHasChanges] = useState(false)
+    const [lastChangeTimestamp, setLastChangeTimestamp] = useState<Date | null>(null)
+
+    // Helper function to update changes and timestamp
+    const updateChanges = useCallback((hasChanges: boolean) => {
+        setHasChanges(hasChanges)
+        if (hasChanges) {
+            setLastChangeTimestamp(new Date())
+        }
+    }, [])
+
+    // State to force re-render for timestamp updates
+    const [, setTimestampUpdate] = useState(0)
+
+    // Update timestamp display every second when there are changes
+    useEffect(() => {
+        if (!hasChanges || !lastChangeTimestamp) return
+
+        const interval = setInterval(() => {
+            setTimestampUpdate(prev => prev + 1)
+        }, 1000)
+
+        return () => clearInterval(interval)
+    }, [hasChanges, lastChangeTimestamp])
 
     // Manual save function
     const handleSave = useCallback(async () => {
@@ -1350,7 +1410,7 @@ function ArticleEditor({ articleId, userId, user, onBack }: { articleId: string;
                 qc.invalidateQueries({ queryKey: ['latest-revision', articleId] })
                 qc.invalidateQueries({ queryKey: ['revisions', articleId] })
                 
-                setHasChanges(false)
+                updateChanges(false)
                 toast({ title: 'Article saved successfully' })
             }
         } catch (error) {
@@ -1430,7 +1490,7 @@ function ArticleEditor({ articleId, userId, user, onBack }: { articleId: string;
         }
         const updatedSections = [...localSections, newSection]
         setLocalSections(updatedSections)
-        setHasChanges(true)
+        updateChanges(true)
         setHasUserInteracted(true)
         // Focus the first input after the component re-renders
         focusTargetRef.current = { id: newSection.id, type: String(type) }
@@ -1444,7 +1504,7 @@ function ArticleEditor({ articleId, userId, user, onBack }: { articleId: string;
             return updated
         })
         // Throttle change tracking to reduce UI updates
-        setHasChanges(true)
+        updateChanges(true)
         setHasUserInteracted(true)
     }, [])
 
@@ -1475,7 +1535,7 @@ function ArticleEditor({ articleId, userId, user, onBack }: { articleId: string;
 
     const handleStatusChange = useCallback((newStatus: string) => {
         setStatus(newStatus)
-        setHasChanges(true)
+        updateChanges(true)
         setHasUserInteracted(true)
     }, [])
 
@@ -1488,7 +1548,7 @@ function ArticleEditor({ articleId, userId, user, onBack }: { articleId: string;
             clearTimeout(changeTrackingTimeoutRef.current)
         }
         changeTrackingTimeoutRef.current = setTimeout(() => {
-            setHasChanges(true)
+            updateChanges(true)
             setHasUserInteracted(true)
         }, 300) // 300ms debounce for change tracking
     }, [])
@@ -1601,14 +1661,36 @@ function ArticleEditor({ articleId, userId, user, onBack }: { articleId: string;
     }, [hasUnpublishedChanges, saving])
 
     useEffect(() => {
+        console.log('🔄 Form data effect triggered:', {
+            hasLatestFormData: !!latestFormData,
+            isReverting: isRevertingRef.current,
+            activeRevisionId: latestFormData?.activeRevisionId,
+            lastProcessedRevisionId,
+            isDataLoaded
+        })
+        
         if (!latestFormData || isRevertingRef.current) {
+            console.log('🔄 Skipping form update:', { hasLatestFormData: !!latestFormData, isReverting: isRevertingRef.current })
             return
         }
         
         // Allow updates if this is a new revision (revision ID changed) OR if data hasn't been loaded yet
         const isNewRevision = latestFormData?.activeRevisionId && latestFormData.activeRevisionId !== lastProcessedRevisionId
         
+        console.log('🔄 Form update check:', {
+            isNewRevision,
+            activeRevisionId: latestFormData.activeRevisionId,
+            lastProcessedRevisionId,
+            willUpdate: !!latestFormData
+        })
+        
         if (latestFormData) {
+            console.log('🔄 Updating form fields with new data:', {
+                title: latestFormData.title,
+                subtitle: latestFormData.subtitle,
+                activeRevisionId: latestFormData.activeRevisionId
+            })
+            
             // Always load form data when latestFormData is available
             setTrailer(latestFormData.trailer ?? '')
             setTitle(latestFormData.title ?? '')
@@ -1621,6 +1703,7 @@ function ArticleEditor({ articleId, userId, user, onBack }: { articleId: string;
             
             // Update the last processed revision ID
             if (latestFormData.activeRevisionId) {
+                console.log('🔄 Updating lastProcessedRevisionId to:', latestFormData.activeRevisionId)
                 setLastProcessedRevisionId(latestFormData.activeRevisionId)
             }
         }
@@ -1734,32 +1817,31 @@ function ArticleEditor({ articleId, userId, user, onBack }: { articleId: string;
     // Handle reverting to a specific revision
     // Handle AI revision application
     const handleApplyAIRevision = async (revisionId: string) => {
+        console.log('🔄 handleApplyAIRevision called with revisionId:', revisionId)
         
         try {
-            // Disable data loading temporarily during AI revision application
-            isRevertingRef.current = true
+            // Invalidate and refetch all related queries to ensure we get the latest data
+            console.log('🔄 Invalidating queries for articleId:', articleId)
+            await Promise.all([
+                qc.invalidateQueries({ queryKey: ['revisions', articleId] }),
+                qc.invalidateQueries({ queryKey: ['article', articleId] })
+            ])
             
-            // Force refetch of all related queries to ensure we get the latest data
+            console.log('🔄 Refetching queries for articleId:', articleId)
             await Promise.all([
                 qc.refetchQueries({ queryKey: ['revisions', articleId] }),
-                qc.refetchQueries({ queryKey: ['article', articleId] }),
-                qc.refetchQueries({ queryKey: ['latestRevision', articleId] })
+                qc.refetchQueries({ queryKey: ['article', articleId] })
             ])
 
             // Force form to reload by resetting the data loaded state
+            console.log('🔄 Resetting form state')
             setIsDataLoaded(false)
             setLastProcessedRevisionId(null) // Reset to force detection of new revision
             
-            // Clear any cached data when LLM creates new revision
-            
+            console.log('✅ AI revision application completed')
             
         } catch (error) {
             console.error('❌ Error applying AI revision:', error)
-        } finally {
-            // Re-enable data loading after a short delay
-            setTimeout(() => {
-                isRevertingRef.current = false
-            }, 1000)
         }
     }
 
@@ -2233,6 +2315,23 @@ function ArticleEditor({ articleId, userId, user, onBack }: { articleId: string;
                                     </div>
                                     <div className="flex justify-between items-center">
                                         <span className="flex items-center gap-1">
+                                            Last Change
+                                            <div className="group relative">
+                                                <span className="text-purple-500 dark:text-purple-400 cursor-help text-xs w-3 h-3 rounded-full border border-current flex items-center justify-center text-[8px]">i</span>
+                                                <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-2 py-1 bg-gray-900 dark:bg-gray-100 text-white dark:text-gray-900 text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none whitespace-nowrap z-10">
+                                                    When the last change was made
+                                                </div>
+                                            </div>
+                                        </span>
+                                        <span className="text-gray-600 dark:text-gray-400 font-mono text-xs">
+                                            {hasChanges && lastChangeTimestamp ? 
+                                                `${lastChangeTimestamp.toLocaleTimeString()} (${Math.round((Date.now() - lastChangeTimestamp.getTime()) / 1000)}s ago)` :
+                                                'No changes'
+                                            }
+                                        </span>
+                                    </div>
+                                    <div className="flex justify-between items-center">
+                                        <span className="flex items-center gap-1">
                                             Save Status
                                             <div className="group relative">
                                                 <span className="text-purple-500 dark:text-purple-400 cursor-help text-xs w-3 h-3 rounded-full border border-current flex items-center justify-center text-[8px]">i</span>
@@ -2286,7 +2385,7 @@ function ArticleEditor({ articleId, userId, user, onBack }: { articleId: string;
                                     size="sm" 
                                     variant="outline" 
                                     onClick={() => {
-                                        setHasChanges(true)
+                                        updateChanges(true)
                                     }}
                                     className="h-6 px-2 text-xs text-purple-600 border-purple-300 hover:bg-purple-200 dark:text-purple-400 dark:border-purple-700 dark:hover:bg-purple-800"
                                 >
@@ -2296,7 +2395,7 @@ function ArticleEditor({ articleId, userId, user, onBack }: { articleId: string;
                                     size="sm" 
                                     variant="outline" 
                                     onClick={() => {
-                                        setHasChanges(false)
+                                        updateChanges(false)
                                     }}
                                     className="h-6 px-2 text-xs text-purple-600 border-purple-300 hover:bg-purple-200 dark:text-purple-400 dark:border-purple-700 dark:hover:bg-purple-800"
                                 >
