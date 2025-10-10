@@ -49,6 +49,19 @@ export const AIMessageRenderer = memo(function AIMessageRenderer({ content, clas
           </div>
         )
       }
+      // If JSON is empty (like {}), hide it and only show explanation if it exists
+      if (Object.keys(parsed).length === 0) {
+        return (
+          <div className={cn("space-y-1", className)}>
+            {/* Only show explanation if there's meaningful content after JSON */}
+            {explanation && explanation.trim() && (
+              <div className="text-xs leading-relaxed">
+                {explanation}
+              </div>
+            )}
+          </div>
+        )
+      }
     } catch (error) {
       // If JSON parsing fails, fall back to regular content
       return <div className={cn("space-y-1 text-xs leading-relaxed", className)}>{content}</div>
