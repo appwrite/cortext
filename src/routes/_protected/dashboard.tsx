@@ -761,13 +761,6 @@ function ArticleEditor({ articleId, userId, user, onBack }: { articleId: string;
         debounceDelay: 1000, // 1 second debounce
     }, userInfo)
 
-    // Debug auto-save initialization
-    useEffect(() => {
-        // Auto-save initialized
-    }, [articleId, userId, currentTeam?.$id, userInfo, autoSave.status, autoSave.hasUnsavedChanges])
-
-
-
     // Helper function to get descriptive version name
     const getRevisionVersionName = (revision: any) => {
         if (!revision) return 'Unknown'
@@ -1626,17 +1619,15 @@ function ArticleEditor({ articleId, userId, user, onBack }: { articleId: string;
     }, [hasUnpublishedChanges, saving])
 
     useEffect(() => {
-        if (!latestFormData || !isDataLoaded || isFullyLoaded || isRevertingRef.current) {
+        if (!latestFormData || isRevertingRef.current) {
             return
         }
         
         // Allow updates if this is a new revision (revision ID changed) OR if data hasn't been loaded yet
         const isNewRevision = latestFormData?.activeRevisionId && latestFormData.activeRevisionId !== lastProcessedRevisionId
         
-        if (latestFormData && (isNewRevision || !isDataLoaded)) {
-            // Set flag to prevent data loading conflicts
-            isRevertingRef.current = true
-            
+        if (latestFormData) {
+            // Always load form data when latestFormData is available
             setTrailer(latestFormData.trailer ?? '')
             setTitle(latestFormData.title ?? '')
             setExcerpt(latestFormData.subtitle ?? '')
@@ -1646,57 +1637,10 @@ function ArticleEditor({ articleId, userId, user, onBack }: { articleId: string;
             setCategories(latestFormData.categories ?? [])
             setStatus(latestFormData.status ?? 'draft')
             
-            
             // Update the last processed revision ID
             if (latestFormData.activeRevisionId) {
                 setLastProcessedRevisionId(latestFormData.activeRevisionId)
             }
-            
-            // Update the entire article to match the latest revision if it's not in publish state
-            // This ensures the article is in sync with the latest revision data
-            if (latestFormData.activeRevisionId && article && article.status !== 'publish') {
-                
-                // Prepare the updated article data with all the revision data
-                const updatedArticleData = {
-                    title: latestFormData.title,
-                    subtitle: latestFormData.subtitle,
-                    trailer: latestFormData.trailer,
-                    status: latestFormData.status,
-                    live: latestFormData.live,
-                    pinned: latestFormData.pinned,
-                    redirect: latestFormData.redirect,
-                    slug: latestFormData.slug,
-                    authors: latestFormData.authors,
-                    categories: latestFormData.categories,
-                    images: latestFormData.images,
-                    blogId: latestFormData.blogId,
-                    body: latestFormData.body,
-                    activeRevisionId: latestFormData.activeRevisionId
-                }
-                
-                // Update the article directly
-                db.articles.update(articleId, updatedArticleData).then(() => {
-                    
-                    // Update the article cache to reflect all the changes
-                    qc.setQueryData(['article', articleId], (oldData: any) => {
-                        if (!oldData) return oldData
-                        return {
-                            ...oldData,
-                            ...updatedArticleData,
-                            $updatedAt: new Date().toISOString()
-                        }
-                    })
-                }).catch((error) => {
-                    console.error('❌ Error updating article to match revision:', error)
-                })
-            }
-            
-            // Reset flag after a short delay to allow form state to settle
-            setTimeout(() => {
-                isRevertingRef.current = false
-            }, 100)
-        } else {
-            // Skip form update
         }
     }, [latestFormData?.$id, latestFormData?.$updatedAt, latestFormData?.body, latestFormData?.title, latestFormData?.subtitle, latestFormData?.activeRevisionId, lastProcessedRevisionId, isDataLoaded]) // Update when revision ID changes
 

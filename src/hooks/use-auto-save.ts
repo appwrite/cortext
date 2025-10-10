@@ -46,10 +46,6 @@ export function useAutoSave(
     hasUnsavedChanges: false,
   })
 
-  // Debug status changes
-  useEffect(() => {
-    }, [state.status, state.hasUnsavedChanges, state.lastSaved, state.error])
-
   // Auto-reset stuck "saving" status
   useEffect(() => {
     if (state.status === 'saving') {
@@ -90,10 +86,6 @@ export function useAutoSave(
       lastSavedDataRef.current = data
     }
   }, [])
-
-  // Debug auto-save hook state
-  useEffect(() => {
-    }, [articleId, state.status, state.hasUnsavedChanges])
 
   /**
    * Save changes to the server
