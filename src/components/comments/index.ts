@@ -4,6 +4,8 @@ export { CommentList } from './comment-list';
 export { CommentItem } from './comment-item';
 export { CommentForm } from './comment-form';
 export { CommentableInput } from './commentable-input';
+export { OptimizedCommentableInput, CommentOverlay } from './optimized-commentable-input';
 export { CommentableSection } from './commentable-section';
+export { CommentsSidebar } from './comments-sidebar';
 export { useComments, useAllComments, useCreateComment } from './use-comments';
 export { useCommentCounts } from './use-comment-counts';

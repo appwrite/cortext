@@ -1,5 +1,5 @@
 import { motion, AnimatePresence } from "framer-motion";
-import { Loader2, Brain } from "lucide-react";
+import { Brain } from "lucide-react";
 import { useEffect, useState } from "react";
 
 interface FullscreenLoaderProps {
@@ -30,16 +30,19 @@ export function FullscreenLoader({ isVisible, onComplete }: FullscreenLoaderProp
           initial={{ opacity: 1 }}
           exit={{ opacity: 0 }}
           transition={{ duration: 0.5, ease: "easeInOut" }}
-          className="fixed inset-0 z-50 bg-background"
+          className="fixed inset-0 z-50 bg-background loader-container"
         >
-          {/* Centered Loading Spinner */}
+          {/* Centered Welcome Message */}
           <div className="absolute inset-0 flex items-center justify-center">
             <motion.div
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               transition={{ delay: 0.2, duration: 0.4 }}
+              className="text-center"
             >
-              <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+              <div className="text-base font-normal text-muted-foreground">
+                Welcome back
+              </div>
             </motion.div>
           </div>
 

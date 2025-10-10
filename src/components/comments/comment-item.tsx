@@ -265,7 +265,7 @@ export function CommentItem({
             )}
             
             {/* Edit and Delete buttons for comment owner */}
-            {isOwner && (
+            {isOwner && !isEditing && (
               <>
                 <Button
                   variant="ghost"

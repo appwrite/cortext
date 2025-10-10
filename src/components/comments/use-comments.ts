@@ -107,6 +107,10 @@ export function useComments(
       queryClient.invalidateQueries({
         queryKey: ['comments', articleId, blogId, targetType, targetId]
       });
+      // Also invalidate all-comments cache for sidebar
+      queryClient.invalidateQueries({
+        queryKey: ['all-comments', articleId, blogId]
+      });
     },
   });
 
@@ -117,6 +121,10 @@ export function useComments(
     onSuccess: () => {
       queryClient.invalidateQueries({
         queryKey: ['comments', articleId, blogId, targetType, targetId]
+      });
+      // Also invalidate all-comments cache for sidebar
+      queryClient.invalidateQueries({
+        queryKey: ['all-comments', articleId, blogId]
       });
     },
   });

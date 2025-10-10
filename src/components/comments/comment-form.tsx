@@ -46,12 +46,11 @@ export const CommentForm = forwardRef<CommentFormRef, CommentFormProps>(({
     textareaRef.current.style.height = textareaRef.current.scrollHeight + 'px';
   }, []);
 
-  // Adjust height when content changes
+  // Adjust height when content changes - optimized to reduce re-renders
   useEffect(() => {
-    const frameId = requestAnimationFrame(() => {
-      adjustHeight();
-      setTimeout(adjustHeight, 0);
-    });
+    if (!content) return; // Skip if content is empty
+    
+    const frameId = requestAnimationFrame(adjustHeight);
     return () => cancelAnimationFrame(frameId);
   }, [content, adjustHeight]);
 
@@ -84,13 +83,6 @@ export const CommentForm = forwardRef<CommentFormRef, CommentFormProps>(({
       
       setContent('');
       onCommentAdded(newComment.$id);
-      
-      // Focus immediately after successful submission
-      setTimeout(() => {
-        if (textareaRef.current) {
-          textareaRef.current.focus();
-        }
-      }, 200);
     } catch (error) {
       console.error('Failed to create comment:', error);
     } finally {

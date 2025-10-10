@@ -43,37 +43,39 @@ export const CommentList = forwardRef<CommentListRef, CommentListProps>(({
     focusComment
   }));
 
-  // Focus on a comment when it's added
+  // Focus on a comment when it's added - optimized to reduce interference
   const focusComment = (commentId: string) => {
-    // Try multiple times with increasing delays to handle async updates
+    // Use a more efficient approach with fewer retries
     const tryFocus = (attempts = 0) => {
       const element = commentRefs.current[commentId];
       if (element) {
-        element.scrollIntoView({ behavior: 'smooth', block: 'center' });
-      } else if (attempts < 5) {
-        // Retry after a short delay if element not found
-        setTimeout(() => tryFocus(attempts + 1), 200 * (attempts + 1));
+        // Only scroll if element is not already visible
+        const rect = element.getBoundingClientRect();
+        const isVisible = rect.top >= 0 && rect.bottom <= window.innerHeight;
+        
+        if (!isVisible) {
+          element.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
+        
+        // Focus for accessibility but don't interfere with typing
+        if (document.activeElement !== element) {
+          element.focus();
+        }
+      } else if (attempts < 3) { // Reduced retries
+        setTimeout(() => tryFocus(attempts + 1), 300); // Increased delay
       }
     };
     
-    // Start trying to focus after a short delay
-    setTimeout(() => tryFocus(), 100);
+    // Use a longer delay to avoid interfering with form submission
+    setTimeout(() => tryFocus(), 300);
   };
 
   // Handle comment added callback
   const handleCommentAdded = (commentId?: string) => {
     if (commentId) {
       onCommentAdded?.(commentId);
-      // Don't focus on the newly added comment - let the form handle focus
     }
     refetch();
-    
-    // Scroll to bottom to show the new comment
-    setTimeout(() => {
-      if (commentsContainerRef.current) {
-        commentsContainerRef.current.scrollTop = commentsContainerRef.current.scrollHeight;
-      }
-    }, 200);
   };
 
   if (isLoading) {

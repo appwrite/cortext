@@ -40,7 +40,7 @@ import { useDebugMode } from '@/contexts/debug-context'
 import { useDocumentTitle } from '@/hooks/use-document-title'
 import { formatDateForDisplay, formatDateCompact, formatDateRelative } from '@/lib/date-utils'
 import { cn } from '@/lib/utils'
-import { CommentableInput, CommentableSection, useCommentCounts, useAllComments, CommentPopover } from '@/components/comments'
+import { CommentableInput, CommentableSection, useCommentCounts, useAllComments, CommentPopover, CommentsSidebar } from '@/components/comments'
 
 export const Route = createFileRoute('/_protected/dashboard')({
     component: RouteComponent,
@@ -730,6 +730,7 @@ function ArticleEditor({ articleId, userId, user, onBack }: { articleId: string;
     const [isMenuOpen, setIsMenuOpen] = useState(false)
     const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
     const [showReleaseConfirm, setShowReleaseConfirm] = useState(false)
+    const [isCommentsOpen, setIsCommentsOpen] = useState(false)
     const menuRef = useRef<HTMLDivElement>(null)
 
     // Close menu when clicking outside
@@ -1580,7 +1581,15 @@ function ArticleEditor({ articleId, userId, user, onBack }: { articleId: string;
             clearTimeout(subtitleHeightTimeoutRef.current)
         }
         subtitleHeightTimeoutRef.current = setTimeout(() => {
-            adjustSubtitleHeight()
+            // Try multiple times if ref is not available (for CommentableInput wrapper)
+            const attemptAdjustment = (attempts = 0) => {
+                if (subtitleRef.current) {
+                    adjustSubtitleHeight()
+                } else if (attempts < 3) {
+                    setTimeout(() => attemptAdjustment(attempts + 1), 16)
+                }
+            }
+            attemptAdjustment()
         }, 16) // ~60fps
     }, [adjustSubtitleHeight])
 
@@ -1593,19 +1602,37 @@ function ArticleEditor({ articleId, userId, user, onBack }: { articleId: string;
     useEffect(() => {
         const handleResize = () => adjustSubtitleHeight()
         
-        // Initial adjustment
-        const timer = setTimeout(() => {
-            adjustSubtitleHeight()
-        }, 0)
+        // Initial adjustment with multiple attempts to handle CommentableInput rendering
+        const attemptAdjustment = (attempts = 0) => {
+            if (subtitleRef.current) {
+                adjustSubtitleHeight()
+            } else if (attempts < 5) {
+                // Try again after a short delay if ref is not available
+                setTimeout(() => attemptAdjustment(attempts + 1), 50)
+            }
+        }
+        
+        // Use requestAnimationFrame for better timing
+        requestAnimationFrame(() => {
+            attemptAdjustment()
+        })
         
         // Add resize listener
         window.addEventListener('resize', handleResize)
         
         return () => {
-            clearTimeout(timer)
             window.removeEventListener('resize', handleResize)
         }
     }, [adjustSubtitleHeight])
+
+    // Cleanup subtitle height timeout on unmount
+    useEffect(() => {
+        return () => {
+            if (subtitleHeightTimeoutRef.current) {
+                clearTimeout(subtitleHeightTimeoutRef.current)
+            }
+        }
+    }, [])
 
     const handleSubtitleChange = useCallback((e: React.ChangeEvent<HTMLTextAreaElement>) => {
         setExcerpt(e.target.value)
@@ -2032,21 +2059,37 @@ function ArticleEditor({ articleId, userId, user, onBack }: { articleId: string;
                 onApplyAIRevision={handleApplyAIRevision}
                 debugMode={showDebug}
             />
+            <CommentsSidebar
+                articleId={articleId}
+                blogId={currentBlog?.$id || ''}
+                isOpen={isCommentsOpen}
+                onToggle={() => setIsCommentsOpen(!isCommentsOpen)}
+            />
             <div className="px-6 pt-2 pb-2 ml-0 md:ml-[18rem] lg:ml-[20rem] xl:ml-[24rem]">
                 <div className="flex items-center justify-between">
                     <Button variant="ghost" size="sm" onClick={onBack}>
                         <ArrowLeft className="h-4 w-4 mr-1" /> Back to articles
                     </Button>
                     
-                    <div ref={menuRef} className="relative">
+                    <div className="flex items-center space-x-2">
                         <Button 
                             variant="ghost" 
                             size="sm" 
-                            onClick={() => setIsMenuOpen(!isMenuOpen)}
+                            onClick={() => setIsCommentsOpen(!isCommentsOpen)}
                             className="cursor-pointer"
                         >
-                            <MoreHorizontal className="h-4 w-4" />
+                            <MessageCircle className="h-4 w-4" />
                         </Button>
+                        
+                        <div ref={menuRef} className="relative">
+                            <Button 
+                                variant="ghost" 
+                                size="sm" 
+                                onClick={() => setIsMenuOpen(!isMenuOpen)}
+                                className="cursor-pointer"
+                            >
+                                <MoreHorizontal className="h-4 w-4" />
+                            </Button>
                         
                         {isMenuOpen && (
                             <>
@@ -2125,6 +2168,7 @@ function ArticleEditor({ articleId, userId, user, onBack }: { articleId: string;
                                 </div>
                             </>
                         )}
+                        </div>
                     </div>
                 </div>
             </div>
@@ -2430,6 +2474,7 @@ function ArticleEditor({ articleId, userId, user, onBack }: { articleId: string;
                                 targetType="trailer"
                                 commentCount={trailerCommentCount.count}
                                 hasNewComments={trailerCommentCount.hasNewComments}
+                                className="items-center"
                             >
                                 <Input id="trailer" value={trailer} onChange={handleTrailerChange} placeholder="Breaking news, Exclusive..." disabled={isInRevertMode} />
                             </CommentableInput>
@@ -2454,6 +2499,7 @@ function ArticleEditor({ articleId, userId, user, onBack }: { articleId: string;
                                     targetType="title"
                                     commentCount={titleCommentCount.count}
                                     hasNewComments={titleCommentCount.hasNewComments}
+                                    className="items-center"
                                 >
                                     <Input 
                                         id="title" 
@@ -2737,6 +2783,7 @@ function ArticleEditor({ articleId, userId, user, onBack }: { articleId: string;
                                 targetType="redirect"
                                 commentCount={redirectCommentCount.count}
                                 hasNewComments={redirectCommentCount.hasNewComments}
+                                className="items-center"
                             >
                                 <Input id="redirect" value={redirect} onChange={handleRedirectChange} placeholder="Redirect URL (optional)" disabled={isInRevertMode} />
                             </CommentableInput>

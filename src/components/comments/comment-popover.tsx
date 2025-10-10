@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect, useCallback } from 'react';
+import React, { useState, useRef, useEffect, useCallback, memo } from 'react';
 import { CommentIcon } from './comment-icon';
 import { CommentList } from './comment-list';
 import { CommentForm, CommentFormRef } from './comment-form';
@@ -17,7 +17,16 @@ interface CommentPopoverProps {
   onClose?: () => void;
 }
 
-export function CommentPopover({
+// Memoize the comment icon to prevent re-renders
+const MemoizedCommentIcon = memo(CommentIcon);
+
+// Memoize the comment list to prevent re-renders when popover is closed
+const MemoizedCommentList = memo(CommentList);
+
+// Memoize the comment form to prevent re-renders when popover is closed
+const MemoizedCommentForm = memo(CommentForm);
+
+export const CommentPopover = memo(function CommentPopover({
   articleId,
   blogId,
   targetType,
@@ -78,6 +87,25 @@ export function CommentPopover({
     return 400; // Fallback height
   }, [popoverPosition]);
 
+  // Memoize the toggle handler to prevent re-renders
+  const handleToggle = useCallback(() => {
+    const newIsOpen = !isOpen;
+    setIsOpen(newIsOpen);
+    if (newIsOpen) {
+      onOpen?.();
+    } else {
+      onClose?.();
+    }
+  }, [isOpen, onOpen, onClose]);
+
+  // Memoize the comment added handler
+  const handleCommentAdded = useCallback((commentId?: string) => {
+    // Focus on the newly added comment
+    if (commentId && commentListRef.current) {
+      commentListRef.current.focusComment(commentId);
+    }
+  }, []);
+
   // Calculate position when opening and close dropdown when clicking outside
   useEffect(() => {
     if (isOpen) {
@@ -98,23 +126,15 @@ export function CommentPopover({
       document.addEventListener('mousedown', handleClickOutside);
       return () => document.removeEventListener('mousedown', handleClickOutside);
     }
-  }, [isOpen]);
+  }, [isOpen, calculatePosition, onClose]);
 
   return (
     <div ref={containerRef} className="relative">
       <div className={cn("flex items-center", className)}>
-        <CommentIcon
+        <MemoizedCommentIcon
           commentCount={commentCount}
           hasNewComments={hasNewComments}
-          onClick={() => {
-            const newIsOpen = !isOpen;
-            setIsOpen(newIsOpen);
-            if (newIsOpen) {
-              onOpen?.();
-            } else {
-              onClose?.();
-            }
-          }}
+          onClick={handleToggle}
         />
       </div>
       
@@ -150,31 +170,26 @@ export function CommentPopover({
             <div 
               className="flex-1 overflow-y-auto min-h-0"
             >
-              <CommentList
+              <MemoizedCommentList
                 ref={commentListRef}
                 articleId={articleId}
                 blogId={blogId}
                 targetType={targetType}
                 targetId={targetId}
                 showResolveButton={false}
-                onCommentAdded={(commentId) => {
-                  // Focus will be handled by CommentList
-                }}
+                onCommentAdded={handleCommentAdded}
               />
             </div>
             
             {/* Fixed footer with comment form */}
             <div className="p-3 border-t flex-shrink-0">
-              <CommentForm
+              <MemoizedCommentForm
                 ref={commentFormRef}
                 articleId={articleId}
                 blogId={blogId}
                 targetType={targetType}
                 targetId={targetId}
-                onCommentAdded={(commentId) => {
-                  // Don't focus on the newly added comment - let the form handle focus
-                  // The comment form will return focus to the textarea after submission
-                }}
+                onCommentAdded={handleCommentAdded}
               />
             </div>
           </div>
@@ -182,4 +197,4 @@ export function CommentPopover({
       )}
     </div>
   );
-}
+});
