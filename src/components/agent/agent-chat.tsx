@@ -17,6 +17,7 @@ import { useLatestRevision } from '@/hooks/use-latest-revision'
 import type { Messages } from '@/lib/appwrite/appwrite.types'
 import { functionService } from '@/lib/appwrite/functions'
 import { db } from '@/lib/appwrite/db'
+import { Query } from 'appwrite'
 import { formatDuration } from '@/lib/date-utils'
 import { AIMessageRenderer } from './ai-message-renderer'
 import { AIChangeIndicators } from './ai-change-indicators'
@@ -30,12 +31,14 @@ type Message = {
     tokenCount?: number | null
     generationTimeMs?: number | null
     revisionId?: string | null
+    isFromInitialLoad?: boolean // Flag to distinguish initial vs new messages
     metadata?: {
         streaming?: boolean
         status?: 'generating' | 'completed' | 'error'
         chunkCount?: number
         tokensUsed?: number
         isMock?: boolean
+        isThinking?: boolean
     }
 }
 
@@ -83,6 +86,22 @@ export function AgentChat({
     const [rawMessageModalOpen, setRawMessageModalOpen] = useState<boolean>(false)
     const [selectedMessageForRaw, setSelectedMessageForRaw] = useState<Message | null>(null)
     const [copiedContent, setCopiedContent] = useState<string | null>(null)
+    const [realtimeEvents, setRealtimeEvents] = useState<Array<{timestamp: string, event: string, payload: any}>>([])
+    
+    // New simplified state management
+    const [localMessages, setLocalMessages] = useState<Message[]>([])
+    const [isUIlocked, setIsUILocked] = useState(false)
+    const [currentStreamingMessageId, setCurrentStreamingMessageId] = useState<string | null>(null)
+    const [initialLoadComplete, setInitialLoadComplete] = useState(false)
+    const [debugState, setDebugState] = useState({
+        localMessagesCount: 0,
+        isUIlocked: false,
+        currentStreamingMessageId: null as string | null,
+        lastRealtimeEvent: null as string | null,
+        lastMessageUpdate: null as string | null,
+        initialLoadComplete: false
+    })
+    
     const isMobile = useIsMobile()
     const inputRef = useRef<HTMLTextAreaElement>(null)
     const currentConversationIdRef = useRef<string | null>(currentConversationId)
@@ -95,9 +114,28 @@ export function AgentChat({
         setIsStreaming(false)
         setIsWaitingForStream(false)
         setStreamingMessageId(null)
+        // Reset scroll flag for new conversation
+        hasScrolledOnInitialLoad.current = false
+        setInitialLoadComplete(false)
         setLastStreamingContent('')
         setStreamingContentCheckCount(0)
         setLastMetadataStatus('None')
+        setRealtimeEvents([]) // Clear realtime events when switching conversations
+        
+        // Clear new state
+        setLocalMessages([])
+        setIsUILocked(false)
+        setCurrentStreamingMessageId(null)
+        setInitialLoadComplete(false)
+        setDebugState({
+            localMessagesCount: 0,
+            isUIlocked: false,
+            currentStreamingMessageId: null,
+            lastRealtimeEvent: null,
+            lastMessageUpdate: null,
+            initialLoadComplete: false
+        })
+        
         isStreamingRef.current = false
     }, [currentConversationId])
 
@@ -105,6 +143,58 @@ export function AgentChat({
     useEffect(() => {
         isStreamingRef.current = isStreaming
     }, [isStreaming])
+
+    // Function to update debug state
+    const updateDebugState = useCallback((updates: Partial<typeof debugState>) => {
+        setDebugState(prev => ({ ...prev, ...updates }))
+    }, [])
+
+    // Step 1: Initial load from server using listDocuments
+    const loadInitialMessages = useCallback(async () => {
+        if (!currentConversationId) return
+        
+        try {
+            updateDebugState({ lastMessageUpdate: 'Loading initial messages...' })
+            const response = await db.messages.list([
+                Query.equal('conversationId', currentConversationId),
+                Query.orderDesc('$createdAt'),
+                Query.limit(200)
+            ])
+            
+            const formattedMessages: Message[] = response.documents
+                .map((msg: any) => ({
+                    id: msg.$id,
+                    role: msg.role,
+                    content: msg.content,
+                    createdAt: msg.$createdAt,
+                    tokenCount: msg.tokenCount,
+                    generationTimeMs: msg.generationTimeMs,
+                    revisionId: msg.revisionId,
+                    isFromInitialLoad: true, // Mark as from initial load
+                    metadata: msg.metadata ? JSON.parse(msg.metadata) : undefined,
+                }))
+                .sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()) // Sort oldest to newest
+            
+            setLocalMessages(formattedMessages)
+            console.log('✅ Setting initialLoadComplete to true, messages count:', formattedMessages.length)
+            setInitialLoadComplete(true)
+            updateDebugState({ 
+                localMessagesCount: formattedMessages.length,
+                lastMessageUpdate: `Loaded ${formattedMessages.length} messages from server`,
+                initialLoadComplete: true
+            })
+        } catch (error) {
+            console.error('Failed to load initial messages:', error)
+            updateDebugState({ lastMessageUpdate: `Error loading messages: ${error}` })
+        }
+    }, [currentConversationId, updateDebugState])
+
+    // Load initial messages when conversation changes
+    useEffect(() => {
+        if (currentConversationId) {
+            loadInitialMessages()
+        }
+    }, [currentConversationId, loadInitialMessages])
 
     // Calculate total cost from all messages
     const calculateTotalCost = useCallback((messages: Message[]) => {
@@ -173,6 +263,32 @@ export function AgentChat({
         }
     }, [])
 
+    // Auto-scroll when AI message content updates during streaming
+    const scrollToBottomIfStreaming = useCallback(() => {
+        if (isUIlocked && currentStreamingMessageId) {
+            console.log('🎯 scrollToBottomIfStreaming called - UI locked:', isUIlocked, 'Streaming ID:', currentStreamingMessageId)
+            // Small delay to ensure DOM has updated
+            setTimeout(() => {
+                if (scrollAreaRef.current) {
+                    const scrollElement = scrollAreaRef.current.querySelector('[data-radix-scroll-area-viewport]')
+                    if (scrollElement) {
+                        console.log('📜 Scrolling to bottom...')
+                        scrollElement.scrollTo({
+                            top: scrollElement.scrollHeight,
+                            behavior: 'smooth'
+                        })
+                    } else {
+                        console.log('❌ Scroll element not found')
+                    }
+                } else {
+                    console.log('❌ Scroll area ref not found')
+                }
+            }, 50)
+        } else {
+            console.log('⏸️ Not scrolling - UI locked:', isUIlocked, 'Streaming ID:', currentStreamingMessageId)
+        }
+    }, [isUIlocked, currentStreamingMessageId])
+
     const {
         conversations,
         isLoadingConversations,
@@ -225,6 +341,18 @@ export function AgentChat({
     // Streaming state callbacks for the consolidated realtime system
     const streamingCallbacks = useMemo(() => ({
         onStreamingStart: (messageId: string, metadata: any) => {
+            // Capture realtime event for debug box
+            setRealtimeEvents(prev => [...prev.slice(-9), {
+                timestamp: new Date().toISOString(),
+                event: 'streaming-start',
+                payload: {
+                    messageId,
+                    metadata: metadata,
+                    streaming: metadata?.streaming,
+                    status: metadata?.status
+                }
+            }])
+            
             setIsWaitingForStream(false)
             setIsStreaming(true)
             setStreamingMessageId(messageId)
@@ -239,6 +367,20 @@ export function AgentChat({
             setDebugEvents(prev => [...prev.slice(-4), `Streaming started: ${messageId} at ${new Date().toISOString()}`])
         },
         onStreamingUpdate: (messageId: string, metadata: any, content: string) => {
+            // Capture realtime event for debug box
+            setRealtimeEvents(prev => [...prev.slice(-9), {
+                timestamp: new Date().toISOString(),
+                event: 'streaming-update',
+                payload: {
+                    messageId,
+                    contentLength: content.length,
+                    contentPreview: content.substring(0, 100) + (content.length > 100 ? '...' : ''),
+                    metadata: metadata,
+                    streaming: metadata?.streaming,
+                    status: metadata?.status
+                }
+            }])
+            
             // Check if this is the streaming message we're tracking
             const isStreamingMessage = messageId === streamingMessageId
             
@@ -282,6 +424,18 @@ export function AgentChat({
             }
         },
         onStreamingComplete: (messageId: string, metadata: any) => {
+            // Capture realtime event for debug box
+            setRealtimeEvents(prev => [...prev.slice(-9), {
+                timestamp: new Date().toISOString(),
+                event: 'streaming-complete',
+                payload: {
+                    messageId,
+                    metadata: metadata,
+                    streaming: metadata?.streaming,
+                    status: metadata?.status
+                }
+            }])
+            
             setIsStreaming(false)
             setIsWaitingForStream(false)
             setStreamingMessageId(null)
@@ -315,24 +469,232 @@ export function AgentChat({
         isCreatingMessage,
     } = useMessagesWithNotifications(currentConversationId, blogId, articleId, user?.$id, true, streamingCallbacks)
 
+    // Step 4: Handle realtime streaming events to update message content
+    useEffect(() => {
+        if (!currentConversationId) return
+
+        const databaseId = import.meta.env.VITE_APPWRITE_DATABASE_ID
+        const messagesCollectionChannel = `databases.${databaseId}.collections.messages.documents`
+        
+        // Import Appwrite client
+        import('@/lib/appwrite').then(({ getAppwriteClient }) => {
+            const client = getAppwriteClient()
+            const unsubscribe = client.subscribe(messagesCollectionChannel, (response) => {
+                const { payload, events } = response
+                const typedPayload = payload as any
+                
+                // Only process events for the current conversation
+                if (typedPayload.conversationId === currentConversationId) {
+                    // Capture event for debug box
+                    setRealtimeEvents(prev => [...prev.slice(-9), {
+                        timestamp: new Date().toISOString(),
+                        event: `raw-${events.join(',')}`,
+                        payload: {
+                            messageId: typedPayload.$id,
+                            role: typedPayload.role,
+                            contentLength: typedPayload.content?.length || 0,
+                            contentPreview: typedPayload.content?.substring(0, 50) + (typedPayload.content?.length > 50 ? '...' : '') || '',
+                            metadata: typedPayload.metadata ? JSON.parse(typedPayload.metadata) : null,
+                            conversationId: typedPayload.conversationId
+                        }
+                    }])
+                    
+                    updateDebugState({ 
+                        lastRealtimeEvent: `${events.join(',')} - ${typedPayload.$id}`,
+                        lastMessageUpdate: `Processing realtime event for message: ${typedPayload.$id}`
+                    })
+
+                    // Step 4: Update message content based on realtime events
+                    setLocalMessages(prev => {
+                        const messageIndex = prev.findIndex(msg => msg.id === typedPayload.$id)
+                        
+                        if (messageIndex !== -1) {
+                            // Update existing message
+                            const updatedMessages = [...prev]
+                            const currentMetadata = updatedMessages[messageIndex].metadata || {}
+                            const serverMetadata = typedPayload.metadata ? JSON.parse(typedPayload.metadata) : {}
+                            
+                            updatedMessages[messageIndex] = {
+                                ...updatedMessages[messageIndex],
+                                content: typedPayload.content || '',
+                                metadata: {
+                                    ...currentMetadata,
+                                    ...serverMetadata,
+                                    // Transition from thinking to writing when content starts streaming
+                                    isThinking: serverMetadata.streaming && !typedPayload.content ? true : false
+                                },
+                                tokenCount: typedPayload.tokenCount,
+                                generationTimeMs: typedPayload.generationTimeMs,
+                                revisionId: typedPayload.revisionId
+                            }
+                            
+                            updateDebugState({ 
+                                lastMessageUpdate: `Updated existing message ${typedPayload.$id} with content length: ${typedPayload.content?.length || 0}`
+                            })
+                            
+                            // Auto-scroll on every realtime update for AI messages
+                            if (typedPayload.role === 'assistant' && typedPayload.content) {
+                                setTimeout(() => {
+                                    if (scrollAreaRef.current) {
+                                        const scrollElement = scrollAreaRef.current.querySelector('[data-radix-scroll-area-viewport]')
+                                        if (scrollElement) {
+                                            scrollElement.scrollTo({
+                                                top: scrollElement.scrollHeight,
+                                                behavior: 'smooth'
+                                            })
+                                        }
+                                    }
+                                }, 50)
+                            }
+                            
+                            return updatedMessages
+                        } else {
+                            // Check if this is a server-created version of our temporary message
+                            const tempMessageIndex = prev.findIndex(msg => 
+                                msg.role === typedPayload.role && 
+                                msg.content === typedPayload.content && 
+                                msg.id.startsWith('temp-')
+                            )
+                            
+                            if (tempMessageIndex !== -1) {
+                                // Replace temporary message with real server message
+                                const updatedMessages = [...prev]
+                                const serverMetadata = typedPayload.metadata ? JSON.parse(typedPayload.metadata) : {}
+                                
+                                updatedMessages[tempMessageIndex] = {
+                                    id: typedPayload.$id,
+                                    role: typedPayload.role,
+                                    content: typedPayload.content || '',
+                                    createdAt: typedPayload.$createdAt,
+                                    tokenCount: typedPayload.tokenCount,
+                                    generationTimeMs: typedPayload.generationTimeMs,
+                                    revisionId: typedPayload.revisionId,
+                                    isFromInitialLoad: false, // Mark as new message from server
+                                    metadata: {
+                                        ...serverMetadata,
+                                        // Transition from thinking to writing when content starts streaming
+                                        isThinking: serverMetadata.streaming && !typedPayload.content ? true : false
+                                    },
+                                }
+                                
+                                updateDebugState({ 
+                                    lastMessageUpdate: `Replaced temporary message with server message ${typedPayload.$id}`
+                                })
+                                
+                                // Auto-scroll on every realtime update for AI messages
+                                if (typedPayload.role === 'assistant' && typedPayload.content) {
+                                    setTimeout(() => {
+                                        if (scrollAreaRef.current) {
+                                            const scrollElement = scrollAreaRef.current.querySelector('[data-radix-scroll-area-viewport]')
+                                            if (scrollElement) {
+                                                scrollElement.scrollTo({
+                                                    top: scrollElement.scrollHeight,
+                                                    behavior: 'smooth'
+                                                })
+                                            }
+                                        }
+                                    }, 50)
+                                }
+                                
+                                return updatedMessages
+                            } else {
+                                // Add completely new message (this happens when server creates the real message)
+                                const serverMetadata = typedPayload.metadata ? JSON.parse(typedPayload.metadata) : {}
+                                const newMessage: Message = {
+                                    id: typedPayload.$id,
+                                    role: typedPayload.role,
+                                    content: typedPayload.content || '',
+                                    createdAt: typedPayload.$createdAt,
+                                    tokenCount: typedPayload.tokenCount,
+                                    generationTimeMs: typedPayload.generationTimeMs,
+                                    revisionId: typedPayload.revisionId,
+                                    isFromInitialLoad: false, // Mark as new message from server
+                                    metadata: {
+                                        ...serverMetadata,
+                                        // Transition from thinking to writing when content starts streaming
+                                        isThinking: serverMetadata.streaming && !typedPayload.content ? true : false
+                                    },
+                                }
+                                
+                                updateDebugState({ 
+                                    localMessagesCount: prev.length + 1,
+                                    lastMessageUpdate: `Added new message ${typedPayload.$id} from server`
+                                })
+                                
+                                // Auto-scroll on every realtime update for AI messages
+                                if (typedPayload.role === 'assistant' && typedPayload.content) {
+                                    setTimeout(() => {
+                                        if (scrollAreaRef.current) {
+                                            const scrollElement = scrollAreaRef.current.querySelector('[data-radix-scroll-area-viewport]')
+                                            if (scrollElement) {
+                                                scrollElement.scrollTo({
+                                                    top: scrollElement.scrollHeight,
+                                                    behavior: 'smooth'
+                                                })
+                                            }
+                                        }
+                                    }, 50)
+                                }
+                                
+                                return [...prev, newMessage]
+                            }
+                        }
+                    })
+
+                    // Step 5: Check if streaming is completed and unlock UI
+                    if (typedPayload.metadata) {
+                        const metadata = JSON.parse(typedPayload.metadata)
+                        if (metadata.status === 'completed' || !metadata.streaming) {
+                            setIsUILocked(false)
+                            setCurrentStreamingMessageId(null)
+                            updateDebugState({ 
+                                isUIlocked: false,
+                                currentStreamingMessageId: null,
+                                lastMessageUpdate: `Streaming completed for message: ${typedPayload.$id}`
+                            })
+                        }
+                    }
+                }
+            })
+            
+            return () => unsubscribe()
+        })
+    }, [currentConversationId, updateDebugState])
+
     // Streaming state management is now handled by the consolidated realtime system
 
-    // Convert database messages to local format and sort with oldest at top
-    const dbMessagesFormatted: Message[] = dbMessages
-        .map((msg: Messages) => ({
-            id: msg.$id,
-            role: msg.role,
-            content: msg.content,
-            createdAt: msg.$createdAt,
-            tokenCount: msg.tokenCount,
-            generationTimeMs: msg.generationTimeMs,
-            revisionId: msg.revisionId,
-            metadata: msg.metadata ? JSON.parse(msg.metadata) : undefined,
-        }))
-        .sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()) // Sort oldest to newest
+    // Use local messages directly (new approach)
+    const messages: Message[] = localMessages
 
-    // Use database messages directly
-    const messages: Message[] = dbMessagesFormatted
+    // Scroll to bottom instantly when initial messages are loaded
+    useEffect(() => {
+        console.log('🔍 Scroll useEffect triggered:', { initialLoadComplete, messagesLength: messages.length })
+        if (initialLoadComplete && messages.length > 0) {
+            console.log('📜 Scrolling to bottom...')
+            // Use longer delay and try multiple approaches
+            setTimeout(() => {
+                // Try the existing scrollToBottom function first
+                scrollToBottom()
+                
+                // Also try direct scroll as backup
+                setTimeout(() => {
+                    if (scrollAreaRef.current) {
+                        const scrollElement = scrollAreaRef.current.querySelector('[data-radix-scroll-area-viewport]')
+                        console.log('🎯 Scroll element found:', !!scrollElement)
+                        if (scrollElement) {
+                            console.log('📜 Direct scrolling to:', scrollElement.scrollHeight)
+                            scrollElement.scrollTo({
+                                top: scrollElement.scrollHeight,
+                                behavior: 'instant'
+                            })
+                        }
+                    } else {
+                        console.log('❌ ScrollArea ref not found')
+                    }
+                }, 200)
+            }, 300)
+        }
+    }, [initialLoadComplete, messages.length, scrollToBottom])
 
     // Update cost tracking when messages change
     useEffect(() => {
@@ -391,8 +753,8 @@ export function AgentChat({
         }
     }, [articleId, queryClient, onApplyAIRevision])
 
-    // Determine if prompt should be locked (waiting for stream or streaming)
-    const isPromptLocked = isWaitingForStream || isStreaming
+    // Determine if prompt should be locked (using new state)
+    const isPromptLocked = isUIlocked
 
 
     // Memoize the conversation creation function to prevent infinite loops
@@ -451,6 +813,7 @@ export function AgentChat({
     // Auto-scroll to newest message
     const bottomRef = useRef<HTMLDivElement | null>(null)
     const scrollAreaRef = useRef<HTMLDivElement | null>(null)
+    const hasScrolledOnInitialLoad = useRef(false)
     const [lastScrollTime, setLastScrollTime] = useState(0)
     
     // Simple scroll to bottom when messages change
@@ -610,32 +973,88 @@ export function AgentChat({
     }, [isPromptLocked])
 
 
+    // New simplified send function following 5-step process
     const send = async (messageText?: string) => {
         const text = (messageText || input).trim()
-        if (!text || !currentConversationId) return
+        if (!text || !currentConversationId || isUIlocked) return
 
-        // Clear input and show loading immediately for better UX
+        // Step 2: User adds a message, create it on server with proper permissions
+        const userMessage: Message = {
+            id: `temp-user-${Date.now()}`, // Temporary ID
+            role: 'user',
+            content: text,
+            createdAt: new Date().toISOString(),
+            tokenCount: null,
+            generationTimeMs: null,
+            revisionId: latestRevision?.$id || null,
+            isFromInitialLoad: false, // Mark as new message
+            metadata: undefined
+        }
+
+        // Add user message to local state immediately
+        setLocalMessages(prev => [...prev, userMessage])
+        updateDebugState({ 
+            localMessagesCount: localMessages.length + 1,
+            lastMessageUpdate: `Added user message: ${text.substring(0, 50)}...`
+        })
+
+        // Clear input immediately
         setInput('')
-        setIsWaitingForAI(true)
-        setIsWaitingForStream(true)
-        setDebugEvents(prev => [...prev.slice(-4), `Prompt submitted, waiting for stream at ${new Date().toISOString()}`])
 
+        // Create user message on server with proper permissions (but don't refetch)
         try {
-            // Create user message in background
-            const userMessage = await createMessage({
+            await createMessage({
                 role: 'user',
                 content: text,
                 userId: user?.$id || '',
                 revisionId: latestRevision?.$id || null,
             })
+            updateDebugState({ 
+                lastMessageUpdate: `Created user message on server with permissions`
+            })
+        } catch (error) {
+            console.error('Failed to create user message on server:', error)
+            updateDebugState({ 
+                lastMessageUpdate: `Error creating user message: ${error}`
+            })
+        }
 
-            // Scroll immediately for better UX
+        // Step 3: The UI gets locked and adds a new empty message with a thinking loader
+        setIsUILocked(true)
+        updateDebugState({ isUIlocked: true })
+
+        const thinkingMessage: Message = {
+            id: `temp-thinking-${Date.now()}`, // Temporary ID
+            role: 'assistant',
+            content: '', // Empty content
+            createdAt: new Date().toISOString(),
+            tokenCount: null,
+            generationTimeMs: null,
+            revisionId: null,
+            isFromInitialLoad: false, // Mark as new message
+            metadata: {
+                streaming: true,
+                status: 'generating',
+                isThinking: true // Special flag for thinking state
+            }
+        }
+
+        // Add thinking message to local state
+        setLocalMessages(prev => [...prev, thinkingMessage])
+        setCurrentStreamingMessageId(thinkingMessage.id)
+        updateDebugState({ 
+            localMessagesCount: localMessages.length + 2,
+            currentStreamingMessageId: thinkingMessage.id,
+            lastMessageUpdate: `Added thinking message with ID: ${thinkingMessage.id}`
+        })
+
+        // Scroll to bottom
             setTimeout(() => {
                 scrollToBottom()
-                setLastScrollTime(Date.now())
             }, 10)
 
-            // Trigger agent function to generate response
+        // Trigger agent function to generate response (this will create realtime events)
+        try {
             await functionService.triggerAgentResponse({
                 conversationId: currentConversationId,
                 blogId: blogId || '',
@@ -646,10 +1065,14 @@ export function AgentChat({
                     userMessage: text
                 }
             })
-        } catch {
-            // Failed to send message
-            setIsWaitingForAI(false)
-            setIsWaitingForStream(false)
+        } catch (error) {
+            console.error('Failed to trigger agent response:', error)
+            // Unlock UI on error
+            setIsUILocked(false)
+            updateDebugState({ 
+                isUIlocked: false,
+                lastMessageUpdate: `Error triggering agent: ${error}`
+            })
         }
     }
 
@@ -892,8 +1315,8 @@ I've made several changes to your content including creating new paragraphs, upd
                                                 </div>
                                             </div>
                                         </span>
-                                        <span className={isStreaming ? 'text-yellow-600 dark:text-yellow-400' : isWaitingForStream ? 'text-orange-600 dark:text-orange-400' : 'text-green-600 dark:text-green-400'}>
-                                            {isStreaming ? 'Streaming' : isWaitingForStream ? 'Waiting' : 'Ready'}
+                                        <span className={isUIlocked ? 'text-orange-600 dark:text-orange-400' : 'text-green-600 dark:text-green-400'}>
+                                            {isUIlocked ? 'Processing' : 'Ready'}
                                         </span>
                                     </div>
                                     <div className="flex justify-between items-center">
@@ -969,9 +1392,27 @@ I've made several changes to your content including creating new paragraphs, upd
                 ) : hasMessages ? (
                     <div className="px-6 py-6 space-y-2">
                         {/* Debug: Messages count: {messages.length}, hasMessages: {hasMessages.toString()} */}
-                        {messages.map((m, index) => (
-                            <div 
-                                key={m.id} 
+                        {messages.map((m, index) => {
+                            // Check if we need to show a separator
+                            const showSeparator = initialLoadComplete && 
+                                index > 0 && 
+                                messages[index - 1].isFromInitialLoad && 
+                                !m.isFromInitialLoad
+                            
+                            return (
+                                <div key={m.id}>
+                                    {/* Separator between initial load and new messages */}
+                                    {showSeparator && (
+                                        <div className="flex items-center my-4">
+                                            <div className="flex-1 h-px bg-gradient-to-r from-transparent via-border to-transparent"></div>
+                                            <div className="px-3 py-1 bg-muted/50 rounded-full text-xs text-muted-foreground font-medium">
+                                                New messages
+                                            </div>
+                                            <div className="flex-1 h-px bg-gradient-to-r from-transparent via-border to-transparent"></div>
+                                        </div>
+                                    )}
+                                    
+                                    <div 
                                 className="space-y-1"
                                 style={{ opacity: 1, visibility: 'visible' }}
                             >
@@ -994,12 +1435,11 @@ I've made several changes to your content including creating new paragraphs, upd
                                         ) : (
                                             m.content
                                         )}
-                                        {/* Show streaming indicator for assistant messages */}
+                                        {/* Show streaming indicator for assistant messages - mutually exclusive states */}
                                         {m.role === 'assistant' && m.metadata?.streaming && m.metadata?.status === 'generating' && (
                                             <div className="flex items-center gap-1 mt-1">
                                                 <span className="text-xs text-muted-foreground">
-                                                    {isWaitingForStream ? 'Waiting for stream...' : 
-                                                     'Writing'}
+                                                    {m.metadata?.isThinking ? 'Thinking' : 'Writing'}
                                                 </span>
                                                 <div className="flex gap-0.5">
                                                     <div className="w-1 h-1 bg-muted-foreground rounded-full animate-pulse" style={{ animationDelay: '0ms' }}></div>
@@ -1060,28 +1500,10 @@ I've made several changes to your content including creating new paragraphs, upd
                                     </div>
                                 )}
                             </div>
-                        ))}
+                                    </div>
+                            )
+                        })}
                         
-                        {/* Show loading indicator when waiting for AI response */}
-                        {isWaitingForStream && (
-                            <div className="space-y-1 animate-in fade-in-0 duration-300">
-                                <div className="flex gap-2 items-start">
-                                    <div className="mt-0.5 text-muted-foreground">
-                                        <Brain className="h-4 w-4" />
-                                    </div>
-                                    <div className="rounded-md bg-accent px-2.5 py-1.5 text-xs max-w-[220px]">
-                                        <div className="flex items-center gap-2">
-                                            <div className="flex gap-0.5">
-                                                <div className="w-1 h-1 bg-muted-foreground rounded-full animate-pulse" style={{ animationDelay: '0ms' }}></div>
-                                                <div className="w-1 h-1 bg-muted-foreground rounded-full animate-pulse" style={{ animationDelay: '150ms' }}></div>
-                                                <div className="w-1 h-1 bg-muted-foreground rounded-full animate-pulse" style={{ animationDelay: '300ms' }}></div>
-                                            </div>
-                                            <span className="text-xs text-muted-foreground">Thinking</span>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        )}
                         
                         <div ref={bottomRef} />
                         
@@ -1254,10 +1676,8 @@ I've made several changes to your content including creating new paragraphs, upd
                             }
                         }}
                         placeholder={
-                            isWaitingForStream 
-                                ? "Thinking" 
-                                : isStreaming 
-                                    ? "AI is responding..." 
+                            isUIlocked 
+                                ? "Processing..." 
                                     : "Ask the agent…"
                         }
                         className={`min-h-[44px] max-h-32 pr-12 text-sm resize-none ${isPromptLocked ? 'opacity-50 cursor-not-allowed' : ''}`}

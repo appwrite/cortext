@@ -283,7 +283,7 @@ export function useMessagesWithNotifications(
     })
     
     setIsSwitchingConversation(false)
-  }, [messagesQuery.data, conversationId, allMessages])
+  }, [messagesQuery.data, conversationId])
 
   // Update messages when data changes
   useEffect(() => {

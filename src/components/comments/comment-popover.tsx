@@ -42,6 +42,7 @@ export const CommentPopover = memo(function CommentPopover({
   const [popoverPosition, setPopoverPosition] = useState<'bottom' | 'top'>('bottom');
   const containerRef = useRef<HTMLDivElement>(null);
   const popoverRef = useRef<HTMLDivElement>(null);
+  const scrollableContainerRef = useRef<HTMLDivElement>(null);
   const commentListRef = useRef<{ focusComment: (commentId: string) => void } | null>(null);
   const commentFormRef = useRef<CommentFormRef>(null);
 
@@ -100,9 +101,15 @@ export const CommentPopover = memo(function CommentPopover({
 
   // Memoize the comment added handler
   const handleCommentAdded = useCallback((commentId?: string) => {
-    // Focus on the newly added comment
-    if (commentId && commentListRef.current) {
-      commentListRef.current.focusComment(commentId);
+    // Scroll to bottom of the scrollable container after adding a new comment
+    if (scrollableContainerRef.current) {
+      // Use a small delay to ensure the new comment is rendered
+      setTimeout(() => {
+        scrollableContainerRef.current?.scrollTo({
+          top: scrollableContainerRef.current.scrollHeight,
+          behavior: 'instant'
+        });
+      }, 500);
     }
   }, []);
 
@@ -168,6 +175,7 @@ export const CommentPopover = memo(function CommentPopover({
             
             {/* Scrollable comments list */}
             <div 
+              ref={scrollableContainerRef}
               className="flex-1 overflow-y-auto min-h-0"
             >
               <MemoizedCommentList

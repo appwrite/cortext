@@ -96,22 +96,22 @@ export function CommentsSidebar({
             // Create breadcrumb-style names starting with "Body"
             if (section.type === 'title' && section.content) {
               // For title sections, use the content as the title
-              const truncatedContent = section.content.length > 30 
-                ? section.content.substring(0, 30) + '...' 
+              const truncatedContent = section.content.length > 12 
+                ? section.content.substring(0, 12) + '...' 
                 : section.content;
               return `Body › "${truncatedContent}"`;
             } else if (section.type === 'text' && section.content) {
               // For text sections, use first few words
-              const words = section.content.split(' ').slice(0, 4).join(' ');
-              const truncatedContent = section.content.length > 40 
+              const words = section.content.split(' ').slice(0, 2).join(' ');
+              const truncatedContent = section.content.length > 15 
                 ? words + '...' 
                 : words;
               return `Body › Text: "${truncatedContent}"`;
             } else if (section.type === 'quote' && section.content) {
               // For quote sections, show speaker if available
               const speaker = section.speaker || 'Anonymous';
-              const truncatedQuote = section.content.length > 25 
-                ? section.content.substring(0, 25) + '...' 
+              const truncatedQuote = section.content.length > 10 
+                ? section.content.substring(0, 10) + '...' 
                 : section.content;
               return `Body › Quote by ${speaker}: "${truncatedQuote}"`;
             } else if (section.type === 'code' && section.language) {
@@ -184,7 +184,7 @@ export function CommentsSidebar({
             <div className="flex items-center space-x-2">
               <h2 className="font-semibold text-lg">Comments</h2>
               {totalComments > 0 && (
-                <span className="px-2 py-1 text-xs bg-muted rounded-full">
+                <span className="flex items-center justify-center w-6 h-6 text-xs bg-muted rounded-full">
                   {totalComments}
                 </span>
               )}
@@ -231,7 +231,7 @@ export function CommentsSidebar({
                             />
                             <span>{getTargetLabel(targetType, targetId)}</span>
                           </div>
-                          <span className="px-1.5 py-0.5 text-xs bg-red-500 text-white rounded-full">
+                          <span className="flex items-center justify-center w-6 h-6 text-xs bg-red-500 text-white rounded-full">
                             {comments.length}
                           </span>
                         </Button>

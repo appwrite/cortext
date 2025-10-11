@@ -56,11 +56,16 @@ export function useRealtime(subscriptions: RealtimeSubscription[], enabled: bool
             return
           }
 
-          // For streaming updates, skip refetch and rely on optimistic updates
-          // Only invalidate (not refetch) to avoid disrupting streaming
-          queryClient.invalidateQueries({ queryKey }).catch((error) => {
-            // Query invalidation failed
-          })
+          // For streaming updates, skip invalidation and rely entirely on optimistic updates
+          // Only invalidate for non-streaming events to avoid disrupting streaming
+          const isStreamingEvent = (payload as any).role === 'assistant' && (payload as any).metadata && 
+            JSON.parse((payload as any).metadata).streaming === true
+          
+          if (!isStreamingEvent) {
+            queryClient.invalidateQueries({ queryKey }).catch((error) => {
+              // Query invalidation failed
+            })
+          }
 
           // Call custom event handler if provided
           if (onEvent) {
@@ -343,11 +348,16 @@ export function useConsolidatedRealtime(subscriptions: RealtimeSubscription[], e
               return
             }
 
-            // For streaming updates, skip refetch and rely on optimistic updates
-            // Only invalidate (not refetch) to avoid disrupting streaming
-            queryClient.invalidateQueries({ queryKey }).catch((error) => {
-              // Query invalidation failed
-            })
+            // For streaming updates, skip invalidation and rely entirely on optimistic updates
+            // Only invalidate for non-streaming events to avoid disrupting streaming
+            const isStreamingEvent = (payload as any).role === 'assistant' && (payload as any).metadata && 
+              JSON.parse((payload as any).metadata).streaming === true
+            
+            if (!isStreamingEvent) {
+              queryClient.invalidateQueries({ queryKey }).catch((error) => {
+                // Query invalidation failed
+              })
+            }
 
             // Call custom event handler if provided
             if (onEvent) {
