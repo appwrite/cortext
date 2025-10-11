@@ -790,7 +790,9 @@ export default async function ({ req, res, log, error }) {
         const logEntry = `[${timestamp}] ${message}`;
         debugLogs.push(logEntry);
         // Only log important messages to console, not all debug messages
-        if (message.includes('ERROR') || message.includes('Failed') || message.includes('Stream completed')) {
+        if (message.includes('ERROR') || message.includes('Failed') || message.includes('Stream completed') || 
+            message.includes('Starting JSON parsing') || message.includes('Condition not met') || 
+            message.includes('No JSON found') || message.includes('Found') || message.includes('JSON')) {
           log(message);
         }
       };
@@ -1157,7 +1159,11 @@ export default async function ({ req, res, log, error }) {
         // Parse LLM response for article updates and create new revision
         let newRevisionId = null;
         
+        addDebugLog(`Starting JSON parsing - revisionId: ${revisionId}, articleId: ${articleId}, contentLength: ${fullContent.length}`);
+        addDebugLog(`Full content: "${fullContent}"`);
+        
         if (revisionId && articleId && fullContent) {
+          addDebugLog(`Condition met - proceeding with JSON parsing`);
           try {
             // Extract ALL JSON objects from the response (handle multiple JSON commands)
             const allJsonObjects = [];
@@ -1431,6 +1437,8 @@ export default async function ({ req, res, log, error }) {
             addDebugLog(`Error parsing LLM response or creating revision: ${parseError.message}`);
             // Continue without creating revision
           }
+        } else {
+          addDebugLog(`Condition not met - revisionId: ${revisionId}, articleId: ${articleId}, fullContent: ${!!fullContent}`);
         }
 
         // Final update with complete content, revision ID, and truncated debug logs
