@@ -8,7 +8,7 @@ export function useAuth() {
     queryKey: ["auth", "user"],
     queryFn: () => account.get(),
     retry: false,
-    staleTime: 0,
+    staleTime: 5 * 60 * 1000, // 5 minutes
   });
 
   const deleteSession = async () => {

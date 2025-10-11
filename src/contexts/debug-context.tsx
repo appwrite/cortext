@@ -22,13 +22,13 @@ export function DebugProvider({ children }: DebugProviderProps) {
     }
   })
 
-  const toggleDebugMode = () => {
+  const toggleDebugMode = React.useCallback(() => {
     setIsDebugMode(prev => !prev)
-  }
+  }, [])
 
-  const setDebugMode = (enabled: boolean) => {
+  const setDebugMode = React.useCallback((enabled: boolean) => {
     setIsDebugMode(enabled)
-  }
+  }, [])
 
   // Persist debug mode to localStorage
   useEffect(() => {

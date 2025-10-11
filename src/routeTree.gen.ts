@@ -28,6 +28,10 @@ import { Route as ProtectedContentRouteImport } from './routes/_protected/conten
 import { Route as AuthSignUpRouteImport } from './routes/_auth/sign-up'
 import { Route as AuthSignOutRouteImport } from './routes/_auth/sign-out'
 import { Route as AuthSignInRouteImport } from './routes/_auth/sign-in'
+import { Route as DocsApiSpecificationRouteImport } from './routes/docs/api/specification'
+import { Route as DocsApiSdksRouteImport } from './routes/docs/api/sdks'
+import { Route as DocsApiGetStartedRouteImport } from './routes/docs/api/get-started'
+import { Route as DocsApiAuthAndKeysRouteImport } from './routes/docs/api/auth-and-keys'
 
 const VerifyEmailRoute = VerifyEmailRouteImport.update({
   id: '/verify-email',
@@ -122,6 +126,26 @@ const AuthSignInRoute = AuthSignInRouteImport.update({
   path: '/sign-in',
   getParentRoute: () => AuthRoute,
 } as any)
+const DocsApiSpecificationRoute = DocsApiSpecificationRouteImport.update({
+  id: '/specification',
+  path: '/specification',
+  getParentRoute: () => DocsApiRoute,
+} as any)
+const DocsApiSdksRoute = DocsApiSdksRouteImport.update({
+  id: '/sdks',
+  path: '/sdks',
+  getParentRoute: () => DocsApiRoute,
+} as any)
+const DocsApiGetStartedRoute = DocsApiGetStartedRouteImport.update({
+  id: '/get-started',
+  path: '/get-started',
+  getParentRoute: () => DocsApiRoute,
+} as any)
+const DocsApiAuthAndKeysRoute = DocsApiAuthAndKeysRouteImport.update({
+  id: '/auth-and-keys',
+  path: '/auth-and-keys',
+  getParentRoute: () => DocsApiRoute,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -135,12 +159,16 @@ export interface FileRoutesByFullPath {
   '/sign-up': typeof AuthSignUpRoute
   '/content': typeof ProtectedContentRoute
   '/docs/ai-coauthor': typeof DocsAiCoauthorRoute
-  '/docs/api': typeof DocsApiRoute
+  '/docs/api': typeof DocsApiRouteWithChildren
   '/docs/blocks': typeof DocsBlocksRoute
   '/docs/collaboration': typeof DocsCollaborationRoute
   '/docs/installation': typeof DocsInstallationRoute
   '/docs/quick-start': typeof DocsQuickStartRoute
   '/docs/': typeof DocsIndexRoute
+  '/docs/api/auth-and-keys': typeof DocsApiAuthAndKeysRoute
+  '/docs/api/get-started': typeof DocsApiGetStartedRoute
+  '/docs/api/sdks': typeof DocsApiSdksRoute
+  '/docs/api/specification': typeof DocsApiSpecificationRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -153,12 +181,16 @@ export interface FileRoutesByTo {
   '/sign-up': typeof AuthSignUpRoute
   '/content': typeof ProtectedContentRoute
   '/docs/ai-coauthor': typeof DocsAiCoauthorRoute
-  '/docs/api': typeof DocsApiRoute
+  '/docs/api': typeof DocsApiRouteWithChildren
   '/docs/blocks': typeof DocsBlocksRoute
   '/docs/collaboration': typeof DocsCollaborationRoute
   '/docs/installation': typeof DocsInstallationRoute
   '/docs/quick-start': typeof DocsQuickStartRoute
   '/docs': typeof DocsIndexRoute
+  '/docs/api/auth-and-keys': typeof DocsApiAuthAndKeysRoute
+  '/docs/api/get-started': typeof DocsApiGetStartedRoute
+  '/docs/api/sdks': typeof DocsApiSdksRoute
+  '/docs/api/specification': typeof DocsApiSpecificationRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -175,12 +207,16 @@ export interface FileRoutesById {
   '/_auth/sign-up': typeof AuthSignUpRoute
   '/_protected/content': typeof ProtectedContentRoute
   '/docs/ai-coauthor': typeof DocsAiCoauthorRoute
-  '/docs/api': typeof DocsApiRoute
+  '/docs/api': typeof DocsApiRouteWithChildren
   '/docs/blocks': typeof DocsBlocksRoute
   '/docs/collaboration': typeof DocsCollaborationRoute
   '/docs/installation': typeof DocsInstallationRoute
   '/docs/quick-start': typeof DocsQuickStartRoute
   '/docs/': typeof DocsIndexRoute
+  '/docs/api/auth-and-keys': typeof DocsApiAuthAndKeysRoute
+  '/docs/api/get-started': typeof DocsApiGetStartedRoute
+  '/docs/api/sdks': typeof DocsApiSdksRoute
+  '/docs/api/specification': typeof DocsApiSpecificationRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -202,6 +238,10 @@ export interface FileRouteTypes {
     | '/docs/installation'
     | '/docs/quick-start'
     | '/docs/'
+    | '/docs/api/auth-and-keys'
+    | '/docs/api/get-started'
+    | '/docs/api/sdks'
+    | '/docs/api/specification'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -220,6 +260,10 @@ export interface FileRouteTypes {
     | '/docs/installation'
     | '/docs/quick-start'
     | '/docs'
+    | '/docs/api/auth-and-keys'
+    | '/docs/api/get-started'
+    | '/docs/api/sdks'
+    | '/docs/api/specification'
   id:
     | '__root__'
     | '/'
@@ -241,6 +285,10 @@ export interface FileRouteTypes {
     | '/docs/installation'
     | '/docs/quick-start'
     | '/docs/'
+    | '/docs/api/auth-and-keys'
+    | '/docs/api/get-started'
+    | '/docs/api/sdks'
+    | '/docs/api/specification'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -389,6 +437,34 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthSignInRouteImport
       parentRoute: typeof AuthRoute
     }
+    '/docs/api/specification': {
+      id: '/docs/api/specification'
+      path: '/specification'
+      fullPath: '/docs/api/specification'
+      preLoaderRoute: typeof DocsApiSpecificationRouteImport
+      parentRoute: typeof DocsApiRoute
+    }
+    '/docs/api/sdks': {
+      id: '/docs/api/sdks'
+      path: '/sdks'
+      fullPath: '/docs/api/sdks'
+      preLoaderRoute: typeof DocsApiSdksRouteImport
+      parentRoute: typeof DocsApiRoute
+    }
+    '/docs/api/get-started': {
+      id: '/docs/api/get-started'
+      path: '/get-started'
+      fullPath: '/docs/api/get-started'
+      preLoaderRoute: typeof DocsApiGetStartedRouteImport
+      parentRoute: typeof DocsApiRoute
+    }
+    '/docs/api/auth-and-keys': {
+      id: '/docs/api/auth-and-keys'
+      path: '/auth-and-keys'
+      fullPath: '/docs/api/auth-and-keys'
+      preLoaderRoute: typeof DocsApiAuthAndKeysRouteImport
+      parentRoute: typeof DocsApiRoute
+    }
   }
 }
 
@@ -418,9 +494,26 @@ const ProtectedRouteWithChildren = ProtectedRoute._addFileChildren(
   ProtectedRouteChildren,
 )
 
+interface DocsApiRouteChildren {
+  DocsApiAuthAndKeysRoute: typeof DocsApiAuthAndKeysRoute
+  DocsApiGetStartedRoute: typeof DocsApiGetStartedRoute
+  DocsApiSdksRoute: typeof DocsApiSdksRoute
+  DocsApiSpecificationRoute: typeof DocsApiSpecificationRoute
+}
+
+const DocsApiRouteChildren: DocsApiRouteChildren = {
+  DocsApiAuthAndKeysRoute: DocsApiAuthAndKeysRoute,
+  DocsApiGetStartedRoute: DocsApiGetStartedRoute,
+  DocsApiSdksRoute: DocsApiSdksRoute,
+  DocsApiSpecificationRoute: DocsApiSpecificationRoute,
+}
+
+const DocsApiRouteWithChildren =
+  DocsApiRoute._addFileChildren(DocsApiRouteChildren)
+
 interface DocsRouteChildren {
   DocsAiCoauthorRoute: typeof DocsAiCoauthorRoute
-  DocsApiRoute: typeof DocsApiRoute
+  DocsApiRoute: typeof DocsApiRouteWithChildren
   DocsBlocksRoute: typeof DocsBlocksRoute
   DocsCollaborationRoute: typeof DocsCollaborationRoute
   DocsInstallationRoute: typeof DocsInstallationRoute
@@ -430,7 +523,7 @@ interface DocsRouteChildren {
 
 const DocsRouteChildren: DocsRouteChildren = {
   DocsAiCoauthorRoute: DocsAiCoauthorRoute,
-  DocsApiRoute: DocsApiRoute,
+  DocsApiRoute: DocsApiRouteWithChildren,
   DocsBlocksRoute: DocsBlocksRoute,
   DocsCollaborationRoute: DocsCollaborationRoute,
   DocsInstallationRoute: DocsInstallationRoute,

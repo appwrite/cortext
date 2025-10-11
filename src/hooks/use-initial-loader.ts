@@ -25,10 +25,6 @@ export function useInitialLoader() {
         
         setTimeout(() => {
           setIsLoading(false);
-          // Mark initial load as complete after a short delay (only on first load)
-          if (isInitialLoad) {
-            setTimeout(() => setIsInitialLoad(false), 300);
-          }
         }, remainingTime);
       };
 
@@ -44,12 +40,16 @@ export function useInitialLoader() {
     } else {
       // Not a protected route, don't show loader
       setIsLoading(false);
-      // Only set initial load to false on first load
-      if (isInitialLoad) {
-        setTimeout(() => setIsInitialLoad(false), 300);
-      }
     }
-  }, [router, location.pathname, isInitialLoad]);
+  }, [router, location.pathname]);
+
+  // Separate effect for initial load state
+  useEffect(() => {
+    if (isInitialLoad) {
+      const timer = setTimeout(() => setIsInitialLoad(false), 300);
+      return () => clearTimeout(timer);
+    }
+  }, [isInitialLoad]);
 
   return {
     isLoading: isLoading, // Show loader on every navigation to protected routes

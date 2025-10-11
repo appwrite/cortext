@@ -1,5 +1,6 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useAuth } from "@/hooks/use-auth";
+import { useLocale } from "@/hooks/use-locale";
 import { Brain, Sparkles, Type as TypeIcon, Image as ImageIcon, Video as VideoIcon, Map as MapIcon, Quote as QuoteIcon, Code2 as CodeIcon, FileEdit, MessageSquare, History, Github } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useThemeContext } from "@/contexts/theme-context";
@@ -68,6 +69,7 @@ function Nav() {
 function Index() {
     const [count, setCount] = useState(0);
     const { effectiveTheme } = useThemeContext();
+    const { isCountry, isLoading: isLocaleLoading } = useLocale();
     const { user, isLoading } = useAuth();
     
     // Preload the appropriate content image based on theme
@@ -206,6 +208,27 @@ function Index() {
                                 className="h-5 w-auto"
                             />
                         </a>
+                        {/* Example: Show Ashkelon News only for Israel visitors */}
+                        {!isLocaleLoading && isCountry('IL') && (
+                            <a 
+                                href="https://anews.co.il" 
+                                target="_blank" 
+                                rel="noopener noreferrer"
+                                className="hover:opacity-80 transition-opacity duration-200 text-foreground"
+                            >
+                                <img 
+                                    src={effectiveTheme === 'dark' ? "/trusted/anews-dark.svg" : "/trusted/anews-light.svg"} 
+                                    alt="Ashkelon News" 
+                                    className="h-6 w-auto"
+                                />
+                            </a>
+                        )}
+                        {/* 
+                        Example usage for other countries:
+                        {!isLocaleLoading && isCountry('US') && <USCompanyLogo />}
+                        {!isLocaleLoading && isContinent('EU') && <EuropeanCompanyLogo />}
+                        {!isLocaleLoading && isEurope && <EuropeanCompanyLogo />}
+                        */}
                     </div>
                 </div>
             </section>

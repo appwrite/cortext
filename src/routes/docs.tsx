@@ -1,5 +1,5 @@
 import { createFileRoute, Outlet, Link, useLocation } from "@tanstack/react-router";
-import { Brain, BookOpen, Code2, Zap, Users, Settings, ChevronRight, Github } from "lucide-react";
+import { Brain, BookOpen, Code2, Zap, Users, Settings, ChevronRight, Github, Key } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
 import { TableOfContents } from "@/components/docs/table-of-contents";
 import { TableOfContentsProvider, useTableOfContents } from "@/contexts/table-of-contents-context";
@@ -30,7 +30,11 @@ const docsNavigation = [
     {
         title: "API Reference",
         items: [
-            { title: "API Overview", href: "/docs/api", icon: Settings },
+            { title: "Overview", href: "/docs/api", icon: Settings },
+            { title: "Get Started", href: "/docs/api/get-started", icon: Zap },
+            { title: "Auth and Keys", href: "/docs/api/auth-and-keys", icon: Key },
+            { title: "SDKs", href: "/docs/api/sdks", icon: Code2 },
+            { title: "Specification", href: "/docs/api/specification", icon: BookOpen },
         ]
     }
 ];
