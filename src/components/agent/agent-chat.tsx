@@ -14,6 +14,7 @@ import { ConversationPlaceholder } from './conversation-placeholder'
 import { useAuth } from '@/hooks/use-auth'
 import { useDebugMode } from '@/contexts/debug-context'
 import { useLatestRevision } from '@/hooks/use-latest-revision'
+import { useChatContext } from '@/contexts/chat-context'
 import type { Messages } from '@/lib/appwrite/appwrite.types'
 import { functionService } from '@/lib/appwrite/functions'
 import { db } from '@/lib/appwrite/db'
@@ -88,6 +89,12 @@ export function AgentChat({
     const [copiedContent, setCopiedContent] = useState<string | null>(null)
     const [realtimeEvents, setRealtimeEvents] = useState<Array<{timestamp: string, event: string, payload: any}>>([])
     
+    // Use chat context for resizable functionality
+    const { chatWidth, isMinimized, setChatWidth, setIsMinimized } = useChatContext()
+    const [isResizing, setIsResizing] = useState(false)
+    const [dragStartX, setDragStartX] = useState(0)
+    const [dragStartWidth, setDragStartWidth] = useState(0)
+    
     // New simplified state management
     const [localMessages, setLocalMessages] = useState<Message[]>([])
     const [isUIlocked, setIsUILocked] = useState(false)
@@ -138,6 +145,54 @@ export function AgentChat({
         
         isStreamingRef.current = false
     }, [currentConversationId])
+
+    // Resizable chat functionality
+    const handleMouseDown = useCallback((e: React.MouseEvent) => {
+        e.preventDefault()
+        setIsResizing(true)
+        setDragStartX(e.clientX)
+        setDragStartWidth(chatWidth)
+    }, [chatWidth])
+
+    const handleMouseMove = useCallback((e: MouseEvent) => {
+        if (!isResizing) return
+        
+        const deltaX = e.clientX - dragStartX
+        const newWidth = Math.max(300, Math.min(600, dragStartWidth + deltaX)) // Min 300px, Max 600px
+        
+        if (newWidth <= 320) {
+            setIsMinimized(true)
+            setChatWidth(60) // Minimized width
+        } else {
+            setIsMinimized(false)
+            setChatWidth(newWidth)
+        }
+    }, [isResizing, dragStartX, dragStartWidth])
+
+    const handleMouseUp = useCallback(() => {
+        setIsResizing(false)
+    }, [])
+
+    useEffect(() => {
+        if (isResizing) {
+            document.addEventListener('mousemove', handleMouseMove)
+            document.addEventListener('mouseup', handleMouseUp)
+            document.body.style.cursor = 'col-resize'
+            document.body.style.userSelect = 'none'
+        } else {
+            document.removeEventListener('mousemove', handleMouseMove)
+            document.removeEventListener('mouseup', handleMouseUp)
+            document.body.style.cursor = ''
+            document.body.style.userSelect = ''
+        }
+
+        return () => {
+            document.removeEventListener('mousemove', handleMouseMove)
+            document.removeEventListener('mouseup', handleMouseUp)
+            document.body.style.cursor = ''
+            document.body.style.userSelect = ''
+        }
+    }, [isResizing, handleMouseMove, handleMouseUp])
 
     // Update streaming ref whenever streaming state changes
     useEffect(() => {
@@ -1746,12 +1801,6 @@ I've made several changes to your content including creating new paragraphs, upd
                 {/* Mobile drawer */}
                 <Drawer open={isDrawerOpen} onOpenChange={setIsDrawerOpen}>
                     <DrawerContent className="h-[80vh]">
-                        <DrawerHeader>
-                            <DrawerTitle className="flex items-center gap-2">
-                                <Brain className="h-4 w-4" />
-                                AI Co-writer
-                            </DrawerTitle>
-                        </DrawerHeader>
                         <div className="flex flex-col h-full">
                             {chatContent}
                         </div>
@@ -1763,15 +1812,39 @@ I've made several changes to your content including creating new paragraphs, upd
 
     return (
         <aside
-            className="fixed left-0 z-10 flex w-72 md:w-[18rem] lg:w-[20rem] xl:w-[24rem] flex-col border-r bg-background"
-            style={{ top: topOffset, bottom: 0 }}
+            className="fixed left-0 z-10 flex flex-col border-r bg-background"
+            style={{ 
+                top: topOffset, 
+                bottom: 0, 
+                width: isMinimized ? '60px' : `${chatWidth}px`,
+                transition: isResizing ? 'none' : 'width 0.2s ease'
+            }}
         >
-            <header className="h-12 px-6 border-b flex items-center">
-                <ConversationSelector
-                    conversations={conversations}
-                    currentConversationId={currentConversationId}
-                    onSelectConversation={setCurrentConversationId}
-                    onCreateNewConversation={async () => {
+            {/* Resize handle */}
+            <div
+                className="absolute right-0 top-0 bottom-0 w-1 cursor-col-resize hover:bg-blue-500/50 transition-colors z-20"
+                onMouseDown={handleMouseDown}
+            />
+            
+            {/* Minimized state - show only icon */}
+            {isMinimized ? (
+                <div className="flex flex-col items-center py-4 space-y-4">
+                    <Button
+                        onClick={() => setIsMinimized(false)}
+                        className="h-10 w-10 rounded-full"
+                        size="icon"
+                    >
+                        <MessageCircle className="h-5 w-5" />
+                    </Button>
+                </div>
+            ) : (
+                <>
+                    <header className="h-12 px-6 border-b flex items-center">
+                        <ConversationSelector
+                            conversations={conversations}
+                            currentConversationId={currentConversationId}
+                            onSelectConversation={setCurrentConversationId}
+                            onCreateNewConversation={async () => {
                         const newConversation = await createConversation({
                             title: `Conversation ${conversations.length + 1}`,
                             blogId,
@@ -1906,6 +1979,8 @@ I've made several changes to your content including creating new paragraphs, upd
                     </div>
                 </DialogContent>
             </Dialog>
+                </>
+            )}
         </aside>
     )
 }

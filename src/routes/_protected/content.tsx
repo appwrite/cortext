@@ -42,6 +42,8 @@ import { formatDateForDisplay, formatDateCompact, formatDateRelative } from '@/l
 import { cn } from '@/lib/utils'
 import { CommentableInput, CommentableSection, useCommentCounts, useAllComments, CommentPopover, CommentsSidebar } from '@/components/comments'
 import { useThemeContext } from '@/contexts/theme-context'
+import { ChatProvider, useChatContext } from '@/contexts/chat-context'
+import { useIsMobile } from '@/hooks/use-mobile'
 
 export const Route = createFileRoute('/_protected/content')({
     component: RouteComponent,
@@ -288,9 +290,11 @@ function Content({ userId, user }: { userId: string; user: any }) {
     if (editingId) {
         return (
             <main className="flex-1">
-                <ArticleProvider articleId={editingId}>
-                    <ArticleEditor key={editingId} articleId={editingId} userId={userId} user={user} onBack={() => navigate({ to: '/content', search: {} })} />
-                </ArticleProvider>
+                <ChatProvider>
+                    <ArticleProvider articleId={editingId}>
+                        <ArticleEditor key={editingId} articleId={editingId} userId={userId} user={user} onBack={() => navigate({ to: '/content', search: {} })} />
+                    </ArticleProvider>
+                </ChatProvider>
             </main>
         )
     }
@@ -1003,6 +1007,8 @@ function CreateArticleView({ userId, onDone, onCancel }: { userId: string; onDon
 function ArticleEditor({ articleId, userId, user, onBack }: { articleId: string; userId: string; user: any; onBack: () => void }) {
     const scrollContainerRef = useRef<HTMLDivElement>(null)
     const qc = useQueryClient()
+    const { chatWidth, isMinimized } = useChatContext()
+    const isMobile = useIsMobile()
     
     const scrollToTop = () => {
         const container = document.querySelector('.h-dvh.overflow-y-auto')
@@ -2372,7 +2378,14 @@ function ArticleEditor({ articleId, userId, user, onBack }: { articleId: string;
                 sections={localSections}
             />
             <div className="sticky top-[4.0625rem] z-5 bg-background/80 backdrop-blur supports-[backdrop-filter]:bg-background/70 border-b h-12">
-                    <div className="px-6 h-12 flex items-center justify-between ml-0 lg:ml-[20rem] xl:ml-[24rem]">
+                    <div 
+                        className="px-6 h-12 flex items-center justify-between"
+                        style={{ 
+                            marginLeft: !isMobile 
+                                ? (isMinimized ? '60px' : `${chatWidth}px`) 
+                                : '0px' 
+                        }}
+                    >
                         {/* Left side */}
                         <div className="flex items-center gap-6 -ml-2">
                             <Button variant="ghost" size="sm" onClick={onBack}>
@@ -2573,7 +2586,14 @@ function ArticleEditor({ articleId, userId, user, onBack }: { articleId: string;
             </div>
 
             {/* Sticky banners at the top */}
-            <div className="sticky top-28 z-10 px-6 py-3 ml-0 lg:ml-[20rem] xl:ml-[24rem]">
+            <div 
+                className="sticky top-28 z-10 px-6 py-3"
+                style={{ 
+                    marginLeft: !isMobile 
+                        ? (isMinimized ? '60px' : `${chatWidth}px`) 
+                        : '0px' 
+                }}
+            >
                 {/* Unpublished changes banner */}
                 {!isInRevertMode && (
                     <div className={`transition-all duration-500 ease-out ${
@@ -2608,7 +2628,14 @@ function ArticleEditor({ articleId, userId, user, onBack }: { articleId: string;
                 )}
             </div>
 
-            <div className="flex justify-center px-16 py-6 pb-24 ml-0 lg:ml-[20rem] xl:ml-[24rem]">
+            <div 
+                className="flex justify-center px-16 py-6 pb-24"
+                style={{ 
+                    marginLeft: !isMobile 
+                        ? (isMinimized ? '60px' : `${chatWidth}px`) 
+                        : '0px' 
+                }}
+            >
                 <div className="w-full max-w-3xl space-y-8">
 
                 {/* Debug panel */}
@@ -3209,7 +3236,14 @@ function ArticleEditor({ articleId, userId, user, onBack }: { articleId: string;
 
 
                 {/* Sticky bottom actions — stop before agent rail */}
-                <div className="fixed bottom-0 inset-x-0 md:left-[18rem] md:right-0 lg:left-[20rem] lg:right-0 xl:left-[24rem] xl:right-0 z-20 border-t bg-background/90 backdrop-blur supports-[backdrop-filter]:bg-background/70">
+                <div 
+                    className="fixed bottom-0 inset-x-0 z-20 border-t bg-background/90 backdrop-blur supports-[backdrop-filter]:bg-background/70"
+                    style={{ 
+                        left: !isMobile 
+                            ? (isMinimized ? '60px' : `${chatWidth}px`) 
+                            : '0px' 
+                    }}
+                >
                     <div className="px-6 py-3 flex items-center justify-between max-w-6xl mx-auto">
                         <div className="text-xs text-muted-foreground flex items-center gap-2">
                             <RevisionPopover 
