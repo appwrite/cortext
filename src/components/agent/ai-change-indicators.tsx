@@ -1,11 +1,6 @@
-import React, { useState, useRef, useEffect } from 'react'
-import { CheckCircle, ChevronDown, ChevronUp } from 'lucide-react'
+import React, { useState, useRef, useEffect, useMemo } from 'react'
+import { CheckCircle, ChevronDown, ChevronUp, MoreHorizontal } from 'lucide-react'
 import { cn } from '@/lib/utils'
-
-interface AICommand {
-  type: 'article' | 'sections'
-  data: any
-}
 
 interface AIChangeIndicatorsProps {
   content: string
@@ -30,56 +25,103 @@ export function AIChangeIndicators({ content, isStreaming = false, className }: 
 
   const jsonStr = jsonMatch[0].trim()
   
-  let commands: AICommand[] = []
-  try {
-    const parsed = JSON.parse(jsonStr)
-    if (parsed.article) {
-      commands.push({ type: 'article', data: parsed.article })
+  const allChanges = useMemo(() => {
+    let changes: any[] = []
+    try {
+      const parsed = JSON.parse(jsonStr)
+      
+      // Add article changes
+      if (parsed.article) {
+        const articleChanges = Object.entries(parsed.article).map(([key, value]) => ({
+          type: 'article',
+          field: key,
+          value: value,
+          label: getFieldLabel(key)
+        }))
+        changes.push(...articleChanges)
+      }
+      
+      // Add section changes
+      if (parsed.sections) {
+        const sectionChanges = parsed.sections.map((section: any, index: number) => ({
+          type: 'section',
+          id: section.id || `section-${index}`,
+          action: section.action,
+          sectionType: section.type,
+          content: section.content
+        }))
+        changes.push(...sectionChanges)
+      }
+    } catch (error) {
+      return []
     }
-    if (parsed.sections) {
-      commands.push({ type: 'sections', data: parsed.sections })
-    }
-  } catch (error) {
-    return null // If JSON parsing fails, don't show indicators
-  }
+    
+    return changes
+  }, [jsonStr])
 
-  if (commands.length === 0) {
+  if (allChanges.length === 0) {
     return null
   }
 
   return (
     <div className={cn("mt-1 ml-6 space-y-1 max-w-[220px]", className)}>
-      {commands.map((command, index) => (
-        <CommandRenderer key={index} command={command} isStreaming={isStreaming} />
-      ))}
+      <CombinedChangesRenderer key={allChanges.length} changes={allChanges} isStreaming={isStreaming} />
     </div>
   )
 }
 
-function CommandRenderer({ command, isStreaming }: { command: AICommand; isStreaming: boolean }) {
-  if (command.type === 'article') {
-    return <ArticleChanges data={command.data} isStreaming={isStreaming} />
+function CombinedChangesRenderer({ changes, isStreaming }: { changes: any[]; isStreaming: boolean }) {
+  const [isExpanded, setIsExpanded] = useState(false)
+  
+  const maxVisible = 3
+  const visibleChanges = isExpanded ? changes : changes.slice(0, maxVisible)
+  const hiddenCount = changes.length - maxVisible
+
+  return (
+    <div className="space-y-1">
+      {visibleChanges.map((change, index) => (
+        <ChangeRenderer key={index} change={change} isStreaming={isStreaming} />
+      ))}
+      {!isExpanded && hiddenCount > 0 && (
+        <button
+          onClick={() => setIsExpanded(true)}
+          className="w-full flex items-center gap-1.5 p-2.5 text-xs text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
+        >
+          <MoreHorizontal className="h-3 w-3" />
+          {hiddenCount} more
+        </button>
+      )}
+      {isExpanded && changes.length > maxVisible && (
+        <button
+          onClick={() => setIsExpanded(false)}
+          className="w-full flex items-center gap-1.5 p-2.5 text-xs text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
+        >
+          <ChevronUp className="h-3 w-3" />
+          Show less
+        </button>
+      )}
+    </div>
+  )
+}
+
+function ChangeRenderer({ change, isStreaming }: { change: any; isStreaming: boolean }) {
+  if (change.type === 'article') {
+    return <ArticleFieldChange change={change} isStreaming={isStreaming} />
   }
   
-  if (command.type === 'sections') {
-    return <SectionChanges data={command.data} isStreaming={isStreaming} />
+  if (change.type === 'section') {
+    return <SectionChange change={change} isStreaming={isStreaming} />
   }
   
   return null
 }
 
-function ArticleChanges({ data, isStreaming }: { data: any; isStreaming: boolean }) {
+function ArticleFieldChange({ change, isStreaming }: { change: { field: string; value: any; label: string }; isStreaming: boolean }) {
   const [isExpanded, setIsExpanded] = useState(false)
   const [showCollapseButton, setShowCollapseButton] = useState(false)
   const contentRef = useRef<HTMLDivElement>(null)
   
-  const changes = Object.entries(data).map(([key, value]) => ({
-    field: key,
-    value: value,
-    label: getFieldLabel(key)
-  }))
-
-  const changesText = changes.map(change => `${change.label}: ${typeof change.value === 'string' ? `"${change.value}"` : String(change.value)}`).join(', ')
+  const changeText = `${change.label}: ${typeof change.value === 'string' ? `"${change.value}"` : String(change.value)}`
 
   useEffect(() => {
     const checkIfTruncated = () => {
@@ -100,7 +142,7 @@ function ArticleChanges({ data, isStreaming }: { data: any; isStreaming: boolean
       clearTimeout(timeoutId)
       window.removeEventListener('resize', checkIfTruncated)
     }
-  }, [changesText])
+  }, [changeText])
 
   return (
     <div className="bg-green-50 dark:bg-green-950/20 rounded-md p-2.5">
@@ -114,9 +156,9 @@ function ArticleChanges({ data, isStreaming }: { data: any; isStreaming: boolean
           <div className="flex items-start gap-2">
             <div className={cn(
               "flex-1 min-w-0",
-              !isExpanded && "line-clamp-2"
+              !isExpanded && "line-clamp-1"
             )} ref={contentRef}>
-              Article: {changesText}
+              {changeText}
             </div>
             {showCollapseButton && (
               <button
@@ -141,7 +183,7 @@ function ArticleChanges({ data, isStreaming }: { data: any; isStreaming: boolean
 function getActionText(action: string) {
   switch (action) {
     case 'create': return 'Added'
-    case 'update': return 'Updated'
+    case 'update': return ''
     case 'delete': return 'Removed'
     case 'move': return 'Moved'
     default: return 'Modified'
@@ -150,31 +192,27 @@ function getActionText(action: string) {
 
 function getTypeText(type: string) {
   switch (type) {
-    case 'text': return 'text section'
-    case 'title': return 'title'
-    case 'code': return 'code block'
-    case 'image': return 'image'
-    case 'quote': return 'quote'
-    default: return 'section'
+    case 'text': return 'Text'
+    case 'title': return 'Title'
+    case 'code': return 'Code'
+    case 'image': return 'Image'
+    case 'quote': return 'Quote'
+    default: return 'Content'
   }
 }
 
-function SectionChanges({ data, isStreaming }: { data: any[]; isStreaming: boolean }) {
+function SectionChange({ change, isStreaming }: { change: any; isStreaming: boolean }) {
   const [isExpanded, setIsExpanded] = useState(false)
   const [showCollapseButton, setShowCollapseButton] = useState(false)
   const contentRef = useRef<HTMLDivElement>(null)
   
-  const changes = data.map((section, index) => ({
-    ...section,
-    id: section.id || `section-${index}`
-  }))
-
-  const changesText = changes.map(change => {
-    const actionText = getActionText(change.action)
-    const typeText = getTypeText(change.type)
-    const contentText = change.content ? `"${change.content.length > 20 ? change.content.substring(0, 20) + '...' : change.content}"` : ''
-    return `${actionText} ${typeText}${contentText ? ` ${contentText}` : ''}`
-  }).join(', ')
+  const actionText = getActionText(change.action)
+  const typeText = getTypeText(change.sectionType)
+  const contentText = change.content ? `"${change.content.length > 20 ? change.content.substring(0, 20) + '...' : change.content}"` : ''
+  
+  // Create breadcrumb-style format: Body > Type
+  const breadcrumbText = `Body > ${typeText.charAt(0).toUpperCase() + typeText.slice(1)}`
+  const changeText = actionText ? `${actionText} ${breadcrumbText}${contentText ? ` ${contentText}` : ''}` : `${breadcrumbText}${contentText ? ` ${contentText}` : ''}`
 
   useEffect(() => {
     const checkIfTruncated = () => {
@@ -195,7 +233,7 @@ function SectionChanges({ data, isStreaming }: { data: any[]; isStreaming: boole
       clearTimeout(timeoutId)
       window.removeEventListener('resize', checkIfTruncated)
     }
-  }, [changesText])
+  }, [changeText])
 
   return (
     <div className="bg-green-50 dark:bg-green-950/20 rounded-md p-2.5">
@@ -209,9 +247,9 @@ function SectionChanges({ data, isStreaming }: { data: any[]; isStreaming: boole
           <div className="flex items-start gap-2">
             <div className={cn(
               "flex-1 min-w-0",
-              !isExpanded && "line-clamp-2"
+              !isExpanded && "line-clamp-1"
             )} ref={contentRef}>
-              Content: {changesText}
+              {changeText}
             </div>
             {showCollapseButton && (
               <button

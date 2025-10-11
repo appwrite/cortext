@@ -1390,7 +1390,7 @@ I've made several changes to your content including creating new paragraphs, upd
                         </div>
                     </div>
                 ) : hasMessages ? (
-                    <div className="px-6 py-6 space-y-2">
+                    <div className="px-6 py-6 space-y-6">
                         {/* Debug: Messages count: {messages.length}, hasMessages: {hasMessages.toString()} */}
                         {messages.map((m, index) => {
                             // Check if we need to show a separator
@@ -1425,8 +1425,8 @@ I've made several changes to your content including creating new paragraphs, upd
                                     <div
                                         className={
                                             m.role === 'assistant'
-                                                ? 'rounded-md bg-accent px-2.5 py-1.5 text-xs max-w-[220px]'
-                                                : 'rounded-md bg-primary text-primary-foreground px-2.5 py-1.5 text-xs max-w-[220px]'
+                                                ? 'rounded-md bg-accent px-2.5 py-1.5 text-xs max-w-[220px] break-words overflow-wrap-anywhere'
+                                                : 'rounded-md bg-primary text-primary-foreground px-2.5 py-1.5 text-xs max-w-[220px] break-words overflow-wrap-anywhere'
                                         }
                                     >
                                         {/* Debug: Role: {m.role}, Content: {m.content.substring(0, 50)}... */}
