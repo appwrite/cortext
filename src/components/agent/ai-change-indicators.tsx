@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect, useMemo } from 'react'
-import { CheckCircle, ChevronDown, ChevronUp, MoreHorizontal } from 'lucide-react'
+import { CheckCircle, ChevronDown, ChevronUp, MoreHorizontal, Loader2 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
 interface AIChangeIndicatorsProps {
@@ -189,7 +189,7 @@ function ArticleFieldChange({ change, isStreaming }: { change: { field: string; 
     <div className="bg-green-50 dark:bg-green-950/20 rounded-md p-2.5">
       <div className="flex items-start gap-2 text-xs text-green-800 dark:text-green-200">
         {isStreaming ? (
-          <div className="h-3 w-3 border-2 border-green-600 dark:border-green-400 border-t-transparent rounded-full animate-spin flex-shrink-0 mt-0.5" style={{ animationDuration: '1s' }}></div>
+          <Loader2 className="h-3 w-3 flex-shrink-0 mt-0.5 animate-spin text-green-600 dark:text-green-400" />
         ) : (
           <CheckCircle className="h-3 w-3 flex-shrink-0 mt-0.5" />
         )}
@@ -280,7 +280,7 @@ function SectionChange({ change, isStreaming }: { change: any; isStreaming: bool
     <div className="bg-green-50 dark:bg-green-950/20 rounded-md p-2.5">
       <div className="flex items-start gap-2 text-xs text-green-800 dark:text-green-200">
         {isStreaming ? (
-          <div className="h-3 w-3 border-2 border-green-600 dark:border-green-400 border-t-transparent rounded-full animate-spin flex-shrink-0 mt-0.5" style={{ animationDuration: '1s' }}></div>
+          <Loader2 className="h-3 w-3 flex-shrink-0 mt-0.5 animate-spin text-green-600 dark:text-green-400" />
         ) : (
           <CheckCircle className="h-3 w-3 flex-shrink-0 mt-0.5" />
         )}

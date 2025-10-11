@@ -19,6 +19,8 @@ interface CommentsSidebarProps {
     content?: string;
     title?: string;
     position?: number;
+    speaker?: string;
+    language?: string;
   }>;
 }
 

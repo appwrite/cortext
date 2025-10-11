@@ -21,7 +21,6 @@ import { db } from '@/lib/appwrite/db'
 import { Query } from 'appwrite'
 import { formatDuration } from '@/lib/date-utils'
 import { AIMessageRenderer } from './ai-message-renderer'
-import { AIChangeIndicators } from './ai-change-indicators'
 import { useQueryClient } from '@tanstack/react-query'
 
 type Message = {
@@ -1248,6 +1247,42 @@ I've made several changes to your content including creating new paragraphs, upd
         }
     }
 
+    const addMockStreamingWithJSON = async () => {
+        if (!currentConversationId || !user?.$id) return
+        try {
+            // Simulate streaming by creating multiple messages progressively
+            const streamingContent = [
+                'I\'ll update the article title to make it more engaging and SEO-friendly.\n\n{',
+                'I\'ll update the article title to make it more engaging and SEO-friendly.\n\n{"article": {',
+                'I\'ll update the article title to make it more engaging and SEO-friendly.\n\n{"article": {"title": "London Travel Guide 2025: Best Things to Do, Where to Stay, Itineraries & Smart Tips"}}',
+                'I\'ll update the article title to make it more engaging and SEO-friendly.\n\n{"article": {"title": "London Travel Guide 2025: Best Things to Do, Where to Stay, Itineraries & Smart Tips"}}\n\nUpdated the title to \'London Travel Guide 2025: Best Things to Do, Where to Stay, Itineraries & Smart Tips\'.'
+            ]
+
+            for (let i = 0; i < streamingContent.length; i++) {
+                setTimeout(async () => {
+                    try {
+                        await createMessage({
+                            role: 'assistant',
+                            content: streamingContent[i],
+                            userId: user.$id,
+                            revisionId: latestRevision?.$id || null,
+                            metadata: { 
+                                isMock: true,
+                                streaming: i < streamingContent.length - 1,
+                                status: i < streamingContent.length - 1 ? 'generating' : 'completed',
+                                chunkCount: i + 1
+                            }
+                        })
+                    } catch (error) {
+                        console.error('Failed to create streaming message:', error)
+                    }
+                }, i * 800) // 800ms delay between updates
+            }
+        } catch (error) {
+            console.error('Failed to add mock streaming with JSON:', error)
+        }
+    }
+
     const addMockWaitingForStream = async () => {
         if (!currentConversationId || !user?.$id) return
         try {
@@ -1480,13 +1515,16 @@ I've made several changes to your content including creating new paragraphs, upd
                                     <div
                                         className={
                                             m.role === 'assistant'
-                                                ? 'rounded-md bg-accent px-2.5 py-1.5 text-xs max-w-[220px] break-words overflow-wrap-anywhere'
+                                                ? 'rounded-md bg-muted/30 px-2.5 py-1.5 text-xs max-w-[260px] break-words overflow-wrap-anywhere'
                                                 : 'rounded-md bg-primary text-primary-foreground px-2.5 py-1.5 text-xs max-w-[220px] break-words overflow-wrap-anywhere'
                                         }
                                     >
                                         {/* Debug: Role: {m.role}, Content: {m.content.substring(0, 50)}... */}
                                         {m.role === 'assistant' ? (
-                                            <AIMessageRenderer content={m.content} />
+                                            <AIMessageRenderer 
+                                                content={m.content} 
+                                                isStreaming={m.metadata?.streaming && m.metadata?.status === 'generating'}
+                                            />
                                         ) : (
                                             m.content
                                         )}
@@ -1531,13 +1569,6 @@ I've made several changes to your content including creating new paragraphs, upd
                                     </div>
                                 )}
                                 
-                                {/* Show change indicators for assistant messages */}
-                                {m.role === 'assistant' && (
-                                    <AIChangeIndicators 
-                                        content={m.content} 
-                                        isStreaming={m.metadata?.streaming && m.metadata?.status === 'generating'} 
-                                    />
-                                )}
                                 
                                 {/* Debug Mode: Purple button to view raw message */}
                                 {debugMode && (
@@ -1614,6 +1645,14 @@ I've made several changes to your content including creating new paragraphs, upd
                                                     onClick={() => addMockLongMessage()}
                                                 >
                                                     Long
+                                                </Button>
+                                                <Button
+                                                    variant="outline"
+                                                    size="sm"
+                                                    className="h-6 px-2 text-xs text-purple-600 border-purple-300 hover:bg-purple-200 dark:text-purple-400 dark:border-purple-700 dark:hover:bg-purple-800"
+                                                    onClick={() => addMockStreamingWithJSON()}
+                                                >
+                                                    Stream JSON
                                                 </Button>
                                             </div>
                                         </div>
@@ -1822,9 +1861,12 @@ I've made several changes to your content including creating new paragraphs, upd
         >
             {/* Resize handle */}
             <div
-                className="absolute right-0 top-0 bottom-0 w-1 cursor-col-resize hover:bg-blue-500/50 transition-colors z-20"
+                className="absolute -right-2 top-0 bottom-0 w-4 cursor-col-resize z-20"
                 onMouseDown={handleMouseDown}
-            />
+            >
+                {/* Visual hover effect - split 50-50 across the border line */}
+                <div className="absolute right-1.5 top-0 bottom-0 w-1 hover:bg-blue-500/50 transition-colors" />
+            </div>
             
             {/* Minimized state - show only icon */}
             {isMinimized ? (

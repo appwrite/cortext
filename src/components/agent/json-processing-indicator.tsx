@@ -48,6 +48,19 @@ export function JSONProcessingIndicator({ content, className }: JSONProcessingIn
     }
   }, [content])
 
+  // Generate simple processing messages
+  const getProcessingMessage = (stage: string) => {
+    const messages = {
+      detecting: "Parsing content",
+      parsing: "Parsing content",
+      validating: "Parsing content",
+      completed: "Complete",
+      error: "Error"
+    }
+
+    return messages[stage as keyof typeof messages] || "Parsing content"
+  }
+
   // Debounced state update to prevent excessive re-renders
   const updateProcessingState = useCallback((newState: ProcessingState) => {
     setProcessingState(prevState => {
@@ -81,8 +94,8 @@ export function JSONProcessingIndicator({ content, className }: JSONProcessingIn
         updateProcessingState({
           stage: 'detecting',
           progress: 10,
-          message: 'Detecting JSON structure...',
-          details: 'Looking for opening brace'
+          message: getProcessingMessage('detecting'),
+          details: undefined
         })
         return
       }
@@ -92,8 +105,8 @@ export function JSONProcessingIndicator({ content, className }: JSONProcessingIn
         updateProcessingState({
           stage: 'parsing',
           progress: estimatedProgress,
-          message: 'Parsing JSON content...',
-          details: `${jsonChars} JSON characters processed`
+          message: getProcessingMessage('parsing'),
+          details: undefined
         })
         return
       }
@@ -102,8 +115,8 @@ export function JSONProcessingIndicator({ content, className }: JSONProcessingIn
         updateProcessingState({
           stage: 'validating',
           progress: 80,
-          message: 'Validating JSON structure...',
-          details: 'Checking syntax and completeness'
+          message: getProcessingMessage('validating'),
+          details: undefined
         })
         return
       }
@@ -164,23 +177,23 @@ export function JSONProcessingIndicator({ content, className }: JSONProcessingIn
             updateProcessingState({
               stage: 'completed',
               progress: 100,
-              message: 'JSON processing complete',
-              details: `${commandCount} command${commandCount !== 1 ? 's' : ''} ready`
+              message: getProcessingMessage('completed'),
+              details: undefined
             })
           } else {
             updateProcessingState({
               stage: 'parsing',
               progress: 60,
-              message: 'Building JSON structure...',
-              details: 'Waiting for complete JSON'
+              message: getProcessingMessage('parsing'),
+              details: undefined
             })
           }
         } catch (error) {
           updateProcessingState({
             stage: 'error',
             progress: 0,
-            message: 'Invalid JSON format',
-            details: 'Syntax error detected'
+            message: getProcessingMessage('error'),
+            details: undefined
           })
         }
         return
@@ -191,8 +204,8 @@ export function JSONProcessingIndicator({ content, className }: JSONProcessingIn
       updateProcessingState({
         stage: 'parsing',
         progress: estimatedProgress,
-        message: 'Processing JSON data...',
-        details: `${contentLength} characters received`
+        message: getProcessingMessage('parsing'),
+        details: undefined
       })
     }
 
@@ -264,7 +277,7 @@ export function JSONProcessingIndicator({ content, className }: JSONProcessingIn
 
   return (
     <div className={cn(
-      "inline-flex items-start gap-2 px-3 py-2 rounded-lg text-xs transition-all duration-500 ease-out",
+      "flex items-start gap-2 px-3 py-2 rounded-lg text-xs transition-all duration-500 ease-out w-full",
       stageConfig.backgroundColor,
       pulseAnimation && "animate-pulse",
       className
