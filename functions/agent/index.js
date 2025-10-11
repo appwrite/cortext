@@ -792,7 +792,9 @@ export default async function ({ req, res, log, error }) {
         // Only log important messages to console, not all debug messages
         if (message.includes('ERROR') || message.includes('Failed') || message.includes('Stream completed') || 
             message.includes('Starting JSON parsing') || message.includes('Condition not met') || 
-            message.includes('No JSON found') || message.includes('Found') || message.includes('JSON')) {
+            message.includes('No JSON found') || message.includes('Found') || message.includes('JSON') ||
+            message.includes('Creating new revision') || message.includes('Successfully created') ||
+            message.includes('Updating article') || message.includes('Successfully updated')) {
           log(message);
         }
       };
@@ -1358,6 +1360,7 @@ export default async function ({ req, res, log, error }) {
               updatedArticle.body = JSON.stringify(sections);
               
               // Create new revision
+              addDebugLog(`Creating new revision for article ${articleId}`);
               const currentRevisions = await serverDatabases.listDocuments(
                 databaseId,
                 'revisions',
@@ -1368,9 +1371,11 @@ export default async function ({ req, res, log, error }) {
                 ]
               );
               
+              addDebugLog(`Found ${currentRevisions.documents.length} existing revisions`);
               const nextVersion = currentRevisions.documents.length > 0 
                 ? currentRevisions.documents[0].version + 1 
                 : 1;
+              addDebugLog(`Next version will be: ${nextVersion}`);
               
               const newRevisionData = {
                 articleId: articleId,
@@ -1410,6 +1415,7 @@ export default async function ({ req, res, log, error }) {
                 ServerPermission.delete(ServerRole.team(teamId))
               ] : undefined;
               
+              addDebugLog(`Creating revision document with data: ${JSON.stringify(newRevisionData).substring(0, 200)}...`);
               const newRevision = await serverDatabases.createDocument(
                 databaseId,
                 'revisions',
@@ -1419,11 +1425,14 @@ export default async function ({ req, res, log, error }) {
               );
               
               newRevisionId = newRevision.$id;
+              addDebugLog(`Successfully created revision ${newRevisionId}`);
               
               // Update article's active revision ID
+              addDebugLog(`Updating article ${articleId} with new activeRevisionId: ${newRevisionId}`);
               await serverDatabases.updateDocument(databaseId, 'articles', articleId, {
                 activeRevisionId: newRevisionId
               });
+              addDebugLog(`Successfully updated article with new revision ID`);
             } else {
               addDebugLog('No JSON found in LLM response, skipping revision creation');
               addDebugLog(`Full content length: ${fullContent.length} chars`);
@@ -1434,7 +1443,8 @@ export default async function ({ req, res, log, error }) {
               addDebugLog(`Content contains sections: ${fullContent.includes('"sections"')}`);
             }
           } catch (parseError) {
-            addDebugLog(`Error parsing LLM response or creating revision: ${parseError.message}`);
+            addDebugLog(`ERROR parsing LLM response or creating revision: ${parseError.message}`);
+            addDebugLog(`ERROR stack trace: ${parseError.stack}`);
             // Continue without creating revision
           }
         } else {
