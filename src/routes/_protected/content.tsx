@@ -20,6 +20,7 @@ import { Switch } from '@/components/ui/switch'
 import { Skeleton } from '@/components/ui/skeleton'
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { Separator } from '@/components/ui/separator'
 import { toast } from '@/hooks/use-toast'
@@ -1328,8 +1329,6 @@ function ArticleEditor({ articleId, userId, user, onBack }: { articleId: string;
     }, [updateRowPositions])
 
 
-    // Track a newly created section to focus its first relevant input when it renders
-    const focusTargetRef = useRef<{ id: string; type: string } | null>(null)
 
     const updateArticleMutation = useMutation({
         mutationFn: async (data: Partial<Omit<Articles, keyof Models.Document>>) => {
@@ -1494,34 +1493,6 @@ function ArticleEditor({ articleId, userId, user, onBack }: { articleId: string;
     }
 
 
-    // Focus newly added section's primary input once it appears in the DOM
-    useEffect(() => {
-        const target = focusTargetRef.current
-        if (!target) return
-        
-        // Get the appropriate input ID for the section type
-        const inputId = firstInputIdFor(target.type, target.id)
-        
-        // try immediately and on next frame for safety
-        const tryFocus = () => {
-            const el = document.getElementById(inputId) as HTMLInputElement | HTMLTextAreaElement | null
-            if (el) {
-                el.focus()
-                if ('selectionStart' in el && typeof (el as any).value === 'string') {
-                    const val = (el as any).value as string
-                    ;(el as any).setSelectionRange?.(val.length, val.length)
-                }
-                focusTargetRef.current = null
-                return true
-            }
-            return false
-        }
-        if (!tryFocus()) {
-            requestAnimationFrame(() => {
-                tryFocus()
-            })
-        }
-    }, [localSections])
 
     // Drag & drop ordering with clear cues
     const dragIdRef = useRef<string | null>(null)
@@ -1800,8 +1771,29 @@ function ArticleEditor({ articleId, userId, user, onBack }: { articleId: string;
         setLocalSections(updatedSections)
         updateChanges(true)
         setHasUserInteracted(true)
-        // Focus the first input after the component re-renders
-        focusTargetRef.current = { id: newSection.id, type: String(type) }
+        
+        // Blur any currently focused elements (like the + button)
+        if (document.activeElement && document.activeElement instanceof HTMLElement) {
+            document.activeElement.blur()
+        }
+        
+        // Direct focus attempt after DOM update
+        setTimeout(() => {
+            const inputId = firstInputIdFor(String(type), newSection.id)
+            const el = document.getElementById(inputId) as HTMLInputElement | HTMLTextAreaElement | null
+            if (el) {
+                // Special handling for code sections (button elements)
+                if (el.tagName === 'BUTTON') {
+                    el.focus()
+                    el.click() // Open the language selector
+                } else {
+                    el.focus()
+                    if (el.tagName === 'TEXTAREA') {
+                        el.setSelectionRange(0, 0)
+                    }
+                }
+            }
+        }, 600)
     }
 
     const updateSection = useCallback((id: string, data: any) => {
@@ -3173,15 +3165,6 @@ function ArticleEditor({ articleId, userId, user, onBack }: { articleId: string;
                 <section className="space-y-4">
                     <div>
                         <h2 className="text-base font-medium mb-3">Sections</h2>
-                        <div className="flex flex-wrap gap-2">
-                            <Button size="sm" variant="outline" onClick={() => createSection('title')} className="h-7 px-2 text-xs" disabled={isInRevertMode}><Heading1 className="h-3.5 w-3.5 mr-1" /> Title</Button>
-                            <Button size="sm" variant="outline" onClick={() => createSection('text')} className="h-7 px-2 text-xs" disabled={isInRevertMode}><TypeIcon className="h-3.5 w-3.5 mr-1" /> Text</Button>
-                            <Button size="sm" variant="outline" onClick={() => createSection('quote')} className="h-7 px-2 text-xs" disabled={isInRevertMode}><Quote className="h-3.5 w-3.5 mr-1" /> Quote</Button>
-                            <Button size="sm" variant="outline" onClick={() => createSection('image')} className="h-7 px-2 text-xs" disabled={isInRevertMode}><ImageIcon className="h-3.5 w-3.5 mr-1" /> Image</Button>
-                            <Button size="sm" variant="outline" onClick={() => createSection('code')} className="h-7 px-2 text-xs" disabled={isInRevertMode}><Code className="h-3.5 w-3.5 mr-1" /> Code</Button>
-                            <Button size="sm" variant="outline" onClick={() => createSection('video')} className="h-7 px-2 text-xs" disabled={isInRevertMode}><Video className="h-3.5 w-3.5 mr-1" /> Video</Button>
-                            <Button size="sm" variant="outline" onClick={() => createSection('map')} className="h-7 px-2 text-xs" disabled={isInRevertMode}><MapPin className="h-3.5 w-3.5 mr-1" /> Map</Button>
-                        </div>
                     </div>
 
                     {(localSections?.length ?? 0) === 0 ? (
@@ -3191,22 +3174,95 @@ function ArticleEditor({ articleId, userId, user, onBack }: { articleId: string;
                                 Add content sections to build your article.
                             </p>
                             <div className="flex flex-wrap gap-2 justify-center">
-                                <Button size="sm" variant="outline" onClick={() => createSection('title')} className="h-8 px-3 text-xs" disabled={isInRevertMode}>
-                                    <Heading1 className="h-3.5 w-3.5 mr-1" /> Start with Title
-                                </Button>
-                                <Button size="sm" variant="outline" onClick={() => createSection('text')} className="h-8 px-3 text-xs" disabled={isInRevertMode}>
-                                    <TypeIcon className="h-3.5 w-3.5 mr-1" /> Add Text
-                                </Button>
-                                <Button size="sm" variant="outline" onClick={() => createSection('image')} className="h-8 px-3 text-xs" disabled={isInRevertMode}>
-                                    <ImageIcon className="h-3.5 w-3.5 mr-1" /> Add Image
-                                </Button>
-                                <Button size="sm" variant="outline" onClick={() => createSection('code')} className="h-8 px-3 text-xs" disabled={isInRevertMode}>
-                                    <Code className="h-3.5 w-3.5 mr-1" /> Add Code
-                                </Button>
+                                <DropdownMenu>
+                                    <DropdownMenuTrigger asChild>
+                                        <Button size="sm" variant="outline" className="h-8 px-3 text-xs" disabled={isInRevertMode}>
+                                            <Plus className="h-3.5 w-3.5 mr-1" />
+                                            Add Section
+                                        </Button>
+                                    </DropdownMenuTrigger>
+                                    <DropdownMenuContent align="center">
+                                        <DropdownMenuItem onClick={() => createSection('title')} className="cursor-pointer">
+                                            <Heading1 className="h-3.5 w-3.5 mr-2" />
+                                            Start with Title
+                                        </DropdownMenuItem>
+                                        <DropdownMenuItem onClick={() => createSection('text')} className="cursor-pointer">
+                                            <TypeIcon className="h-3.5 w-3.5 mr-2" />
+                                            Add Text
+                                        </DropdownMenuItem>
+                                        <DropdownMenuItem onClick={() => createSection('quote')} className="cursor-pointer">
+                                            <Quote className="h-3.5 w-3.5 mr-2" />
+                                            Add Quote
+                                        </DropdownMenuItem>
+                                        <DropdownMenuItem onClick={() => createSection('image')} className="cursor-pointer">
+                                            <ImageIcon className="h-3.5 w-3.5 mr-2" />
+                                            Add Image
+                                        </DropdownMenuItem>
+                                        <DropdownMenuItem onClick={() => createSection('code')} className="cursor-pointer">
+                                            <Code className="h-3.5 w-3.5 mr-2" />
+                                            Add Code
+                                        </DropdownMenuItem>
+                                        <DropdownMenuItem onClick={() => createSection('video')} className="cursor-pointer">
+                                            <Video className="h-3.5 w-3.5 mr-2" />
+                                            Add Video
+                                        </DropdownMenuItem>
+                                        <DropdownMenuItem onClick={() => createSection('map')} className="cursor-pointer">
+                                            <MapPin className="h-3.5 w-3.5 mr-2" />
+                                            Add Map
+                                        </DropdownMenuItem>
+                                    </DropdownMenuContent>
+                                </DropdownMenu>
                             </div>
                         </div>
                     ) : (
                         <div className="relative sections-table-container">
+                            {/* Sticky Add Section button positioned to the left of the table */}
+                            <div className="sticky top-20 left-0 z-10 w-0">
+                                <div className="absolute top-12 left-0 -ml-[56px] w-0">
+                                    <DropdownMenu>
+                                        <DropdownMenuTrigger asChild>
+                                            <Button
+                                                variant="ghost"
+                                                size="sm"
+                                                className="h-10 w-10 p-0 hover:bg-muted/50 transition-colors bg-background border border-border"
+                                                disabled={isInRevertMode}
+                                            >
+                                                <Plus className="h-4 w-4" />
+                                            </Button>
+                                        </DropdownMenuTrigger>
+                                    <DropdownMenuContent align="start">
+                                        <DropdownMenuItem onClick={() => createSection('title')} className="cursor-pointer">
+                                            <Heading1 className="h-3.5 w-3.5 mr-2" />
+                                            Title
+                                        </DropdownMenuItem>
+                                        <DropdownMenuItem onClick={() => createSection('text')} className="cursor-pointer">
+                                            <TypeIcon className="h-3.5 w-3.5 mr-2" />
+                                            Text
+                                        </DropdownMenuItem>
+                                        <DropdownMenuItem onClick={() => createSection('quote')} className="cursor-pointer">
+                                            <Quote className="h-3.5 w-3.5 mr-2" />
+                                            Quote
+                                        </DropdownMenuItem>
+                                        <DropdownMenuItem onClick={() => createSection('image')} className="cursor-pointer">
+                                            <ImageIcon className="h-3.5 w-3.5 mr-2" />
+                                            Image
+                                        </DropdownMenuItem>
+                                        <DropdownMenuItem onClick={() => createSection('code')} className="cursor-pointer">
+                                            <Code className="h-3.5 w-3.5 mr-2" />
+                                            Code
+                                        </DropdownMenuItem>
+                                        <DropdownMenuItem onClick={() => createSection('video')} className="cursor-pointer">
+                                            <Video className="h-3.5 w-3.5 mr-2" />
+                                            Video
+                                        </DropdownMenuItem>
+                                        <DropdownMenuItem onClick={() => createSection('map')} className="cursor-pointer">
+                                            <MapPin className="h-3.5 w-3.5 mr-2" />
+                                            Map
+                                        </DropdownMenuItem>
+                                    </DropdownMenuContent>
+                                    </DropdownMenu>
+                                </div>
+                            </div>
                             <div className="rounded-md border overflow-hidden">
                                 <Table className="[&_td]:align-top table-fixed w-full">
                                     <TableHeader>
@@ -3868,29 +3924,51 @@ function ImageEditor({ section, onLocalChange, userId, disabled = false }: { sec
 
 function VideoEditor({ section, onLocalChange, disabled = false }: { section: any; onLocalChange: (data: Partial<any>) => void; disabled?: boolean }) {
     const [url, setUrl] = useState(section.embedUrl ?? '')
-    const [isValid, setIsValid] = useState(true)
     const [hasUserTyped, setHasUserTyped] = useState(false)
+    const debounceTimeoutRef = useRef<NodeJS.Timeout | null>(null)
     
     const embed = toYouTubeEmbed(url)
     const isValidUrl = isValidYouTubeUrl(url)
     const showError = hasUserTyped && url.length > 0 && !isValidUrl
 
+    // Use ref to avoid dependency issues
+    const onLocalChangeRef = useRef(onLocalChange)
+    onLocalChangeRef.current = onLocalChange
+
     // Sync external changes to local state (when section content changes externally)
     useEffect(() => {
         if (section.embedUrl !== url) {
             setUrl(section.embedUrl ?? '')
+            setHasUserTyped(false) // Reset user typing state when syncing external changes
         }
     }, [section.embedUrl])
 
+    // Debounced onLocalChange to prevent too frequent updates
     useEffect(() => {
-        onLocalChange({ embedUrl: url })
-    }, [url])
+        if (url !== section.embedUrl) {
+            // Clear existing timeout
+            if (debounceTimeoutRef.current) {
+                clearTimeout(debounceTimeoutRef.current)
+            }
+            
+            // Set new timeout
+            debounceTimeoutRef.current = setTimeout(() => {
+                onLocalChangeRef.current({ embedUrl: url })
+            }, 300) // 300ms debounce
+        }
+        
+        // Cleanup timeout on unmount
+        return () => {
+            if (debounceTimeoutRef.current) {
+                clearTimeout(debounceTimeoutRef.current)
+            }
+        }
+    }, [url, section.embedUrl])
 
     const handleUrlChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const newUrl = e.target.value
         setUrl(newUrl)
         setHasUserTyped(true)
-        setIsValid(isValidYouTubeUrl(newUrl))
     }
 
     return (
@@ -3957,6 +4035,10 @@ function MapEditor({ section, onLocalChange, disabled = false }: { section: any;
     const nlng = typeof lng === 'number' ? lng : parseFloat(lng)
     const iframe = toOSMEmbed(nlat, nlng)
 
+    // Use ref to avoid dependency issues
+    const onLocalChangeRef = useRef(onLocalChange)
+    onLocalChangeRef.current = onLocalChange
+
     // Sync external changes to local state (when section data changes externally)
     useEffect(() => {
         const newData = parseSectionData(section.data)
@@ -3972,9 +4054,12 @@ function MapEditor({ section, onLocalChange, disabled = false }: { section: any;
 
     useEffect(() => {
         if (!Number.isNaN(nlat) && !Number.isNaN(nlng)) {
-            onLocalChange({ data: JSON.stringify({ lat: Number(nlat), lng: Number(nlng) }) })
+            const newData = JSON.stringify({ lat: Number(nlat), lng: Number(nlng) })
+            if (newData !== section.data) {
+                onLocalChangeRef.current({ data: newData })
+            }
         }
-    }, [lat, lng])
+    }, [lat, lng, section.data])
 
     return (
         <div className="space-y-2">
