@@ -1,11 +1,12 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useAuth } from "@/hooks/use-auth";
 import { useLocale } from "@/hooks/use-locale";
-import { Brain, Sparkles, Type as TypeIcon, Image as ImageIcon, Video as VideoIcon, Map as MapIcon, Quote as QuoteIcon, Code2 as CodeIcon, FileEdit, MessageSquare, History, Github } from "lucide-react";
+import { Brain, Sparkles, Type as TypeIcon, Image as ImageIcon, Video as VideoIcon, Map as MapIcon, Quote as QuoteIcon, Code2 as CodeIcon, FileEdit, MessageSquare, History, Github, Menu, X } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useThemeContext } from "@/contexts/theme-context";
 import { OptimizedImage, useImagePreload } from "@/components/ui/optimized-image";
 import { UserAvatar } from "@/components/user-avatar";
+import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 
 export const Route = createFileRoute("/")({
     component: Index,
@@ -13,6 +14,14 @@ export const Route = createFileRoute("/")({
 
 function Nav() {
     const { user, isLoading, signOut } = useAuth();
+    const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+
+    const navigationLinks = [
+        { href: "#features", label: "Features" },
+        { href: "#api", label: "API" },
+        { href: "#pricing", label: "Pricing" },
+        { href: "/docs", label: "Docs", isLink: true },
+    ];
 
     return (
         <header className="sticky top-0 z-40 w-full border-b bg-background/80 backdrop-blur supports-[backdrop-filter]:bg-background/60">
@@ -21,11 +30,20 @@ function Nav() {
                     <Brain className="h-6 w-6" />
                     Cortext
                 </a>
+                
+                {/* Desktop Navigation */}
                 <nav className="hidden md:flex absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 gap-6 text-sm items-center">
-                    <a href="#features" className="text-foreground/70 hover:text-foreground transition-colors">Features</a>
-                    <a href="#api" className="text-foreground/70 hover:text-foreground transition-colors">API</a>
-                    <a href="#pricing" className="text-foreground/70 hover:text-foreground transition-colors">Pricing</a>
-                    <Link to="/docs" className="text-foreground/70 hover:text-foreground transition-colors">Docs</Link>
+                    {navigationLinks.map((link) => (
+                        link.isLink ? (
+                            <Link key={link.href} to={link.href} className="text-foreground/70 hover:text-foreground transition-colors">
+                                {link.label}
+                            </Link>
+                        ) : (
+                            <a key={link.href} href={link.href} className="text-foreground/70 hover:text-foreground transition-colors">
+                                {link.label}
+                            </a>
+                        )
+                    ))}
                     <a
                         href="https://github.com/appwrite/cortext"
                         target="_blank"
@@ -39,20 +57,22 @@ function Nav() {
                         <span className="text-xs font-medium">6</span>
                     </a>
                 </nav>
+
+                {/* Right side - Desktop auth buttons and Mobile menu */}
                 <div className="flex items-center gap-3">
                     {!isLoading && (
                         <div className="animate-in fade-in duration-300">
                             {user ? (
                                 <div className="flex items-center gap-3">
-                                    <Link to="/content" className="px-3 py-2 rounded-md text-sm font-medium border hover:bg-foreground/5 transition-colors">Content</Link>
+                                    <Link to="/content" className="hidden sm:block px-3 py-2 rounded-md text-sm font-medium border hover:bg-foreground/5 transition-colors">Content</Link>
                                     <UserAvatar user={user} onSignOut={() => signOut.mutate()} />
                                 </div>
                             ) : (
                                 <div className="flex items-center gap-3">
-                                    <Link to="/sign-in" className="px-3 py-2 rounded-md text-sm font-medium border hover:bg-foreground/5 transition-colors">Sign in</Link>
+                                    <Link to="/sign-in" className="hidden sm:block px-3 py-2 rounded-md text-sm font-medium border hover:bg-foreground/5 transition-colors">Sign in</Link>
                                     <Link
                                         to="/sign-up"
-                                        className="px-4 py-2 rounded-md text-sm font-semibold text-white bg-neutral-900 hover:bg-neutral-800 dark:bg-white dark:text-neutral-900 dark:hover:bg-white/90 transition-colors"
+                                        className="hidden sm:block px-4 py-2 rounded-md text-sm font-semibold text-white bg-neutral-900 hover:bg-neutral-800 dark:bg-white dark:text-neutral-900 dark:hover:bg-white/90 transition-colors"
                                     >
                                         Get started
                                     </Link>
@@ -60,6 +80,99 @@ function Nav() {
                             )}
                         </div>
                     )}
+                    
+                    {/* Mobile Menu */}
+                    <Sheet open={isMobileMenuOpen} onOpenChange={setIsMobileMenuOpen}>
+                        <SheetTrigger asChild>
+                            <button className="md:hidden p-2 rounded-md hover:bg-foreground/5 transition-colors">
+                                <Menu className="h-5 w-5" />
+                            </button>
+                        </SheetTrigger>
+                        <SheetContent side="right" className="w-80">
+                            <SheetHeader>
+                                <SheetTitle className="flex items-center gap-2">
+                                    <Brain className="h-5 w-5" />
+                                    Cortext
+                                </SheetTitle>
+                            </SheetHeader>
+                            <div className="mt-6 space-y-4">
+                                {/* Navigation Links */}
+                                <div className="space-y-2">
+                                    {navigationLinks.map((link) => (
+                                        link.isLink ? (
+                                            <Link
+                                                key={link.href}
+                                                to={link.href}
+                                                className="block px-3 py-2 rounded-md text-sm font-medium hover:bg-foreground/5 transition-colors"
+                                                onClick={() => setIsMobileMenuOpen(false)}
+                                            >
+                                                {link.label}
+                                            </Link>
+                                        ) : (
+                                            <a
+                                                key={link.href}
+                                                href={link.href}
+                                                className="block px-3 py-2 rounded-md text-sm font-medium hover:bg-foreground/5 transition-colors"
+                                                onClick={() => setIsMobileMenuOpen(false)}
+                                            >
+                                                {link.label}
+                                            </a>
+                                        )
+                                    ))}
+                                </div>
+                                
+                                {/* GitHub Link */}
+                                <div className="pt-4 border-t">
+                                    <a
+                                        href="https://github.com/appwrite/cortext"
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        className="flex items-center gap-3 px-3 py-2 rounded-md text-sm font-medium hover:bg-foreground/5 transition-colors"
+                                        onClick={() => setIsMobileMenuOpen(false)}
+                                    >
+                                        <div className="w-4 h-4 rounded-full bg-foreground/10 flex items-center justify-center">
+                                            <Github className="h-2.5 w-2.5 fill-current" />
+                                        </div>
+                                        <span>GitHub</span>
+                                    </a>
+                                </div>
+
+                                {/* Auth Buttons */}
+                                {!isLoading && (
+                                    <div className="pt-4 border-t space-y-2">
+                                        {user ? (
+                                            <>
+                                                <Link
+                                                    to="/content"
+                                                    className="block px-3 py-2 rounded-md text-sm font-medium bg-primary text-primary-foreground hover:bg-primary/90 transition-colors text-center"
+                                                    onClick={() => setIsMobileMenuOpen(false)}
+                                                >
+                                                    Content
+                                                </Link>
+                                            </>
+                                        ) : (
+                                            <>
+                                                <Link
+                                                    to="/sign-in"
+                                                    className="block px-3 py-2 rounded-md text-sm font-medium border hover:bg-foreground/5 transition-colors text-center"
+                                                    onClick={() => setIsMobileMenuOpen(false)}
+                                                >
+                                                    Sign in
+                                                </Link>
+                                                <Link
+                                                    to="/sign-up"
+                                                    className="block px-3 py-2 rounded-md text-sm font-semibold text-white bg-neutral-900 hover:bg-neutral-800 dark:bg-white dark:text-neutral-900 dark:hover:bg-white/90 transition-colors text-center"
+                                                    onClick={() => setIsMobileMenuOpen(false)}
+                                                >
+                                                    Get started
+                                                </Link>
+                                            </>
+                                        )}
+                                    </div>
+                                )}
+                            </div>
+                        </SheetContent>
+                    </Sheet>
                 </div>
             </div>
         </header>
@@ -127,11 +240,11 @@ function Index() {
                     <p className="mt-4 text-base text-foreground/70 md:text-lg">
                         Organize rich content with flexible, sortable blocks. Co-write with an AI assistant trained to boost quality, SEO, and team productivity.
                         </p>
-                        <div className="mt-8 flex flex-col sm:flex-row items-center justify-center gap-3 mb-8">
+                        <div className="mt-8 flex flex-row items-center justify-center gap-3 mb-8">
                         {!isLoading && (
                             <Link
                                 to={user ? "/content" : "/sign-up"}
-                                className="w-full sm:w-auto px-5 py-3 rounded-md text-sm font-semibold text-white bg-neutral-900 hover:bg-neutral-800 dark:bg-white dark:text-neutral-900 dark:hover:bg-white/90 transition-colors text-center"
+                                className="w-auto px-5 py-3 rounded-md text-sm font-semibold text-white bg-neutral-900 hover:bg-neutral-800 dark:bg-white dark:text-neutral-900 dark:hover:bg-white/90 transition-colors text-center"
                             >
                                 {user ? "Go to Content" : "Get started"}
                             </Link>

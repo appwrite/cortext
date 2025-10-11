@@ -188,7 +188,7 @@ export function RevisionPopover({
           </Button>
         </PopoverTrigger>
         <PopoverContent 
-          className="w-[28rem] p-0 bg-background border rounded-lg shadow-lg" 
+          className="w-[90vw] sm:w-[28rem] max-w-[28rem] p-0 bg-background border rounded-lg shadow-lg" 
           align="start"
           side={popoverPosition}
         >

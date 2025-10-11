@@ -285,7 +285,7 @@ export function AuthorSelector({ selectedAuthorIds, onAuthorsChange, userId, dis
           <Button
             variant="ghost"
             size="sm"
-            className="h-auto p-0 -ml-6 mr-2 hover:bg-transparent"
+            className="h-auto p-0 -ml-2 sm:-ml-6 mr-2 hover:bg-transparent"
           >
             <ChevronDown className={cn("h-4 w-4 transition-transform", !isCollapsed && "rotate-180")} />
           </Button>

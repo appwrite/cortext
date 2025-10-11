@@ -1888,15 +1888,15 @@ I've made several changes to your content including creating new paragraphs, upd
 
     if (isMobile) {
         return (
-            <>
+            <TooltipProvider>
                 {/* Floating chat button - positioned above footer */}
                 <Button
                     onClick={() => setIsDrawerOpen(true)}
                     variant="outline"
                     size="sm"
-                    className="fixed bottom-20 left-6 z-50 h-7 w-7 p-0 m-2"
+                    className="fixed bottom-20 left-6 z-50 h-10 w-10 p-0 m-2"
                 >
-                    <ArrowRight className="h-3 w-3" />
+                    <Brain className="h-5 w-5" />
                 </Button>
 
                 {/* Mobile drawer */}
@@ -1907,7 +1907,7 @@ I've made several changes to your content including creating new paragraphs, upd
                         </div>
                     </DrawerContent>
                 </Drawer>
-            </>
+            </TooltipProvider>
         )
     }
 

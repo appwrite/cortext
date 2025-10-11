@@ -45,7 +45,7 @@ function Nav() {
     return (
         <header className="sticky top-0 z-40 w-full border-b bg-background/80 backdrop-blur supports-[backdrop-filter]:bg-background/60">
             <div className="relative mx-auto max-w-7xl px-6 h-16 flex items-center justify-between">
-                <Link to="/" className="font-semibold text-lg tracking-tight inline-flex items-center gap-2">
+                <Link to="/" className="hidden sm:inline-flex font-semibold text-lg tracking-tight items-center gap-2">
                     <Brain className="h-6 w-6" />
                     Cortext
                 </Link>

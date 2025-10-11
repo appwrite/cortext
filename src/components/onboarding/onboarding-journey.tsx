@@ -206,12 +206,12 @@ export function OnboardingJourney({
 
   return (
     <div className="mb-6">
-      <div className="flex items-center justify-between mb-4">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-4">
         <div>
           <h3 className="text-lg font-semibold text-foreground">Welcome to Cortext!</h3>
           <p className="text-sm text-muted-foreground">Complete these steps to get started</p>
         </div>
-        <div className="flex items-center gap-3">
+        <div className="flex items-center justify-between sm:justify-end gap-3">
           <Badge variant="secondary" className="text-xs">
             {steps.filter(step => step.completed).length} of {steps.length} completed
           </Badge>

@@ -245,7 +245,7 @@ function Header({ userId, onSignOut, user }: { userId: string; onSignOut: () => 
                 </div>
                 
                 {/* Center - Logo */}
-                <div className="flex items-center justify-center absolute left-1/2 transform -translate-x-1/2">
+                <div className="hidden sm:flex items-center justify-center absolute left-1/2 transform -translate-x-1/2">
                     <Link to="/" className="font-semibold tracking-tight inline-flex items-center gap-2">
                         <Brain className="h-6 w-6" />
                         Cortext
@@ -257,7 +257,7 @@ function Header({ userId, onSignOut, user }: { userId: string; onSignOut: () => 
                     {import.meta.env.DEV && (
                         <button
                             onClick={toggleDebugMode}
-                            className={`p-2 rounded-md transition-colors ${
+                            className={`hidden sm:block p-2 rounded-md transition-colors ${
                                 isDebugMode 
                                     ? 'bg-purple-50/90 text-purple-700 dark:bg-purple-950/50 dark:text-purple-300 backdrop-blur-sm' 
                                     : 'hover:bg-foreground/5'
@@ -269,7 +269,7 @@ function Header({ userId, onSignOut, user }: { userId: string; onSignOut: () => 
                     )}
                     <Link 
                         to="/docs" 
-                        className="p-2 rounded-md hover:bg-foreground/5 transition-colors"
+                        className="hidden sm:block p-2 rounded-md hover:bg-foreground/5 transition-colors"
                         title="Documentation"
                     >
                         <BookOpen className="h-4 w-4 text-foreground/70 hover:text-foreground" />
