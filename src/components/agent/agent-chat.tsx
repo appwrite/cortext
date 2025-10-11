@@ -6,12 +6,13 @@ import { ScrollArea } from '@/components/ui/scroll-area'
 import { Drawer, DrawerContent, DrawerHeader, DrawerTitle } from '@/components/ui/drawer'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { MarkdownRenderer } from '@/components/ui/markdown-renderer'
-import { ArrowRight, Send, MessageCircle, CornerDownLeft, Code, Copy, Check, Brain } from 'lucide-react'
+import { ArrowRight, Send, MessageCircle, CornerDownLeft, Code, Copy, Check, Brain, Undo2 } from 'lucide-react'
 import { useIsMobile } from '@/hooks/use-mobile'
 import { useConversationManager, useMessagesWithNotifications } from '@/hooks/use-conversations'
 import { ConversationSelector } from './conversation-selector'
 import { ConversationPlaceholder } from './conversation-placeholder'
 import { useAuth } from '@/hooks/use-auth'
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 import { useDebugMode } from '@/contexts/debug-context'
 import { useLatestRevision } from '@/hooks/use-latest-revision'
 import { useChatContext } from '@/contexts/chat-context'
@@ -51,6 +52,9 @@ export function AgentChat({
     articleId,
     blogId,
     onApplyAIRevision,
+    onSelectRevisionForRevert,
+    currentRevisionId,
+    formRevisionId,
     debugMode = false,
 }: {
     title: string
@@ -60,6 +64,9 @@ export function AgentChat({
     articleId: string
     blogId?: string
     onApplyAIRevision?: (revisionId: string) => void
+    onSelectRevisionForRevert?: (revisionId: string) => void
+    currentRevisionId?: string | null
+    formRevisionId?: string | null
     debugMode?: boolean
 }) {
     const { user } = useAuth()
@@ -814,6 +821,22 @@ export function AgentChat({
         }
     }, [articleId, queryClient, onApplyAIRevision])
 
+    // Function to revert AI message changes - behaves exactly like revision popover
+    const revertAIMessage = useCallback(async (messageId: string, revisionId: string) => {
+        try {
+            console.log('🔄 Reverting AI message:', messageId, 'revisionId:', revisionId)
+            
+            if (onSelectRevisionForRevert) {
+                // Use the same behavior as the revision popover - shows confirmation dialog
+                onSelectRevisionForRevert(revisionId)
+            } else {
+                console.warn('⚠️ No onSelectRevisionForRevert callback provided for revert')
+            }
+        } catch (error) {
+            console.error('❌ Error reverting AI message:', error)
+        }
+    }, [onSelectRevisionForRevert])
+
     // Determine if prompt should be locked (using new state)
     const isPromptLocked = isUIlocked
 
@@ -1519,13 +1542,14 @@ I've made several changes to your content including creating new paragraphs, upd
                                             <Brain className="h-4 w-4" />
                                         </div>
                                     )}
-                                    <div
-                                        className={
-                                            m.role === 'assistant'
-                                                ? 'rounded-md bg-muted/30 px-2.5 py-1.5 text-xs max-w-[260px] break-words overflow-wrap-anywhere'
-                                                : 'rounded-md bg-primary text-primary-foreground px-2.5 py-1.5 text-xs max-w-[220px] break-words overflow-wrap-anywhere'
-                                        }
-                                    >
+                                    <div className="flex items-start gap-1">
+                                        <div
+                                            className={
+                                                m.role === 'assistant'
+                                                    ? 'rounded-md bg-muted/30 px-2.5 py-1.5 text-xs max-w-[260px] break-words overflow-wrap-anywhere'
+                                                    : 'rounded-md bg-primary text-primary-foreground px-2.5 py-1.5 text-xs max-w-[220px] break-words overflow-wrap-anywhere'
+                                            }
+                                        >
                                         {/* Debug: Role: {m.role}, Content: {m.content.substring(0, 50)}... */}
                                         {m.role === 'assistant' ? (
                                             <AIMessageRenderer 
@@ -1564,6 +1588,32 @@ I've made several changes to your content including creating new paragraphs, upd
                                             <div className="text-xs text-destructive mt-1">
                                                 ⚠ Generation failed
                                             </div>
+                                        )}
+                                        </div>
+                                        
+                                        {/* Revert button for AI messages with revisionId - positioned to the right */}
+                                        {m.role === 'assistant' && m.revisionId && (
+                                            <Tooltip>
+                                                <TooltipTrigger asChild>
+                                                    <Button
+                                                        variant="ghost"
+                                                        size="sm"
+                                                        className="h-6 w-6 p-0 text-muted-foreground hover:text-foreground hover:bg-muted/50"
+                                                        onClick={() => revertAIMessage(m.id, m.revisionId!)}
+                                                        disabled={m.revisionId === currentRevisionId || m.revisionId === formRevisionId}
+                                                    >
+                                                        <Undo2 className="h-3 w-3" />
+                                                    </Button>
+                                                </TooltipTrigger>
+                                                <TooltipContent>
+                                                    {m.revisionId === currentRevisionId 
+                                                        ? "This revision is already active" 
+                                                        : m.revisionId === formRevisionId
+                                                        ? "This revision is currently being edited"
+                                                        : "Revert to this change"
+                                                    }
+                                                </TooltipContent>
+                                            </Tooltip>
                                         )}
                                     </div>
                                 </div>
@@ -1862,15 +1912,16 @@ I've made several changes to your content including creating new paragraphs, upd
     }
 
     return (
-        <aside
-            className="fixed left-0 z-10 flex flex-col border-r bg-background"
-            style={{ 
-                top: topOffset, 
-                bottom: 0, 
-                width: isMinimized ? '60px' : `${chatWidth}px`,
-                transition: isResizing ? 'none' : 'width 0.2s ease'
-            }}
-        >
+        <TooltipProvider>
+            <aside
+                className="fixed left-0 z-10 flex flex-col border-r bg-background"
+                style={{ 
+                    top: topOffset, 
+                    bottom: 0, 
+                    width: isMinimized ? '60px' : `${chatWidth}px`,
+                    transition: isResizing ? 'none' : 'width 0.2s ease'
+                }}
+            >
             {/* Resize handle */}
             <div
                 className="absolute -right-2 top-0 bottom-0 w-4 cursor-col-resize z-20"
@@ -2054,6 +2105,7 @@ I've made several changes to your content including creating new paragraphs, upd
                 </>
             )}
         </aside>
+        </TooltipProvider>
     )
 }
 

@@ -2177,6 +2177,7 @@ function ArticleEditor({ articleId, userId, user, onBack }: { articleId: string;
         }
     }
 
+
     const handleRevertToRevision = async (revisionId: string) => {
         try {
             setIsReverting(true)
@@ -2359,6 +2360,9 @@ function ArticleEditor({ articleId, userId, user, onBack }: { articleId: string;
                     articleId={articleId}
                     blogId={currentBlog?.$id}
                     onApplyAIRevision={handleApplyAIRevision}
+                    onSelectRevisionForRevert={handleSelectRevisionForRevert}
+                    currentRevisionId={article?.activeRevisionId}
+                    formRevisionId={latestRevision?.$id}
                     debugMode={showDebug}
                 />
                 <CommentsSidebar
@@ -2471,6 +2475,9 @@ function ArticleEditor({ articleId, userId, user, onBack }: { articleId: string;
                 articleId={articleId}
                 blogId={currentBlog?.$id}
                 onApplyAIRevision={handleApplyAIRevision}
+                onSelectRevisionForRevert={handleSelectRevisionForRevert}
+                currentRevisionId={article?.activeRevisionId}
+                formRevisionId={latestRevision?.$id}
                 debugMode={showDebug}
             />
             <CommentsSidebar
