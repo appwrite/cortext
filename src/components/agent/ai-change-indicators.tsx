@@ -186,7 +186,7 @@ function ArticleFieldChange({ change, isStreaming }: { change: { field: string; 
   }, [changeText])
 
   return (
-    <div className="bg-green-50 dark:bg-green-950/20 rounded-md p-2.5">
+    <div className="bg-green-100 dark:bg-green-950/20 rounded-md p-2.5">
       <div className="flex items-start gap-2 text-xs text-green-800 dark:text-green-200">
         {isStreaming ? (
           <Loader2 className="h-3 w-3 flex-shrink-0 mt-0.5 animate-spin text-green-600 dark:text-green-400" />
@@ -277,7 +277,7 @@ function SectionChange({ change, isStreaming }: { change: any; isStreaming: bool
   }, [changeText])
 
   return (
-    <div className="bg-green-50 dark:bg-green-950/20 rounded-md p-2.5">
+    <div className="bg-green-100 dark:bg-green-950/20 rounded-md p-2.5">
       <div className="flex items-start gap-2 text-xs text-green-800 dark:text-green-200">
         {isStreaming ? (
           <Loader2 className="h-3 w-3 flex-shrink-0 mt-0.5 animate-spin text-green-600 dark:text-green-400" />
