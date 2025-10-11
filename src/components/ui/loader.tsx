@@ -86,8 +86,12 @@ export function FullscreenLoader({ isVisible, onComplete }: FullscreenLoaderProp
               transition={{ delay: 0.2, duration: 0.4 }}
               className="text-center"
             >
-              <div className="text-base font-normal text-muted-foreground">
-                {welcomeMessage}
+              <div className="flex items-center gap-3">
+                {/* Small Spinner */}
+                <div className="w-4 h-4 border-2 border-muted-foreground/30 border-t-muted-foreground rounded-full animate-spin"></div>
+                <div className="text-base font-normal text-muted-foreground">
+                  {welcomeMessage}
+                </div>
               </div>
             </motion.div>
           </div>

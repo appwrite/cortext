@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from "react";
-import { ChevronDown, FileText } from "lucide-react";
+import { ChevronDown, FileText, ExternalLink } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useThemeContext } from "@/contexts/theme-context";
 
@@ -88,7 +88,7 @@ export function PageActions({ className }: PageActionsProps) {
         <>
           {/* Arrow pointing to the button */}
           <div className="absolute right-3 top-full w-0 h-0 border-l-[6px] border-r-[6px] border-b-[6px] border-l-transparent border-r-transparent border-b-border z-50" />
-          <div className="absolute right-0 top-full mt-1 w-64 bg-background border rounded-lg shadow-lg z-50 animate-in fade-in-0 zoom-in-95 duration-200 overflow-hidden">
+          <div className="absolute right-0 top-full mt-1 w-80 bg-background border rounded-lg shadow-lg z-50 animate-in fade-in-0 zoom-in-95 duration-200 overflow-hidden">
             <div className="p-1">
               {actions.map((action) => {
                 return (
@@ -112,6 +112,9 @@ export function PageActions({ className }: PageActionsProps) {
                           {action.subtitle}
                         </div>
                       </div>
+                      {(action.id === 'chatgpt' || action.id === 'claude') && (
+                        <ExternalLink className="h-3 w-3 opacity-50" />
+                      )}
                     </button>
                 );
               })}

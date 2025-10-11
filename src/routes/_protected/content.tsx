@@ -22,7 +22,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { Separator } from '@/components/ui/separator'
 import { toast } from '@/hooks/use-toast'
-import { Image as ImageIcon, Plus, Trash2, Save, Video, MapPin, Type as TypeIcon, Upload, ArrowLeft, LogOut, GripVertical, Brain, Loader2, Heading1, Quote, Pin as PinIcon, FileText, Quote as QuoteIcon, Code, ChevronLeft, ChevronRight, MoreHorizontal, Copy, MessageCircle, Eye, EyeOff, Archive, BookOpen, FileDown } from 'lucide-react'
+import { Image as ImageIcon, Plus, Trash2, Save, Video, MapPin, Type as TypeIcon, Upload, ArrowLeft, LogOut, GripVertical, Brain, Loader2, Heading1, Quote, Pin as PinIcon, FileText, Quote as QuoteIcon, Code, ChevronLeft, ChevronRight, MoreHorizontal, Copy, MessageCircle, Eye, EyeOff, Archive, BookOpen, FileDown, ExternalLink } from 'lucide-react'
 import { AgentChat } from '@/components/agent/agent-chat'
 import { AuthorSelector } from '@/components/author'
 import { CategorySelector } from '@/components/category'
@@ -2503,6 +2503,7 @@ function ArticleEditor({ articleId, userId, user, onBack }: { articleId: string;
                                                 className="h-4 w-4 mr-2" 
                                             />
                                             Open in ChatGPT
+                                            <ExternalLink className="h-3 w-3 ml-auto opacity-50" />
                                         </Button>
                                         
                                         <Button
@@ -2530,6 +2531,7 @@ function ArticleEditor({ articleId, userId, user, onBack }: { articleId: string;
                                                 className="h-4 w-4 mr-2" 
                                             />
                                             Open in Claude
+                                            <ExternalLink className="h-3 w-3 ml-auto opacity-50" />
                                         </Button>
                                         
                                         <Separator className="my-1" />

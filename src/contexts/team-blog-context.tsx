@@ -11,8 +11,8 @@ interface TeamBlogContextType {
   currentBlog: Blogs | null
   
   // Data
-  teams: any[] | null | undefined
-  blogs: Blogs[] | null
+  teams: any[] | undefined
+  blogs: Blogs[] | undefined
   
   // Loading states
   isLoadingTeams: boolean
