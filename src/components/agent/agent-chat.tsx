@@ -6,7 +6,7 @@ import { ScrollArea } from '@/components/ui/scroll-area'
 import { Drawer, DrawerContent, DrawerHeader, DrawerTitle } from '@/components/ui/drawer'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { MarkdownRenderer } from '@/components/ui/markdown-renderer'
-import { Brain, Send, MessageCircle, CornerDownLeft, Code, Copy, Check } from 'lucide-react'
+import { ArrowRight, Send, MessageCircle, CornerDownLeft, Code, Copy, Check, Brain } from 'lucide-react'
 import { useIsMobile } from '@/hooks/use-mobile'
 import { useConversationManager, useMessagesWithNotifications } from '@/hooks/use-conversations'
 import { ConversationSelector } from './conversation-selector'
@@ -19,15 +19,17 @@ import type { Messages } from '@/lib/appwrite/appwrite.types'
 import { functionService } from '@/lib/appwrite/functions'
 import { db } from '@/lib/appwrite/db'
 import { Query } from 'appwrite'
-import { formatDuration } from '@/lib/date-utils'
+import { formatDuration, formatDateRelative } from '@/lib/date-utils'
 import { AIMessageRenderer } from './ai-message-renderer'
 import { useQueryClient } from '@tanstack/react-query'
+import { StreamingTimer } from './streaming-timer'
 
 type Message = {
     id: string
     role: 'user' | 'assistant'
     content: string
     createdAt: string
+    updatedAt?: string
     tokenCount?: number | null
     generationTimeMs?: number | null
     revisionId?: string | null
@@ -221,6 +223,7 @@ export function AgentChat({
                     role: msg.role,
                     content: msg.content,
                     createdAt: msg.$createdAt,
+                    updatedAt: msg.$updatedAt,
                     tokenCount: msg.tokenCount,
                     generationTimeMs: msg.generationTimeMs,
                     revisionId: msg.revisionId,
@@ -317,30 +320,31 @@ export function AgentChat({
         }
     }, [])
 
-    // Auto-scroll when AI message content updates during streaming
+    // Auto-scroll disabled - users can manually scroll to see new content
     const scrollToBottomIfStreaming = useCallback(() => {
-        if (isUIlocked && currentStreamingMessageId) {
-            console.log('🎯 scrollToBottomIfStreaming called - UI locked:', isUIlocked, 'Streaming ID:', currentStreamingMessageId)
-            // Small delay to ensure DOM has updated
-            setTimeout(() => {
-                if (scrollAreaRef.current) {
-                    const scrollElement = scrollAreaRef.current.querySelector('[data-radix-scroll-area-viewport]')
-                    if (scrollElement) {
-                        console.log('📜 Scrolling to bottom...')
-                        scrollElement.scrollTo({
-                            top: scrollElement.scrollHeight,
-                            behavior: 'smooth'
-                        })
-                    } else {
-                        console.log('❌ Scroll element not found')
-                    }
-                } else {
-                    console.log('❌ Scroll area ref not found')
-                }
-            }, 50)
-        } else {
-            console.log('⏸️ Not scrolling - UI locked:', isUIlocked, 'Streaming ID:', currentStreamingMessageId)
-        }
+        // Disabled auto-scroll during streaming
+        // if (isUIlocked && currentStreamingMessageId) {
+        //     console.log('🎯 scrollToBottomIfStreaming called - UI locked:', isUIlocked, 'Streaming ID:', currentStreamingMessageId)
+        //     // Small delay to ensure DOM has updated
+        //     setTimeout(() => {
+        //         if (scrollAreaRef.current) {
+        //             const scrollElement = scrollAreaRef.current.querySelector('[data-radix-scroll-area-viewport]')
+        //             if (scrollElement) {
+        //                 console.log('📜 Scrolling to bottom...')
+        //                 scrollElement.scrollTo({
+        //                     top: scrollElement.scrollHeight,
+        //                     behavior: 'smooth'
+        //                 })
+        //             } else {
+        //                 console.log('❌ Scroll element not found')
+        //             }
+        //         } else {
+        //             console.log('❌ Scroll area ref not found')
+        //         }
+        //     }, 50)
+        // } else {
+        //     console.log('⏸️ Not scrolling - UI locked:', isUIlocked, 'Streaming ID:', currentStreamingMessageId)
+        // }
     }, [isUIlocked, currentStreamingMessageId])
 
     const {
@@ -521,6 +525,7 @@ export function AgentChat({
         isLoadingMessages,
         createMessage,
         isCreatingMessage,
+        isMessagesQuerySuccess,
     } = useMessagesWithNotifications(currentConversationId, blogId, articleId, user?.$id, true, streamingCallbacks)
 
     // Step 4: Handle realtime streaming events to update message content
@@ -586,20 +591,20 @@ export function AgentChat({
                                 lastMessageUpdate: `Updated existing message ${typedPayload.$id} with content length: ${typedPayload.content?.length || 0}`
                             })
                             
-                            // Auto-scroll on every realtime update for AI messages
-                            if (typedPayload.role === 'assistant' && typedPayload.content) {
-                                setTimeout(() => {
-                                    if (scrollAreaRef.current) {
-                                        const scrollElement = scrollAreaRef.current.querySelector('[data-radix-scroll-area-viewport]')
-                                        if (scrollElement) {
-                                            scrollElement.scrollTo({
-                                                top: scrollElement.scrollHeight,
-                                                behavior: 'smooth'
-                                            })
-                                        }
-                                    }
-                                }, 50)
-                            }
+                            // Auto-scroll disabled - users can manually scroll to see new content
+                            // if (typedPayload.role === 'assistant' && typedPayload.content) {
+                            //     setTimeout(() => {
+                            //         if (scrollAreaRef.current) {
+                            //             const scrollElement = scrollAreaRef.current.querySelector('[data-radix-scroll-area-viewport]')
+                            //             if (scrollElement) {
+                            //                 scrollElement.scrollTo({
+                            //                     top: scrollElement.scrollHeight,
+                            //                     behavior: 'smooth'
+                            //                 })
+                            //             }
+                            //         }
+                            //     }, 50)
+                            // }
                             
                             return updatedMessages
                         } else {
@@ -620,6 +625,7 @@ export function AgentChat({
                                     role: typedPayload.role,
                                     content: typedPayload.content || '',
                                     createdAt: typedPayload.$createdAt,
+                                    updatedAt: typedPayload.$updatedAt,
                                     tokenCount: typedPayload.tokenCount,
                                     generationTimeMs: typedPayload.generationTimeMs,
                                     revisionId: typedPayload.revisionId,
@@ -635,20 +641,20 @@ export function AgentChat({
                                     lastMessageUpdate: `Replaced temporary message with server message ${typedPayload.$id}`
                                 })
                                 
-                                // Auto-scroll on every realtime update for AI messages
-                                if (typedPayload.role === 'assistant' && typedPayload.content) {
-                                    setTimeout(() => {
-                                        if (scrollAreaRef.current) {
-                                            const scrollElement = scrollAreaRef.current.querySelector('[data-radix-scroll-area-viewport]')
-                                            if (scrollElement) {
-                                                scrollElement.scrollTo({
-                                                    top: scrollElement.scrollHeight,
-                                                    behavior: 'smooth'
-                                                })
-                                            }
-                                        }
-                                    }, 50)
-                                }
+                                // Auto-scroll disabled - users can manually scroll to see new content
+                                // if (typedPayload.role === 'assistant' && typedPayload.content) {
+                                //     setTimeout(() => {
+                                //         if (scrollAreaRef.current) {
+                                //             const scrollElement = scrollAreaRef.current.querySelector('[data-radix-scroll-area-viewport]')
+                                //             if (scrollElement) {
+                                //                 scrollElement.scrollTo({
+                                //                     top: scrollElement.scrollHeight,
+                                //                     behavior: 'smooth'
+                                //                 })
+                                //             }
+                                //         }
+                                //     }, 50)
+                                // }
                                 
                                 return updatedMessages
                             } else {
@@ -659,6 +665,7 @@ export function AgentChat({
                                     role: typedPayload.role,
                                     content: typedPayload.content || '',
                                     createdAt: typedPayload.$createdAt,
+                                    updatedAt: typedPayload.$updatedAt,
                                     tokenCount: typedPayload.tokenCount,
                                     generationTimeMs: typedPayload.generationTimeMs,
                                     revisionId: typedPayload.revisionId,
@@ -675,20 +682,20 @@ export function AgentChat({
                                     lastMessageUpdate: `Added new message ${typedPayload.$id} from server`
                                 })
                                 
-                                // Auto-scroll on every realtime update for AI messages
-                                if (typedPayload.role === 'assistant' && typedPayload.content) {
-                                    setTimeout(() => {
-                                        if (scrollAreaRef.current) {
-                                            const scrollElement = scrollAreaRef.current.querySelector('[data-radix-scroll-area-viewport]')
-                                            if (scrollElement) {
-                                                scrollElement.scrollTo({
-                                                    top: scrollElement.scrollHeight,
-                                                    behavior: 'smooth'
-                                                })
-                                            }
-                                        }
-                                    }, 50)
-                                }
+                                // Auto-scroll disabled - users can manually scroll to see new content
+                                // if (typedPayload.role === 'assistant' && typedPayload.content) {
+                                //     setTimeout(() => {
+                                //         if (scrollAreaRef.current) {
+                                //             const scrollElement = scrollAreaRef.current.querySelector('[data-radix-scroll-area-viewport]')
+                                //             if (scrollElement) {
+                                //                 scrollElement.scrollTo({
+                                //                     top: scrollElement.scrollHeight,
+                                //                     behavior: 'smooth'
+                                //                 })
+                                //             }
+                                //         }
+                                //     }, 50)
+                                // }
                                 
                                 return [...prev, newMessage]
                             }
@@ -837,7 +844,7 @@ export function AgentChat({
 
     // Show messages if they exist, otherwise show placeholder (only when not loading and conversations exist)
     const hasMessages = messages.length > 0
-    const shouldShowPlaceholder = !isLoadingMessages && messages.length === 0 && conversations.length > 0
+    const shouldShowPlaceholder = !isLoadingMessages && messages.length === 0 && conversations.length > 0 && isMessagesQuerySuccess
     
 
     // Precisely align with the app header; footer does not occupy the left rail
@@ -1528,7 +1535,7 @@ I've made several changes to your content including creating new paragraphs, upd
                                         ) : (
                                             m.content
                                         )}
-                                        {/* Show streaming indicator for assistant messages - mutually exclusive states */}
+                                        {/* Show streaming indicator for assistant messages */}
                                         {m.role === 'assistant' && m.metadata?.streaming && m.metadata?.status === 'generating' && (
                                             <div className="flex items-center gap-1 mt-1">
                                                 <span className="text-xs text-muted-foreground">
@@ -1541,12 +1548,16 @@ I've made several changes to your content including creating new paragraphs, upd
                                                 </div>
                                             </div>
                                         )}
-                                        {/* Show completion indicator */}
-                                        {m.role === 'assistant' && m.metadata?.status === 'completed' && (
-                                            <div className="text-xs text-muted-foreground mt-1">
-                                                {m.generationTimeMs ? formatDuration(m.generationTimeMs) : '✓ Generated'}
-                                                {m.tokenCount ? ` • ${m.tokenCount} tokens` : ''}
-                                            </div>
+                                        {/* Show streaming timer for assistant messages */}
+                                        {m.role === 'assistant' && (
+                                            <StreamingTimer
+                                                messageId={m.id}
+                                                createdAt={m.createdAt}
+                                                isStreaming={!!(m.metadata?.streaming && m.metadata?.status === 'generating')}
+                                                generationTimeMs={m.generationTimeMs}
+                                                tokenCount={m.tokenCount}
+                                                status={m.metadata?.status}
+                                            />
                                         )}
                                         {/* Show error indicator */}
                                         {m.role === 'assistant' && m.metadata?.status === 'error' && (
@@ -1831,10 +1842,11 @@ I've made several changes to your content including creating new paragraphs, upd
                 {/* Floating chat button - positioned above footer */}
                 <Button
                     onClick={() => setIsDrawerOpen(true)}
-                    className="fixed bottom-20 left-6 z-50 h-14 w-14 rounded-full shadow-lg"
-                    size="icon"
+                    variant="outline"
+                    size="sm"
+                    className="fixed bottom-20 left-6 z-50 h-7 w-7 p-0 m-2"
                 >
-                    <MessageCircle className="h-6 w-6" />
+                    <ArrowRight className="h-3 w-3" />
                 </Button>
 
                 {/* Mobile drawer */}
@@ -1870,13 +1882,17 @@ I've made several changes to your content including creating new paragraphs, upd
             
             {/* Minimized state - show only icon */}
             {isMinimized ? (
-                <div className="flex flex-col items-center py-4 space-y-4">
+                <div className="flex flex-col items-center py-2 mx-2 mt-1">
                     <Button
-                        onClick={() => setIsMinimized(false)}
-                        className="h-10 w-10 rounded-full"
-                        size="icon"
+                        onClick={() => {
+                            setIsMinimized(false)
+                            setChatWidth(300)
+                        }}
+                        variant="outline"
+                        size="sm"
+                        className="h-7 w-7 p-0"
                     >
-                        <MessageCircle className="h-5 w-5" />
+                        <ArrowRight className="h-3 w-3" />
                     </Button>
                 </div>
             ) : (
@@ -1924,8 +1940,22 @@ I've made several changes to your content including creating new paragraphs, upd
                                     </div>
                                     <div>
                                         <span className="font-medium text-muted-foreground">Created:</span>
-                                        <span className="ml-2">{new Date(selectedMessageForRaw.createdAt).toLocaleString()}</span>
+                                        <span className="ml-2">{formatDateRelative(selectedMessageForRaw.createdAt)}</span>
+                                        <span className="ml-2 text-xs text-muted-foreground">({new Date(selectedMessageForRaw.createdAt).toLocaleString()})</span>
                                     </div>
+                                    {selectedMessageForRaw.updatedAt && selectedMessageForRaw.updatedAt !== selectedMessageForRaw.createdAt && (
+                                        <div>
+                                            <span className="font-medium text-muted-foreground">Updated:</span>
+                                            <span className="ml-2">{formatDateRelative(selectedMessageForRaw.updatedAt)}</span>
+                                            <span className="ml-2 text-xs text-muted-foreground">({new Date(selectedMessageForRaw.updatedAt).toLocaleString()})</span>
+                                        </div>
+                                    )}
+                                    {selectedMessageForRaw.updatedAt && selectedMessageForRaw.updatedAt !== selectedMessageForRaw.createdAt && (
+                                        <div>
+                                            <span className="font-medium text-muted-foreground">Duration:</span>
+                                            <span className="ml-2">{formatDuration(new Date(selectedMessageForRaw.updatedAt).getTime() - new Date(selectedMessageForRaw.createdAt).getTime())}</span>
+                                        </div>
+                                    )}
                                     {selectedMessageForRaw.revisionId && (
                                         <div>
                                             <span className="font-medium text-muted-foreground">Revision ID:</span>

@@ -17,9 +17,9 @@ const CHAT_MINIMIZED_KEY = 'cortext-chat-minimized'
 const getStoredChatWidth = (): number => {
     try {
         const stored = localStorage.getItem(CHAT_WIDTH_KEY)
-        return stored ? parseInt(stored, 10) : 400
+        return stored ? parseInt(stored, 10) : 300
     } catch {
-        return 400
+        return 300
     }
 }
 

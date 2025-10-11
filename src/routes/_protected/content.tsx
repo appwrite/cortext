@@ -17,6 +17,7 @@ import { Textarea } from '@/components/ui/textarea'
 import { Checkbox } from '@/components/ui/checkbox'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Switch } from '@/components/ui/switch'
+import { Skeleton } from '@/components/ui/skeleton'
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { ScrollArea } from '@/components/ui/scroll-area'
@@ -1023,6 +1024,7 @@ function ArticleEditor({ articleId, userId, user, onBack }: { articleId: string;
     const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
     const [showReleaseConfirm, setShowReleaseConfirm] = useState(false)
     const [isCommentsOpen, setIsCommentsOpen] = useState(false)
+    const [mockSkeletonState, setMockSkeletonState] = useState(false)
     const menuRef = useRef<HTMLDivElement>(null)
 
     // Close menu when clicking outside
@@ -1041,7 +1043,7 @@ function ArticleEditor({ articleId, userId, user, onBack }: { articleId: string;
 
     const { article, formData: latestFormData, hasUnpublishedChanges, latestRevision, isLoading: isLoadingRevision } = useLatestRevision(articleId)
     const { updateArticle } = useArticle()
-    const isPending = isLoadingRevision
+    const isPending = isLoadingRevision || mockSkeletonState
 
     // Realtime subscription for messages to detect AI-created revisions
     useRealtime([
@@ -2348,13 +2350,114 @@ function ArticleEditor({ articleId, userId, user, onBack }: { articleId: string;
 
     if (isPending || !article) {
         return (
-            <div className="h-dvh flex items-center justify-center">
-                <div className="text-center">
-                    <div className="text-sm text-muted-foreground">
-                        Loading…
+            <>
+                <AgentChat 
+                    title={title} 
+                    subtitle={subtitle} 
+                    onSetTitle={setTitle} 
+                    onSetSubtitle={setExcerpt}
+                    articleId={articleId}
+                    blogId={currentBlog?.$id}
+                    onApplyAIRevision={handleApplyAIRevision}
+                    debugMode={showDebug}
+                />
+                <CommentsSidebar
+                    articleId={articleId}
+                    blogId={currentBlog?.$id || ''}
+                    isOpen={isCommentsOpen}
+                    onToggle={() => setIsCommentsOpen(!isCommentsOpen)}
+                    sections={localSections}
+                />
+                <div className="sticky top-[4.0625rem] z-5 bg-background/80 backdrop-blur supports-[backdrop-filter]:bg-background/70 border-b h-12">
+                    <div 
+                        className="px-4 sm:px-6 h-12 flex items-center justify-between"
+                        style={{ 
+                            marginLeft: !isMobile 
+                                ? (isMinimized ? '60px' : `${chatWidth}px`) 
+                                : '0px' 
+                        }}
+                    >
+                        {/* Left side */}
+                        <div className="flex items-center gap-6 -ml-2">
+                            <Button variant="ghost" size="sm" onClick={onBack}>
+                                <ArrowLeft className="h-4 w-4 mr-1" /> Back to articles
+                            </Button>
+                        </div>
+                        
+                        {/* Right side */}
+                        <div className="flex items-center space-x-2">
+                            <Skeleton className="h-8 w-8" />
+                            <Skeleton className="h-8 w-8" />
+                        </div>
                     </div>
                 </div>
-            </div>
+
+                <div 
+                    className="main-content-area flex justify-center px-4 sm:px-8 lg:px-16 py-6 pb-24"
+                    style={{ 
+                        marginLeft: !isMobile 
+                            ? (isMinimized ? '60px' : `${chatWidth}px`) 
+                            : '0px' 
+                    }}
+                >
+                    <div className="w-full max-w-3xl space-y-8">
+                        {/* Article meta form skeleton */}
+                        <section className="space-y-4">
+                            <div>
+                                <Skeleton className="h-4 w-16 mb-2" />
+                                <Skeleton className="h-10 w-full" />
+                            </div>
+                            <div>
+                                <Skeleton className="h-4 w-12 mb-2" />
+                                <Skeleton className="h-10 w-full" />
+                            </div>
+                            <div>
+                                <Skeleton className="h-4 w-16 mb-2" />
+                                <Skeleton className="h-20 w-full" />
+                            </div>
+                            <div>
+                                <Skeleton className="h-4 w-12 mb-2" />
+                                <Skeleton className="h-10 w-full" />
+                            </div>
+                            <div className="mt-6">
+                                <Skeleton className="h-4 w-20 mb-2" />
+                                <Skeleton className="h-32 w-full" />
+                            </div>
+                            <div className="mt-6">
+                                <Skeleton className="h-4 w-20 mb-2" />
+                                <Skeleton className="h-32 w-full" />
+                            </div>
+                        </section>
+
+                        {/* Sections composer skeleton */}
+                        <section className="space-y-4">
+                            <div>
+                                <Skeleton className="h-6 w-20 mb-3" />
+                                <div className="flex flex-wrap gap-2">
+                                    <Skeleton className="h-7 w-16" />
+                                    <Skeleton className="h-7 w-16" />
+                                    <Skeleton className="h-7 w-20" />
+                                    <Skeleton className="h-7 w-16" />
+                                    <Skeleton className="h-7 w-16" />
+                                    <Skeleton className="h-7 w-16" />
+                                    <Skeleton className="h-7 w-12" />
+                                </div>
+                            </div>
+                            
+                            <div className="flex flex-col items-center justify-center py-8 px-4 text-center border-2 border-dashed border-muted-foreground/25 rounded-lg bg-muted/5">
+                                <Skeleton className="h-6 w-32 mb-2" />
+                                <Skeleton className="h-4 w-64 mb-4" />
+                                <div className="flex flex-wrap gap-2 justify-center">
+                                    <Skeleton className="h-8 w-24" />
+                                    <Skeleton className="h-8 w-20" />
+                                    <Skeleton className="h-8 w-20" />
+                                    <Skeleton className="h-8 w-20" />
+                                </div>
+                            </div>
+                        </section>
+                    </div>
+                </div>
+            </>
         )
     }
 
@@ -2898,6 +3001,16 @@ function ArticleEditor({ articleId, userId, user, onBack }: { articleId: string;
                                     className="h-6 px-2 text-xs text-purple-600 border-purple-300 hover:bg-purple-200 dark:text-purple-400 dark:border-purple-700 dark:hover:bg-purple-800"
                                 >
                                     Manual Save
+                                </Button>
+                                <Button 
+                                    size="sm" 
+                                    variant="outline" 
+                                    onClick={() => {
+                                        setMockSkeletonState(!mockSkeletonState)
+                                    }}
+                                    className="h-6 px-2 text-xs text-purple-600 border-purple-300 hover:bg-purple-200 dark:text-purple-400 dark:border-purple-700 dark:hover:bg-purple-800"
+                                >
+                                    {mockSkeletonState ? 'Hide Skeleton' : 'Mock Skeleton'}
                                 </Button>
                             </div>
                         </div>

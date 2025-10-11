@@ -369,5 +369,6 @@ export function useMessagesWithNotifications(
     isLoadingMessages: messagesQuery.isLoading || isSwitchingConversation,
     createMessage: createMessageMutation.mutateAsync,
     isCreatingMessage: createMessageMutation.isPending,
+    isMessagesQuerySuccess: messagesQuery.isSuccess,
   }
 }
