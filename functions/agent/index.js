@@ -1377,6 +1377,25 @@ export default async function ({ req, res, log, error }) {
                 : 1;
               addDebugLog(`Next version will be: ${nextVersion}`);
               
+              // Track what changes were made
+              const articleChanges = {};
+              const sectionChanges = [];
+              
+              // Process all JSON objects to track changes
+              for (const jsonStr of allJsonObjects) {
+                try {
+                  const parsed = JSON.parse(jsonStr);
+                  if (parsed.article) {
+                    Object.assign(articleChanges, parsed.article);
+                  }
+                  if (parsed.sections) {
+                    sectionChanges.push(...parsed.sections);
+                  }
+                } catch (e) {
+                  addDebugLog(`Error processing JSON for change tracking: ${e.message}`);
+                }
+              }
+              
               const newRevisionData = {
                 articleId: articleId,
                 version: nextVersion,
@@ -1401,7 +1420,7 @@ export default async function ({ req, res, log, error }) {
                   images: updatedArticle.images,
                   blogId: updatedArticle.blogId,
                   sections: sections,
-                  changedAttributes: updates.article || {},
+                  changedAttributes: articleChanges,
                   timestamp: new Date().toISOString()
                 }),
                 changes: [`AI-generated updates via message ${initialMessage.$id}`],
