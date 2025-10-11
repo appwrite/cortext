@@ -2379,7 +2379,7 @@ function ArticleEditor({ articleId, userId, user, onBack }: { articleId: string;
             />
             <div className="sticky top-[4.0625rem] z-5 bg-background/80 backdrop-blur supports-[backdrop-filter]:bg-background/70 border-b h-12">
                     <div 
-                        className="px-6 h-12 flex items-center justify-between"
+                        className="px-4 sm:px-6 h-12 flex items-center justify-between"
                         style={{ 
                             marginLeft: !isMobile 
                                 ? (isMinimized ? '60px' : `${chatWidth}px`) 
@@ -2589,7 +2589,7 @@ function ArticleEditor({ articleId, userId, user, onBack }: { articleId: string;
 
             {/* Sticky banners at the top */}
             <div 
-                className="sticky top-28 z-10 px-6 py-3"
+                className="sticky top-28 z-10 px-4 sm:px-6 py-3"
                 style={{ 
                     marginLeft: !isMobile 
                         ? (isMinimized ? '60px' : `${chatWidth}px`) 
@@ -2631,7 +2631,7 @@ function ArticleEditor({ articleId, userId, user, onBack }: { articleId: string;
             </div>
 
             <div 
-                className="flex justify-center px-16 py-6 pb-24"
+                className="main-content-area flex justify-center px-4 sm:px-8 lg:px-16 py-6 pb-24"
                 style={{ 
                     marginLeft: !isMobile 
                         ? (isMinimized ? '60px' : `${chatWidth}px`) 
@@ -3246,7 +3246,7 @@ function ArticleEditor({ articleId, userId, user, onBack }: { articleId: string;
                             : '0px' 
                     }}
                 >
-                    <div className="px-6 py-3 flex items-center justify-between max-w-6xl mx-auto">
+                    <div className="px-4 sm:px-6 py-3 flex items-center justify-between max-w-6xl mx-auto">
                         <div className="text-xs text-muted-foreground flex items-center gap-2">
                             <RevisionPopover 
                                 articleId={articleId}

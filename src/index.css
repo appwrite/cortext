@@ -355,3 +355,15 @@
   transform: translateZ(0);
   will-change: transform;
 }
+
+/* Prevent horizontal scroll in article editor main content area */
+.article-editor-container .main-content-area {
+  overflow-x: hidden;
+  max-width: 100vw;
+}
+
+/* Ensure main content containers respect viewport width */
+.article-editor-container .main-content-area * {
+  max-width: 100%;
+  box-sizing: border-box;
+}
