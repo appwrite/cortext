@@ -1883,8 +1883,10 @@ function ArticleEditor({ articleId, userId, user, onBack }: { articleId: string;
             // Try multiple times if ref is not available (for CommentableInput wrapper)
             const attemptAdjustment = (attempts = 0) => {
                 if (subtitleRef.current) {
+                    // Force a reflow to ensure accurate measurements
+                    subtitleRef.current.offsetHeight
                     adjustSubtitleHeight()
-                } else if (attempts < 3) {
+                } else if (attempts < 5) {
                     setTimeout(() => attemptAdjustment(attempts + 1), 16)
                 }
             }
@@ -1901,13 +1903,16 @@ function ArticleEditor({ articleId, userId, user, onBack }: { articleId: string;
     useEffect(() => {
         const handleResize = () => adjustSubtitleHeight()
         
-        // Initial adjustment with multiple attempts to handle CommentableInput rendering
+        // Initial adjustment with more robust retry logic for first load
         const attemptAdjustment = (attempts = 0) => {
             if (subtitleRef.current) {
+                // Force a reflow to ensure the element is fully rendered
+                subtitleRef.current.offsetHeight
                 adjustSubtitleHeight()
-            } else if (attempts < 5) {
-                // Try again after a short delay if ref is not available
-                setTimeout(() => attemptAdjustment(attempts + 1), 50)
+            } else if (attempts < 10) {
+                // Try again with increasing delays for CommentableInput rendering
+                const delay = attempts < 3 ? 16 : attempts < 6 ? 50 : 100
+                setTimeout(() => attemptAdjustment(attempts + 1), delay)
             }
         }
         
@@ -1915,6 +1920,13 @@ function ArticleEditor({ articleId, userId, user, onBack }: { articleId: string;
         requestAnimationFrame(() => {
             attemptAdjustment()
         })
+        
+        // Also try after a longer delay to catch any late rendering
+        setTimeout(() => {
+            if (subtitleRef.current) {
+                adjustSubtitleHeight()
+            }
+        }, 200)
         
         // Add resize listener
         window.addEventListener('resize', handleResize)
