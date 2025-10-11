@@ -1159,8 +1159,10 @@ export default async function ({ req, res, log, error }) {
         
         if (revisionId && articleId && fullContent) {
           try {
-            // Extract JSON from the response (look for JSON at the beginning)
+            // Extract JSON from the response (look for JSON anywhere in the content)
             let jsonStr = null;
+            
+            // First try to find JSON at the beginning (backward compatibility)
             let jsonMatch = fullContent.match(/^\{[\s\S]*?\}\n/);
             
             if (!jsonMatch) {
@@ -1171,11 +1173,49 @@ export default async function ({ req, res, log, error }) {
               jsonMatch = fullContent.match(/^\{[\s\S]*?\}/);
             }
             
+            // If not found at beginning, look for JSON anywhere in the content
+            if (!jsonMatch) {
+              // Look for JSON objects that start with { and end with }
+              // This handles the new format: explanatory text → JSON → confirmation
+              jsonMatch = fullContent.match(/\{[^{}]*(?:\{[^{}]*\}[^{}]*)*\}/);
+            }
+            
+            // If still not found, try a more aggressive approach
+            if (!jsonMatch) {
+              // Look for any { ... } pattern that could be JSON
+              const lines = fullContent.split('\n');
+              for (const line of lines) {
+                const trimmedLine = line.trim();
+                if (trimmedLine.startsWith('{') && trimmedLine.includes('}')) {
+                  // Try to find the complete JSON object
+                  const startIndex = fullContent.indexOf(trimmedLine);
+                  let braceCount = 0;
+                  let endIndex = startIndex;
+                  
+                  for (let i = startIndex; i < fullContent.length; i++) {
+                    if (fullContent[i] === '{') braceCount++;
+                    if (fullContent[i] === '}') braceCount--;
+                    if (braceCount === 0) {
+                      endIndex = i;
+                      break;
+                    }
+                  }
+                  
+                  if (braceCount === 0) {
+                    jsonMatch = [fullContent.substring(startIndex, endIndex + 1)];
+                    break;
+                  }
+                }
+              }
+            }
+            
             if (jsonMatch) {
               jsonStr = jsonMatch[0].trim();
+              addDebugLog(`Found JSON in response: ${jsonStr.substring(0, 100)}...`);
               
               try {
                 const updates = JSON.parse(jsonStr);
+                addDebugLog(`Successfully parsed JSON with ${Object.keys(updates).length} top-level keys`);
                 
                 // Get current article and revision
               const currentArticle = await serverDatabases.getDocument(databaseId, 'articles', articleId);
@@ -1373,10 +1413,13 @@ export default async function ({ req, res, log, error }) {
               });
               } catch (jsonParseError) {
                 addDebugLog(`Error parsing JSON: ${jsonParseError.message}`);
+                addDebugLog(`JSON string that failed to parse: ${jsonStr}`);
                 // Continue without creating revision
               }
             } else {
               addDebugLog('No JSON found in LLM response, skipping revision creation');
+              addDebugLog(`Full content length: ${fullContent.length} chars`);
+              addDebugLog(`Content preview: ${fullContent.substring(0, 200)}...`);
             }
           } catch (parseError) {
             addDebugLog(`Error parsing LLM response or creating revision: ${parseError.message}`);

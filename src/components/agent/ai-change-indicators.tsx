@@ -15,15 +15,59 @@ interface AIChangeIndicatorsProps {
 export function AIChangeIndicators({ content, isStreaming = false, className }: AIChangeIndicatorsProps) {
   if (!content) return null
 
-  // Try to extract JSON from the beginning of the message
-  const jsonMatch = content.match(/^\{[\s\S]*?\}\n/)
+  // Try to find JSON anywhere in the content (new format: explanatory text → JSON → confirmation)
+  let jsonMatch = content.match(/^\{[\s\S]*?\}\n/)
+  
+  // If not found at beginning, look for JSON anywhere in the content
+  if (!jsonMatch) {
+    jsonMatch = content.match(/^\{[\s\S]*?\}(?=\n|$)/)
+  }
+  
+  if (!jsonMatch) {
+    jsonMatch = content.match(/^\{[\s\S]*?\}/)
+  }
+  
+  // If still not found, look for JSON anywhere in the content
+  if (!jsonMatch) {
+    // Look for JSON objects that start with { and end with }
+    jsonMatch = content.match(/\{[^{}]*(?:\{[^{}]*\}[^{}]*)*\}/)
+  }
+  
+  // If still not found, try a more aggressive approach
+  if (!jsonMatch) {
+    const lines = content.split('\n')
+    for (const line of lines) {
+      const trimmedLine = line.trim()
+      if (trimmedLine.startsWith('{') && trimmedLine.includes('}')) {
+        // Try to find the complete JSON object
+        const startIndex = content.indexOf(trimmedLine)
+        let braceCount = 0
+        let endIndex = startIndex
+        
+        for (let i = startIndex; i < content.length; i++) {
+          if (content[i] === '{') braceCount++
+          if (content[i] === '}') braceCount--
+          if (braceCount === 0) {
+            endIndex = i
+            break
+          }
+        }
+        
+        if (braceCount === 0) {
+          jsonMatch = [content.substring(startIndex, endIndex + 1)]
+          break
+        }
+      }
+    }
+  }
+  
   const hasJson = !!jsonMatch
   
   if (!hasJson) {
     return null // No JSON found, no changes to show
   }
 
-  const jsonStr = jsonMatch[0].trim()
+  const jsonStr = jsonMatch![0].trim()
   
   const allChanges = useMemo(() => {
     let changes: any[] = []
@@ -212,7 +256,7 @@ function SectionChange({ change, isStreaming }: { change: any; isStreaming: bool
   
   // Create breadcrumb-style format: Body > Type
   const breadcrumbText = `Body > ${typeText.charAt(0).toUpperCase() + typeText.slice(1)}`
-  const changeText = actionText ? `${actionText} ${breadcrumbText}${contentText ? ` ${contentText}` : ''}` : `${breadcrumbText}${contentText ? ` ${contentText}` : ''}`
+  const changeText = actionText ? `${breadcrumbText}${contentText ? ` ${contentText}` : ''}` : `${breadcrumbText}${contentText ? ` ${contentText}` : ''}`
 
   useEffect(() => {
     const checkIfTruncated = () => {

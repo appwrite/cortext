@@ -14,10 +14,53 @@ interface AIMessageRendererProps {
 export const AIMessageRenderer = memo(function AIMessageRenderer({ content, className }: AIMessageRendererProps) {
   if (!content) return null
 
-  // Check if content starts with JSON-like structure (even if incomplete)
-  const hasJsonStart = content.trim().startsWith('{')
+  // Try to find JSON anywhere in the content (new format: explanatory text → JSON → confirmation)
+  let jsonMatch = content.match(/^\{[\s\S]*?\}\n/)
   
-  if (!hasJsonStart) {
+  // If not found at beginning, look for JSON anywhere in the content
+  if (!jsonMatch) {
+    jsonMatch = content.match(/^\{[\s\S]*?\}(?=\n|$)/)
+  }
+  
+  if (!jsonMatch) {
+    jsonMatch = content.match(/^\{[\s\S]*?\}/)
+  }
+  
+  // If still not found, look for JSON anywhere in the content
+  if (!jsonMatch) {
+    // Look for JSON objects that start with { and end with }
+    jsonMatch = content.match(/\{[^{}]*(?:\{[^{}]*\}[^{}]*)*\}/)
+  }
+  
+  // If still not found, try a more aggressive approach
+  if (!jsonMatch) {
+    const lines = content.split('\n')
+    for (const line of lines) {
+      const trimmedLine = line.trim()
+      if (trimmedLine.startsWith('{') && trimmedLine.includes('}')) {
+        // Try to find the complete JSON object
+        const startIndex = content.indexOf(trimmedLine)
+        let braceCount = 0
+        let endIndex = startIndex
+        
+        for (let i = startIndex; i < content.length; i++) {
+          if (content[i] === '{') braceCount++
+          if (content[i] === '}') braceCount--
+          if (braceCount === 0) {
+            endIndex = i
+            break
+          }
+        }
+        
+        if (braceCount === 0) {
+          jsonMatch = [content.substring(startIndex, endIndex + 1)]
+          break
+        }
+      }
+    }
+  }
+  
+  if (!jsonMatch) {
     // No JSON found, render as regular markdown with better styling
     return (
       <div className={cn("space-y-1 text-xs leading-relaxed", className)}>
@@ -25,14 +68,14 @@ export const AIMessageRenderer = memo(function AIMessageRenderer({ content, clas
       </div>
     )
   }
-
-  // Try to find complete JSON first
-  const jsonMatch = content.match(/^\{[\s\S]*?\}\n/)
   
   if (jsonMatch) {
     // Complete JSON found
     const jsonStr = jsonMatch[0].trim()
-    const explanation = content.slice(jsonMatch[0].length).trim()
+    
+    // Extract explanation text (comes after JSON in new format)
+    const jsonEndIndex = content.indexOf(jsonStr) + jsonStr.length
+    const explanation = content.slice(jsonEndIndex).trim()
     
     try {
       const parsed = JSON.parse(jsonStr)
