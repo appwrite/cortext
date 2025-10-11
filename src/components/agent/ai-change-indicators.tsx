@@ -15,93 +15,90 @@ interface AIChangeIndicatorsProps {
 export function AIChangeIndicators({ content, isStreaming = false, className }: AIChangeIndicatorsProps) {
   if (!content) return null
 
-  // Try to find JSON anywhere in the content (new format: explanatory text → JSON → confirmation)
-  let jsonMatch = content.match(/^\{[\s\S]*?\}\n/)
-  
-  // If not found at beginning, look for JSON anywhere in the content
-  if (!jsonMatch) {
-    jsonMatch = content.match(/^\{[\s\S]*?\}(?=\n|$)/)
-  }
-  
-  if (!jsonMatch) {
-    jsonMatch = content.match(/^\{[\s\S]*?\}/)
-  }
-  
-  // If still not found, look for JSON anywhere in the content
-  if (!jsonMatch) {
-    // Look for JSON objects that start with { and end with }
-    jsonMatch = content.match(/\{[^{}]*(?:\{[^{}]*\}[^{}]*)*\}/)
-  }
-  
-  // If still not found, try a more aggressive approach
-  if (!jsonMatch) {
-    const lines = content.split('\n')
-    for (const line of lines) {
-      const trimmedLine = line.trim()
-      if (trimmedLine.startsWith('{') && trimmedLine.includes('}')) {
-        // Try to find the complete JSON object
-        const startIndex = content.indexOf(trimmedLine)
-        let braceCount = 0
-        let endIndex = startIndex
-        
-        for (let i = startIndex; i < content.length; i++) {
-          if (content[i] === '{') braceCount++
-          if (content[i] === '}') braceCount--
-          if (braceCount === 0) {
-            endIndex = i
-            break
-          }
-        }
-        
+  // Try to find ALL JSON objects in the content (new format: explanatory text → JSON → confirmation)
+  const findAllJsonObjects = (content: string) => {
+    const jsonObjects: string[] = [];
+    let searchIndex = 0;
+    
+    while (searchIndex < content.length) {
+      const startIndex = content.indexOf('{', searchIndex);
+      if (startIndex === -1) break;
+      
+      let braceCount = 0;
+      let endIndex = startIndex;
+      
+      for (let i = startIndex; i < content.length; i++) {
+        if (content[i] === '{') braceCount++;
+        if (content[i] === '}') braceCount--;
         if (braceCount === 0) {
-          jsonMatch = [content.substring(startIndex, endIndex + 1)]
-          break
+          endIndex = i;
+          break;
         }
       }
+      
+      if (braceCount === 0) {
+        const jsonStr = content.substring(startIndex, endIndex + 1).trim();
+        // Try to parse to validate it's valid JSON
+        try {
+          JSON.parse(jsonStr);
+          jsonObjects.push(jsonStr);
+        } catch (e) {
+          // Skip invalid JSON
+        }
+        searchIndex = endIndex + 1;
+      } else {
+        searchIndex = startIndex + 1;
+      }
     }
-  }
+    
+    return jsonObjects;
+  };
   
-  const hasJson = !!jsonMatch
+  const allJsonObjects = findAllJsonObjects(content);
+  const hasJson = allJsonObjects.length > 0;
   
   if (!hasJson) {
     return null // No JSON found, no changes to show
   }
 
-  const jsonStr = jsonMatch![0].trim()
-  
   const allChanges = useMemo(() => {
     let changes: any[] = []
-    try {
-      const parsed = JSON.parse(jsonStr)
-      
-      // Add article changes
-      if (parsed.article) {
-        const articleChanges = Object.entries(parsed.article).map(([key, value]) => ({
-          type: 'article',
-          field: key,
-          value: value,
-          label: getFieldLabel(key)
-        }))
-        changes.push(...articleChanges)
+    
+    // Process all JSON objects
+    for (const jsonStr of allJsonObjects) {
+      try {
+        const parsed = JSON.parse(jsonStr)
+        
+        // Add article changes
+        if (parsed.article) {
+          const articleChanges = Object.entries(parsed.article).map(([key, value]) => ({
+            type: 'article',
+            field: key,
+            value: value,
+            label: getFieldLabel(key)
+          }))
+          changes.push(...articleChanges)
+        }
+        
+        // Add section changes
+        if (parsed.sections) {
+          const sectionChanges = parsed.sections.map((section: any, index: number) => ({
+            type: 'section',
+            id: section.id || `section-${index}`,
+            action: section.action,
+            sectionType: section.type,
+            content: section.content
+          }))
+          changes.push(...sectionChanges)
+        }
+      } catch (error) {
+        // Skip invalid JSON objects
+        continue
       }
-      
-      // Add section changes
-      if (parsed.sections) {
-        const sectionChanges = parsed.sections.map((section: any, index: number) => ({
-          type: 'section',
-          id: section.id || `section-${index}`,
-          action: section.action,
-          sectionType: section.type,
-          content: section.content
-        }))
-        changes.push(...sectionChanges)
-      }
-    } catch (error) {
-      return []
     }
     
     return changes
-  }, [jsonStr])
+  }, [allJsonObjects])
 
   if (allChanges.length === 0) {
     return null

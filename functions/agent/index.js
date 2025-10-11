@@ -1159,65 +1159,56 @@ export default async function ({ req, res, log, error }) {
         
         if (revisionId && articleId && fullContent) {
           try {
-            // Extract JSON from the response (look for JSON anywhere in the content)
-            let jsonStr = null;
+            // Extract ALL JSON objects from the response (handle multiple JSON commands)
+            const allJsonObjects = [];
             
-            // First try to find JSON at the beginning (backward compatibility)
-            let jsonMatch = fullContent.match(/^\{[\s\S]*?\}\n/);
-            
-            if (!jsonMatch) {
-              jsonMatch = fullContent.match(/^\{[\s\S]*?\}(?=\n|$)/);
-            }
-            
-            if (!jsonMatch) {
-              jsonMatch = fullContent.match(/^\{[\s\S]*?\}/);
-            }
-            
-            // If not found at beginning, look for JSON anywhere in the content
-            if (!jsonMatch) {
-              // Look for JSON objects that start with { and end with }
-              // This handles the new format: explanatory text → JSON → confirmation
-              jsonMatch = fullContent.match(/\{[^{}]*(?:\{[^{}]*\}[^{}]*)*\}/);
-            }
-            
-            // If still not found, try a more aggressive approach
-            if (!jsonMatch) {
-              // Look for any { ... } pattern that could be JSON
-              const lines = fullContent.split('\n');
-              for (const line of lines) {
-                const trimmedLine = line.trim();
-                if (trimmedLine.startsWith('{') && trimmedLine.includes('}')) {
-                  // Try to find the complete JSON object
-                  const startIndex = fullContent.indexOf(trimmedLine);
-                  let braceCount = 0;
-                  let endIndex = startIndex;
-                  
-                  for (let i = startIndex; i < fullContent.length; i++) {
-                    if (fullContent[i] === '{') braceCount++;
-                    if (fullContent[i] === '}') braceCount--;
-                    if (braceCount === 0) {
-                      endIndex = i;
-                      break;
-                    }
-                  }
-                  
+            // Function to find all JSON objects in the content
+            const findAllJsonObjects = (content) => {
+              const jsonObjects = [];
+              let searchIndex = 0;
+              
+              while (searchIndex < content.length) {
+                const startIndex = content.indexOf('{', searchIndex);
+                if (startIndex === -1) break;
+                
+                let braceCount = 0;
+                let endIndex = startIndex;
+                
+                for (let i = startIndex; i < content.length; i++) {
+                  if (content[i] === '{') braceCount++;
+                  if (content[i] === '}') braceCount--;
                   if (braceCount === 0) {
-                    jsonMatch = [fullContent.substring(startIndex, endIndex + 1)];
+                    endIndex = i;
                     break;
                   }
                 }
-              }
-            }
-            
-            if (jsonMatch) {
-              jsonStr = jsonMatch[0].trim();
-              addDebugLog(`Found JSON in response: ${jsonStr.substring(0, 100)}...`);
-              
-              try {
-                const updates = JSON.parse(jsonStr);
-                addDebugLog(`Successfully parsed JSON with ${Object.keys(updates).length} top-level keys`);
                 
-                // Get current article and revision
+                if (braceCount === 0) {
+                  const jsonStr = content.substring(startIndex, endIndex + 1).trim();
+                  // Try to parse to validate it's valid JSON
+                  try {
+                    JSON.parse(jsonStr);
+                    jsonObjects.push(jsonStr);
+                    addDebugLog(`Found valid JSON object: ${jsonStr.substring(0, 100)}...`);
+                  } catch (e) {
+                    addDebugLog(`Found invalid JSON object: ${jsonStr.substring(0, 100)}...`);
+                  }
+                  searchIndex = endIndex + 1;
+                } else {
+                  searchIndex = startIndex + 1;
+                }
+              }
+              
+              return jsonObjects;
+            };
+            
+            // Find all JSON objects in the content
+            allJsonObjects.push(...findAllJsonObjects(fullContent));
+            
+            addDebugLog(`Found ${allJsonObjects.length} JSON objects in response`);
+            
+            if (allJsonObjects.length > 0) {
+              // Get current article and revision (only once for all JSON objects)
               const currentArticle = await serverDatabases.getDocument(databaseId, 'articles', articleId);
               const currentRevision = await serverDatabases.getDocument(databaseId, 'revisions', revisionId);
               
@@ -1237,7 +1228,6 @@ export default async function ({ req, res, log, error }) {
               const currentAttributes = currentRevisionData.attributes || currentRevisionData;
               
               // Create updated article data using ONLY current revision data
-              // The revision contains the complete, most up-to-date content
               const updatedArticle = {
                 // Use ONLY revision data for all fields
                 title: currentAttributes.title,
@@ -1264,85 +1254,102 @@ export default async function ({ req, res, log, error }) {
               // Initialize sections from current revision data
               let sections = currentAttributes.sections || [];
               
-              // Apply article-level updates
-              if (updates.article) {
-                Object.keys(updates.article).forEach(key => {
-                  updatedArticle[key] = updates.article[key];
-                });
+              // Process each JSON object and accumulate changes
+              for (let i = 0; i < allJsonObjects.length; i++) {
+                const jsonStr = allJsonObjects[i];
+                addDebugLog(`Processing JSON object ${i + 1}/${allJsonObjects.length}: ${jsonStr.substring(0, 100)}...`);
+                
+                try {
+                  const updates = JSON.parse(jsonStr);
+                  addDebugLog(`Successfully parsed JSON ${i + 1} with ${Object.keys(updates).length} top-level keys`);
+                  addDebugLog(`JSON ${i + 1} content: ${JSON.stringify(updates)}`);
+                  
+                  // Apply article-level updates
+                  if (updates.article) {
+                    Object.keys(updates.article).forEach(key => {
+                      updatedArticle[key] = updates.article[key];
+                    });
+                  }
+                  
+                  // Apply section updates
+                  if (updates.sections) {
+                    updates.sections.forEach(update => {
+                      switch (update.action) {
+                        case 'create':
+                          const newId = update.id === 'new' ? ServerID.unique() : update.id;
+                          const newSection = {
+                            type: update.type,
+                            content: update.content,
+                            id: newId
+                          };
+                          
+                          // Include additional fields based on section type
+                          if (update.speaker) {
+                            newSection.speaker = update.speaker;
+                          }
+                          
+                          if (update.language) {
+                            newSection.language = update.language;
+                          }
+                          
+                          if (update.imageIds) {
+                            newSection.imageIds = update.imageIds;
+                          }
+                          
+                          if (update.mediaId) {
+                            newSection.mediaId = update.mediaId;
+                          }
+                          
+                          if (update.embedUrl) {
+                            newSection.embedUrl = update.embedUrl;
+                          }
+                          
+                          if (update.data) {
+                            newSection.data = update.data;
+                          }
+                          
+                          if (update.position !== undefined) {
+                            sections.splice(update.position, 0, newSection);
+                          } else {
+                            sections.push(newSection);
+                          }
+                          break;
+                          
+                        case 'update':
+                          const updateIndex = sections.findIndex(s => s.id === update.id);
+                          if (updateIndex !== -1) {
+                            sections[updateIndex] = { ...sections[updateIndex], ...update };
+                          }
+                          break;
+                          
+                        case 'delete':
+                          sections = sections.filter(s => s.id !== update.id);
+                          break;
+                          
+                        case 'move':
+                          const moveIndex = sections.findIndex(s => s.id === update.id);
+                          if (moveIndex !== -1) {
+                            const [movedSection] = sections.splice(moveIndex, 1);
+                            if (update.position !== undefined) {
+                              sections.splice(update.position, 0, movedSection);
+                            } else if (update.targetId) {
+                              const targetIndex = sections.findIndex(s => s.id === update.targetId);
+                              sections.splice(targetIndex, 0, movedSection);
+                            }
+                          }
+                          break;
+                      }
+                    });
+                  }
+                } catch (jsonParseError) {
+                  addDebugLog(`Error parsing JSON ${i + 1}: ${jsonParseError.message}`);
+                  addDebugLog(`JSON string that failed to parse: ${jsonStr}`);
+                  // Continue with next JSON object
+                }
               }
               
-              // Apply section updates
-              if (updates.sections) {
-                updates.sections.forEach(update => {
-                  switch (update.action) {
-                    case 'create':
-                      const newId = update.id === 'new' ? ServerID.unique() : update.id;
-                      const newSection = {
-                        type: update.type,
-                        content: update.content,
-                        id: newId
-                      };
-                      
-                      // Include additional fields based on section type
-                      if (update.speaker) {
-                        newSection.speaker = update.speaker;
-                      }
-                      
-                      if (update.language) {
-                        newSection.language = update.language;
-                      }
-                      
-                      if (update.imageIds) {
-                        newSection.imageIds = update.imageIds;
-                      }
-                      
-                      if (update.mediaId) {
-                        newSection.mediaId = update.mediaId;
-                      }
-                      
-                      if (update.embedUrl) {
-                        newSection.embedUrl = update.embedUrl;
-                      }
-                      
-                      if (update.data) {
-                        newSection.data = update.data;
-                      }
-                      
-                      if (update.position !== undefined) {
-                        sections.splice(update.position, 0, newSection);
-                      } else {
-                        sections.push(newSection);
-                      }
-                      break;
-                      
-                    case 'update':
-                      const updateIndex = sections.findIndex(s => s.id === update.id);
-                      if (updateIndex !== -1) {
-                        sections[updateIndex] = { ...sections[updateIndex], ...update };
-                      }
-                      break;
-                      
-                    case 'delete':
-                      sections = sections.filter(s => s.id !== update.id);
-                      break;
-                      
-                    case 'move':
-                      const moveIndex = sections.findIndex(s => s.id === update.id);
-                      if (moveIndex !== -1) {
-                        const [movedSection] = sections.splice(moveIndex, 1);
-                        if (update.position !== undefined) {
-                          sections.splice(update.position, 0, movedSection);
-                        } else if (update.targetId) {
-                          const targetIndex = sections.findIndex(s => s.id === update.targetId);
-                          sections.splice(targetIndex, 0, movedSection);
-                        }
-                      }
-                      break;
-                  }
-                });
-                
-                updatedArticle.body = JSON.stringify(sections);
-              }
+              // Update article body with all accumulated changes
+              updatedArticle.body = JSON.stringify(sections);
               
               // Create new revision
               const currentRevisions = await serverDatabases.listDocuments(
@@ -1411,15 +1418,14 @@ export default async function ({ req, res, log, error }) {
               await serverDatabases.updateDocument(databaseId, 'articles', articleId, {
                 activeRevisionId: newRevisionId
               });
-              } catch (jsonParseError) {
-                addDebugLog(`Error parsing JSON: ${jsonParseError.message}`);
-                addDebugLog(`JSON string that failed to parse: ${jsonStr}`);
-                // Continue without creating revision
-              }
             } else {
               addDebugLog('No JSON found in LLM response, skipping revision creation');
               addDebugLog(`Full content length: ${fullContent.length} chars`);
               addDebugLog(`Content preview: ${fullContent.substring(0, 200)}...`);
+              addDebugLog(`Content contains opening brace: ${fullContent.includes('{')}`);
+              addDebugLog(`Content contains closing brace: ${fullContent.includes('}')}`);
+              addDebugLog(`Content contains article: ${fullContent.includes('"article"')}`);
+              addDebugLog(`Content contains sections: ${fullContent.includes('"sections"')}`);
             }
           } catch (parseError) {
             addDebugLog(`Error parsing LLM response or creating revision: ${parseError.message}`);
