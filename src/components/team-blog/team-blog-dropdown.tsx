@@ -167,9 +167,9 @@ export function TeamBlogDropdown({ userId, onClose, onCreateTeam, onCreateBlog, 
   }
 
   return (
-    <div className="flex h-[400px]">
+    <div className="flex flex-col sm:flex-row h-auto sm:h-[400px]">
       {/* Teams Section */}
-      <div className="flex-1 border-r flex flex-col">
+      <div className="flex-1 sm:border-r border-b sm:border-b-0 flex flex-col">
         <div className="p-4 border-b">
           <div className="relative">
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
@@ -184,7 +184,7 @@ export function TeamBlogDropdown({ userId, onClose, onCreateTeam, onCreateBlog, 
         
         <div className="p-4 flex-1 flex flex-col min-h-0">
           <h3 className="text-sm font-medium border-b pt-2 pb-2">Teams</h3>
-          <ScrollArea className="flex-1" ref={teamsScrollRef}>
+          <ScrollArea className="flex-1 h-[200px] sm:h-auto" ref={teamsScrollRef}>
             <div className="pt-2 pb-2">
             {filteredTeams.length === 0 ? (
               <div className="text-center py-8">
@@ -272,7 +272,7 @@ export function TeamBlogDropdown({ userId, onClose, onCreateTeam, onCreateBlog, 
         
         <div className="p-4 flex-1 flex flex-col min-h-0">
           <h3 className="text-sm font-medium border-b pt-2 pb-2">Blogs</h3>
-          <ScrollArea className="flex-1" ref={blogsScrollRef}>
+          <ScrollArea className="flex-1 h-[200px] sm:h-auto" ref={blogsScrollRef}>
             <div className="pt-2 pb-2">
             {!selectedTeamForBlogs ? (
               <div className="text-center py-8">
