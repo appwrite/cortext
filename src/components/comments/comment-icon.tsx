@@ -30,7 +30,7 @@ export function CommentIcon({
       <MessageCircle className="h-4 w-4" />
       {commentCount > 0 ? (
         <Badge 
-          variant={hasNewComments ? "destructive" : "secondary"}
+          variant="destructive"
           className="absolute -top-1 -right-1 h-5 w-5 p-0 text-xs flex items-center justify-center min-w-[20px] text-white"
         >
           {commentCount}

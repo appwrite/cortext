@@ -95,14 +95,14 @@ function SortableImageItem({ image, onRemove, disabled = false }: SortableImageI
           </div>
           <div className="absolute top-2 right-2">
             <button
-              className="h-5 w-5 rounded-full bg-background/90 border-2 border-background/90 flex items-center justify-center hover:bg-background transition-colors backdrop-blur-sm cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+              className="h-6 w-6 rounded-full bg-background/90 border-2 border-background/90 flex items-center justify-center hover:bg-background transition-colors backdrop-blur-sm cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
               onClick={(e) => {
                 e.stopPropagation()
                 onRemove(image.$id)
               }}
               disabled={disabled}
             >
-              <X className="h-3 w-3 text-foreground" />
+              <X className="h-4 w-4 text-foreground" />
             </button>
           </div>
           <div className="absolute bottom-2 left-2 right-2">
@@ -111,17 +111,17 @@ function SortableImageItem({ image, onRemove, disabled = false }: SortableImageI
             </div>
           </div>
         </div>
-        {/* Touch-friendly X button - always visible on touch screens */}
-        <div className="absolute top-2 right-2 touch-manipulation">
+        {/* Touch-friendly X button - only visible on touch screens */}
+        <div className="absolute top-2 left-2 touch-manipulation block [@media(hover:hover)]:hidden">
           <button
-            className="h-6 w-6 rounded-full bg-background/90 border-2 border-black flex items-center justify-center hover:bg-background transition-colors backdrop-blur-sm cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed m-1 ml-3"
+            className="h-6 w-6 rounded-full bg-background/90 border-2 border-black flex items-center justify-center hover:bg-background transition-colors backdrop-blur-sm cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
             onClick={(e) => {
               e.stopPropagation()
               onRemove(image.$id)
             }}
             disabled={disabled}
           >
-            <X className="h-3 w-3 text-foreground" />
+            <X className="h-4 w-4 text-foreground" />
           </button>
         </div>
       </div>
