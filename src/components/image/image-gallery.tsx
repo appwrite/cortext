@@ -205,6 +205,7 @@ export function ImageGallery({ selectedImageIds, onImagesChange, userId, disable
     const { active, over } = event
 
     if (over && active.id !== over.id) {
+      console.log('Image drag and drop:', { active: active.id, over: over.id })
       const oldIndex = selectedImageIds.indexOf(active.id as string)
       const newIndex = selectedImageIds.indexOf(over.id as string)
 

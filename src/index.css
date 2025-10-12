@@ -116,7 +116,7 @@
     outline-color: var(--ring);
     outline-color: color-mix(in srgb, var(--ring) 50%, transparent);
   }
-  body {
+  html, body {
     background-color: var(--background);
     color: var(--foreground);
     margin: 0;
@@ -254,20 +254,6 @@
   .aspect-ratio-container,
   .aspect-ratio-fallback {
     -webkit-overflow-scrolling: touch;
-  }
-  
-  /* iOS viewport height fixes to prevent extra space below footer */
-  @supports (-webkit-touch-callout: none) {
-    /* iOS Safari specific fixes */
-    .min-h-screen {
-      min-height: 100vh;
-      min-height: -webkit-fill-available;
-    }
-    
-    /* Fix for iOS safe area insets */
-    .ios-safe-area {
-      padding-bottom: env(safe-area-inset-bottom, 0);
-    }
   }
 }
 

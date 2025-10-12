@@ -193,6 +193,7 @@ export function CategorySelector({ selectedCategoryIds, onCategoriesChange, user
     const { active, over } = event
 
     if (over && active.id !== over.id) {
+      console.log('Category drag and drop:', { active: active.id, over: over.id })
       const oldIndex = selectedCategoryIds.indexOf(active.id as string)
       const newIndex = selectedCategoryIds.indexOf(over.id as string)
 

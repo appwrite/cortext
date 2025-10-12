@@ -1823,12 +1823,12 @@ function ArticleEditor({ articleId, userId, user, onBack }: { articleId: string;
     }
 
     const persistOrder = (next: any[]) => {
+        console.log('persistOrder called with sections:', next.length)
         const updatedSections = next.map((s, i) => ({ ...s, position: i }))
         setLocalSections(updatedSections)
-        // Only set hasUserInteracted if we're not in initial load
-        if (isFullyLoaded) {
-            setHasUserInteractedDebug(true, 'persistOrder')
-        }
+        // Always set hasUserInteracted for drag and drop operations to be consistent with other handlers
+        updateChanges(true)
+        setHasUserInteractedDebug(true, 'persistOrder')
     }
 
 

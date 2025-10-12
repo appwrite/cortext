@@ -194,6 +194,7 @@ export function AuthorSelector({ selectedAuthorIds, onAuthorsChange, userId, dis
     const { active, over } = event
 
     if (over && active.id !== over.id) {
+      console.log('Author drag and drop:', { active: active.id, over: over.id })
       const oldIndex = selectedAuthorIds.indexOf(active.id as string)
       const newIndex = selectedAuthorIds.indexOf(over.id as string)
 

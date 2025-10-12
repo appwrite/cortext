@@ -99,7 +99,7 @@ function DocsIndex() {
                         <PageActions />
                     </div>
                 </div>
-                <h1 className="text-2xl font-medium tracking-tight mb-2">
+                <h1 className="text-2xl font-medium tracking-tight mb-6">
                     Welcome to Cortext
                 </h1>
                 <div className="text-base text-foreground/70 max-w-2xl space-y-5 leading-relaxed">

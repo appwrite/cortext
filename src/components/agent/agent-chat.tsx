@@ -1510,7 +1510,7 @@ I've made several changes to your content including creating new paragraphs, upd
                         </div>
                     </div>
                 ) : hasMessages ? (
-                    <div className="px-6 py-6 space-y-6">
+                    <div className="px-3 py-6 space-y-6">
                         {/* Debug: Messages count: {messages.length}, hasMessages: {hasMessages.toString()} */}
                         {messages.map((m, index) => {
                             // Check if we need to show a separator
@@ -1546,8 +1546,8 @@ I've made several changes to your content including creating new paragraphs, upd
                                         <div
                                             className={
                                                 m.role === 'assistant'
-                                                    ? 'rounded-md bg-muted/30 px-2.5 py-1.5 text-xs max-w-[260px] break-words overflow-wrap-anywhere'
-                                                    : 'rounded-md bg-primary text-primary-foreground px-2.5 py-1.5 text-xs max-w-[220px] break-words overflow-wrap-anywhere'
+                                                    ? 'rounded-md bg-muted/30 px-2.5 py-1.5 text-xs max-w-[180px] sm:max-w-[220px] md:max-w-[250px] lg:max-w-[270px] break-words overflow-wrap-anywhere'
+                                                    : 'rounded-md bg-primary text-primary-foreground px-2.5 py-1.5 text-xs max-w-[160px] sm:max-w-[200px] md:max-w-[230px] lg:max-w-[250px] break-words overflow-wrap-anywhere'
                                             }
                                         >
                                         {/* Debug: Role: {m.role}, Content: {m.content.substring(0, 50)}... */}
@@ -1771,7 +1771,7 @@ I've made several changes to your content including creating new paragraphs, upd
                 ) : null}
             </ScrollArea>
 
-            <div className="relative px-6 py-6 space-y-2 bg-background border-t border-foreground/30">
+            <div className="relative px-3 py-6 space-y-2 bg-background border-t border-foreground/30">
                 {/* Gradient fade overlay - more gradual */}
                 <div className="absolute inset-x-0 -top-8 h-12 bg-gradient-to-t from-background via-background/80 to-transparent pointer-events-none" />
                 <div className="flex flex-wrap gap-1.5">
@@ -1948,7 +1948,7 @@ I've made several changes to your content including creating new paragraphs, upd
                 </div>
             ) : (
                 <>
-                    <header className="h-12 px-6 border-b flex items-center">
+                    <header className="h-12 px-3 border-b flex items-center">
                         <ConversationSelector
                             conversations={conversations}
                             currentConversationId={currentConversationId}
