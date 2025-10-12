@@ -2480,7 +2480,7 @@ function ArticleEditor({ articleId, userId, user, onBack }: { articleId: string;
                 </div>
 
                 <div 
-                    className="main-content-area flex justify-center px-4 sm:px-8 lg:px-16 py-6 pb-24"
+                    className="main-content-area flex justify-center px-6 sm:px-12 lg:px-20 py-8 pb-24"
                     style={{ 
                         marginLeft: !isMobile 
                             ? (isMinimized ? '60px' : `${chatWidth}px`) 
@@ -2854,7 +2854,7 @@ function ArticleEditor({ articleId, userId, user, onBack }: { articleId: string;
             </div>
 
             <div 
-                className="main-content-area flex justify-center px-4 sm:px-8 lg:px-16 py-6 pb-24"
+                className="main-content-area flex justify-center px-6 sm:px-12 lg:px-20 py-8 pb-24"
                 style={{ 
                     marginLeft: !isMobile 
                         ? (isMinimized ? '60px' : `${chatWidth}px`) 
@@ -3343,7 +3343,7 @@ function ArticleEditor({ articleId, userId, user, onBack }: { articleId: string;
                                 style={{
                                     top: (() => {
                                         // Base top position when no banners are visible
-                                        let topPosition = '5rem'; // top-20 equivalent
+                                        let topPosition = '5rem';
                                         
                                         // Check if unpublished changes banner is visible
                                         const hasUnpublishedBanner = !isInRevertMode && 
@@ -3355,17 +3355,17 @@ function ArticleEditor({ articleId, userId, user, onBack }: { articleId: string;
                                         // Adjust top position based on visible banners
                                         if (hasUnpublishedBanner && hasRevertBanner) {
                                             // Both banners visible - account for both heights
-                                            topPosition = '14rem'; // top-28 + both banner heights + extra clearance
+                                            topPosition = '10rem'; // top-28 + both banner heights + extra clearance
                                         } else if (hasUnpublishedBanner || hasRevertBanner) {
                                             // One banner visible - account for one banner height
-                                            topPosition = '11rem'; // top-28 + one banner height + extra clearance
+                                            topPosition = '10rem'; // top-28 + one banner height + extra clearance
                                         }
                                         
                                         return topPosition;
                                     })()
                                 }}
                             >
-                                <div className="absolute top-5 left-0 -ml-[56px] w-0">
+                                <div className="absolute top-12 left-0 -ml-[56px] w-0">
                                     <DropdownMenu>
                                         <DropdownMenuTrigger asChild>
                                             <Button

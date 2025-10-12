@@ -5,8 +5,9 @@ import { Textarea } from '@/components/ui/textarea'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { Drawer, DrawerContent, DrawerHeader, DrawerTitle } from '@/components/ui/drawer'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { MarkdownRenderer } from '@/components/ui/markdown-renderer'
-import { ArrowRight, Send, MessageCircle, CornerDownLeft, Code, Copy, Check, Brain, Undo2 } from 'lucide-react'
+import { ArrowRight, Send, MessageCircle, CornerDownLeft, Code, Copy, Check, Brain, Undo2, ChevronDown } from 'lucide-react'
 import { useIsMobile } from '@/hooks/use-mobile'
 import { useConversationManager, useMessagesWithNotifications } from '@/hooks/use-conversations'
 import { ConversationSelector } from './conversation-selector'
@@ -75,6 +76,7 @@ export function AgentChat({
     const [input, setInput] = useState('')
     const [currentConversationId, setCurrentConversationId] = useState<string | null>(null)
     const [isDrawerOpen, setIsDrawerOpen] = useState(false)
+    const [isMobileConversationSelectorOpen, setIsMobileConversationSelectorOpen] = useState(false)
     const [isWaitingForAI, setIsWaitingForAI] = useState(false)
     const [previousMessageCount, setPreviousMessageCount] = useState(0)
     const [previousAssistantCount, setPreviousAssistantCount] = useState(0)
@@ -1771,7 +1773,7 @@ I've made several changes to your content including creating new paragraphs, upd
                 ) : null}
             </ScrollArea>
 
-            <div className="relative px-3 py-6 space-y-2 bg-background border-t border-foreground/30">
+            <div className={`relative px-3 space-y-2 bg-background border-t border-foreground/30 ${isMobile ? 'py-3' : 'py-6'}`}>
                 {/* Gradient fade overlay - more gradual */}
                 <div className="absolute inset-x-0 -top-8 h-12 bg-gradient-to-t from-background via-background/80 to-transparent pointer-events-none" />
                 <div className="flex flex-wrap gap-1.5">
@@ -1901,8 +1903,78 @@ I've made several changes to your content including creating new paragraphs, upd
 
                 {/* Mobile drawer */}
                 <Drawer open={isDrawerOpen} onOpenChange={setIsDrawerOpen}>
-                    <DrawerContent className="h-[80vh]">
-                        <div className="flex flex-col h-full">
+                    <DrawerContent className="h-[85vh]">
+                        <DrawerHeader className="border-b pt-2 pb-4">
+                            <Popover open={isMobileConversationSelectorOpen} onOpenChange={setIsMobileConversationSelectorOpen}>
+                                <PopoverTrigger asChild>
+                                    <div className="flex items-center justify-between cursor-pointer hover:bg-muted/50 rounded-md p-1 -m-1 transition-colors">
+                                        <DrawerTitle className="text-left flex-1">
+                                            {conversations.find(c => c.$id === currentConversationId)?.title || 'AI Chat'}
+                                        </DrawerTitle>
+                                        <ChevronDown className="h-4 w-4 text-muted-foreground flex-shrink-0 ml-2" />
+                                    </div>
+                                </PopoverTrigger>
+                                <PopoverContent className="w-80 p-0" align="start" side="bottom">
+                                    <div className="p-3 border-b">
+                                        <h4 className="text-sm font-medium">Select Conversation</h4>
+                                    </div>
+                                    <div className="max-h-80 overflow-y-auto">
+                                        {conversations.length === 0 ? (
+                                            <div className="p-4 text-center text-sm text-muted-foreground">
+                                                No conversations yet
+                                            </div>
+                                        ) : (
+                                            <div className="p-2 space-y-1">
+                                                {conversations.map((conversation) => (
+                                                    <div
+                                                        key={conversation.$id}
+                                                        className={`group flex items-center gap-2 px-3 py-2 rounded-md hover:bg-accent transition-colors cursor-pointer ${
+                                                            conversation.$id === currentConversationId ? "bg-secondary" : ""
+                                                        }`}
+                                                        onClick={() => {
+                                                            setCurrentConversationId(conversation.$id)
+                                                            setIsMobileConversationSelectorOpen(false)
+                                                        }}
+                                                    >
+                                                        <div className="flex-1 min-w-0">
+                                                            <div className="font-medium text-sm truncate">
+                                                                {conversation.title}
+                                                            </div>
+                                                            <div className="text-xs text-muted-foreground mt-0.5">
+                                                                {conversation.lastMessageAt 
+                                                                    ? formatDateRelative(conversation.lastMessageAt)
+                                                                    : 'No messages'
+                                                                }
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        )}
+                                        <div className="p-2 border-t">
+                                            <Button
+                                                variant="outline"
+                                                size="sm"
+                                                className="w-full"
+                                                onClick={async () => {
+                                                    try {
+                                                        const newConversation = await createConversation({ title: 'New conversation', blogId })
+                                                        setCurrentConversationId(newConversation.$id)
+                                                        setIsMobileConversationSelectorOpen(false)
+                                                    } catch (error) {
+                                                        console.error('Failed to create conversation:', error)
+                                                    }
+                                                }}
+                                                disabled={isLoadingConversations}
+                                            >
+                                                + New Conversation
+                                            </Button>
+                                        </div>
+                                    </div>
+                                </PopoverContent>
+                            </Popover>
+                        </DrawerHeader>
+                        <div className="flex flex-col h-full overflow-hidden pb-4">
                             {chatContent}
                         </div>
                     </DrawerContent>
