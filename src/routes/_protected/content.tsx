@@ -1066,7 +1066,7 @@ function ArticleEditor({ articleId, userId, user, onBack }: { articleId: string;
     const scrollToTop = () => {
         const container = document.querySelector('.h-dvh.overflow-y-auto')
         if (container) {
-            container.scrollTo({ top: 0, behavior: 'smooth' })
+            container.scrollTo({ top: 0, behavior: 'instant' })
         }
     }
     const navigate = useNavigate()
@@ -1078,6 +1078,11 @@ function ArticleEditor({ articleId, userId, user, onBack }: { articleId: string;
     const [isCommentsOpen, setIsCommentsOpen] = useState(false)
     const [mockSkeletonState, setMockSkeletonState] = useState(false)
     const menuRef = useRef<HTMLDivElement>(null)
+
+    // Scroll to top when component mounts
+    useEffect(() => {
+        scrollToTop()
+    }, [articleId])
 
     // Close menu when clicking outside
     useEffect(() => {
@@ -3468,9 +3473,9 @@ function ArticleEditor({ articleId, userId, user, onBack }: { articleId: string;
                                                                 userId={userId}
                                                                 disabled={isInRevertMode}
                                                             />
-                                                            {/* Touch-friendly controls - always visible on touch screens */}
+                                                            {/* Touch-friendly controls - only visible on touch screens */}
                                                             <div className="touch-manipulation mt-3 flex items-center justify-between pt-3 border-t border-border/50">
-                                                                <div className="flex items-center gap-2">
+                                                                <div className="flex items-center gap-2 [@media(pointer:coarse)]:block [@media(pointer:fine)]:hidden">
                                                                     <Button
                                                                         variant="outline"
                                                                         size="sm"
