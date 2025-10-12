@@ -108,12 +108,17 @@ export function TeamBlogSelector({ userId }: TeamBlogSelectorProps) {
     navigate({ to: '/content', search: {} })
   }
 
+  const handleButtonClick = () => {
+    // Toggle the dropdown
+    setIsOpen(!isOpen)
+  }
+
   return (
     <div ref={containerRef} className="relative">
       <Button
         variant="ghost"
         size="sm"
-        onClick={() => setIsOpen(!isOpen)}
+        onClick={handleButtonClick}
         className="flex items-center gap-2 text-sm font-medium hover:bg-accent cursor-pointer"
       >
         {getButtonIcon()}

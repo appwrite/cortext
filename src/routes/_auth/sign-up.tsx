@@ -25,7 +25,7 @@ const signUpSchema = z.object({
 
 type SignUpForm = z.infer<typeof signUpSchema>;
 
-// Empty mutation function - to be implemented later
+// Create user account
 const createUserAccount = async (data: SignUpForm) => {
   const account = getAccountClient();
 
@@ -59,7 +59,8 @@ function RouteComponent() {
   const { mutate: signUp, isPending } = useMutation({
     mutationFn: createUserAccount,
     onSuccess: () => {
-      // TODO: Redirect to content or login page
+      queryClient.invalidateQueries({ queryKey: ["auth", "user"] });
+      navigate({ to: search.redirect ?? "/content" });
     },
   });
 

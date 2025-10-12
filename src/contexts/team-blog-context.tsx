@@ -1,8 +1,8 @@
-import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react'
+import React, { createContext, useContext, useState, useEffect, useCallback, ReactNode } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { db } from '@/lib/appwrite/db'
 import { getTeamsClient } from '@/lib/appwrite'
-import { Query } from 'appwrite'
+import { Query, ID } from 'appwrite'
 import type { Blogs } from '@/lib/appwrite/appwrite.types'
 
 interface TeamBlogContextType {
@@ -23,6 +23,7 @@ interface TeamBlogContextType {
   setCurrentBlog: (blog: Blogs | null) => void
   refreshTeams: () => Promise<void>
   refreshBlogs: () => Promise<void>
+  createDefaultTeamAndBlog: () => Promise<{ team: any; blog: Blogs }>
 }
 
 const TeamBlogContext = createContext<TeamBlogContextType | undefined>(undefined)
@@ -67,31 +68,102 @@ export function TeamBlogProvider({ children, userId }: { children: ReactNode; us
     gcTime: 5 * 60 * 1000, // Keep in cache for 5 minutes
   })
 
-  // Load saved state from localStorage on mount
+  // Create default team and blog if user has none
+  const createDefaultTeamAndBlog = useCallback(async () => {
+    try {
+      const teamsClient = getTeamsClient()
+      
+      // Create a default team
+      const defaultTeam = await teamsClient.create(ID.unique(), 'My Team')
+      
+      // Create a default blog
+      const defaultBlog = await db.blogs.create({
+        name: 'My Blog',
+        slug: 'my-blog',
+        description: 'Welcome to your new blog! Start writing amazing content.',
+        domain: null,
+        logo: null,
+        favicon: null,
+        theme: null,
+        settings: null,
+        ownerId: userId,
+        teamId: defaultTeam.$id,
+        status: 'active',
+        seoTitle: null,
+        seoDescription: null,
+        seoKeywords: null
+      }, defaultTeam.$id)
+
+      // Set as current selections
+      setCurrentTeamState(defaultTeam)
+      setCurrentBlogState(defaultBlog)
+      
+      // Update localStorage
+      localStorage.setItem(STORAGE_KEYS.CURRENT_TEAM, defaultTeam.$id)
+      localStorage.setItem(STORAGE_KEYS.CURRENT_BLOG, defaultBlog.$id)
+      
+      // Refresh queries
+      await queryClient.invalidateQueries({ queryKey: ['teams', userId] })
+      await queryClient.invalidateQueries({ queryKey: ['blogs', defaultTeam.$id] })
+      
+      return { team: defaultTeam, blog: defaultBlog }
+    } catch (error) {
+      console.error('Failed to create default team and blog:', error)
+      throw error
+    }
+  }, [userId, queryClient])
+
+  // Load saved state from localStorage on mount and handle fallbacks
   useEffect(() => {
     const savedTeamId = localStorage.getItem(STORAGE_KEYS.CURRENT_TEAM)
-    const savedBlogId = localStorage.getItem(STORAGE_KEYS.CURRENT_BLOG)
 
-    if (savedTeamId && teams) {
-      const team = teams.find(t => t.$id === savedTeamId)
-      if (team) {
-        setCurrentTeamState(team)
+    if (teams && teams.length > 0) {
+      let selectedTeam: any | null = null
+      
+      // Try to find the saved team, or fall back to first team
+      if (savedTeamId) {
+        selectedTeam = teams.find(t => t.$id === savedTeamId) || null
       }
-    } else if (teams && teams.length > 0) {
-      // Auto-select first team if none selected
-      setCurrentTeamState(teams[0])
+      
+      // If saved team not found or no saved team, use first team
+      if (!selectedTeam) {
+        selectedTeam = teams[0]
+        // Update localStorage with the fallback team
+        localStorage.setItem(STORAGE_KEYS.CURRENT_TEAM, selectedTeam.$id)
+      }
+      
+      setCurrentTeamState(selectedTeam)
+    } else if (teams && teams.length === 0) {
+      // No teams exist - automatically create default team and blog
+      createDefaultTeamAndBlog().catch(error => {
+        console.error('Failed to create default team and blog:', error)
+      })
     }
 
-    if (savedBlogId && blogs) {
-      const blog = blogs.find(b => b.$id === savedBlogId)
-      if (blog) {
-        setCurrentBlogState(blog)
+    // Note: Blog selection will be handled in a separate useEffect that depends on blogs
+  }, [teams, createDefaultTeamAndBlog])
+
+  // Handle blog selection when blogs are loaded
+  useEffect(() => {
+    if (blogs && blogs.length > 0) {
+      const savedBlogId = localStorage.getItem(STORAGE_KEYS.CURRENT_BLOG)
+      let selectedBlog: Blogs | null = null
+      
+      // Try to find the saved blog, or fall back to first blog
+      if (savedBlogId) {
+        selectedBlog = blogs.find(b => b.$id === savedBlogId) || null
       }
-    } else if (blogs && blogs.length > 0) {
-      // Auto-select first blog if none selected
-      setCurrentBlogState(blogs[0])
+      
+      // If saved blog not found or no saved blog, use first blog
+      if (!selectedBlog) {
+        selectedBlog = blogs[0]
+        // Update localStorage with the fallback blog
+        localStorage.setItem(STORAGE_KEYS.CURRENT_BLOG, selectedBlog.$id)
+      }
+      
+      setCurrentBlogState(selectedBlog)
     }
-  }, [teams, blogs])
+  }, [blogs])
 
   const setCurrentTeam = (team: any | null) => {
     setCurrentTeamState(team)
@@ -130,6 +202,7 @@ export function TeamBlogProvider({ children, userId }: { children: ReactNode; us
     }
   }
 
+
   const value = {
     // Current selection
     currentTeam,
@@ -147,7 +220,8 @@ export function TeamBlogProvider({ children, userId }: { children: ReactNode; us
     setCurrentTeam,
     setCurrentBlog,
     refreshTeams,
-    refreshBlogs
+    refreshBlogs,
+    createDefaultTeamAndBlog
   }
 
   return (

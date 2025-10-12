@@ -309,11 +309,6 @@ export function TeamBlogDropdown({ userId, onClose, onCreateTeam, onCreateBlog, 
                       <p className="text-sm font-medium" title={blog.name}>
                         {truncateText(blog.name, 25)}
                       </p>
-                      {blog.description && (
-                        <p className="text-xs text-muted-foreground" title={blog.description}>
-                          {truncateText(blog.description, 30)}
-                        </p>
-                      )}
                     </div>
                     <Button
                       variant="ghost"
