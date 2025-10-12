@@ -82,7 +82,7 @@ function SortableCategoryItem({ category, onRemove, disabled = false }: Sortable
         {...(disabled ? {} : attributes)}
         {...(disabled ? {} : listeners)}
       >
-        <GripVertical className="h-3 w-3" />
+        <GripVertical className="h-3 w-3 hidden [@media(hover:hover)]:block" />
         <span>{category.name}</span>
       </div>
       <Button

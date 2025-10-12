@@ -83,8 +83,8 @@ function SortableImageItem({ image, onRemove, disabled = false }: SortableImageI
           loading="lazy"
           decoding="async"
         />
-        <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity rounded-lg">
-          <div className="absolute top-2 left-2">
+        <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 hover:opacity-100 transition-opacity rounded-lg">
+          <div className="absolute top-2 left-2 hidden [@media(hover:hover)]:block">
             <div
               {...attributes}
               {...listeners}
@@ -110,6 +110,19 @@ function SortableImageItem({ image, onRemove, disabled = false }: SortableImageI
               {image.caption || 'Untitled Image'}
             </div>
           </div>
+        </div>
+        {/* Touch-friendly X button - always visible on touch screens */}
+        <div className="absolute top-2 right-2 touch-manipulation">
+          <button
+            className="h-6 w-6 rounded-full bg-background/90 border-2 border-black flex items-center justify-center hover:bg-background transition-colors backdrop-blur-sm cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed m-1 ml-3"
+            onClick={(e) => {
+              e.stopPropagation()
+              onRemove(image.$id)
+            }}
+            disabled={disabled}
+          >
+            <X className="h-3 w-3 text-foreground" />
+          </button>
         </div>
       </div>
     </div>

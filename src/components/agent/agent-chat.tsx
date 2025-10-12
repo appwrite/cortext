@@ -1894,7 +1894,7 @@ I've made several changes to your content including creating new paragraphs, upd
                     onClick={() => setIsDrawerOpen(true)}
                     variant="outline"
                     size="sm"
-                    className="fixed bottom-20 left-6 z-50 h-10 w-10 p-0 m-2"
+                    className="fixed bottom-20 left-6 z-40 h-10 w-10 p-0 m-2"
                 >
                     <Brain className="h-5 w-5" />
                 </Button>

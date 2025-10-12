@@ -24,7 +24,7 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { Separator } from '@/components/ui/separator'
 import { toast } from '@/hooks/use-toast'
-import { Image as ImageIcon, Plus, Trash2, Save, Video, MapPin, Type as TypeIcon, Upload, ArrowLeft, LogOut, GripVertical, Brain, Loader2, Heading1, Quote, Pin as PinIcon, FileText, Quote as QuoteIcon, Code, ChevronLeft, ChevronRight, MoreHorizontal, Copy, MessageCircle, Eye, EyeOff, Archive, BookOpen, FileDown, ExternalLink } from 'lucide-react'
+import { Image as ImageIcon, Plus, Trash2, Save, Video, MapPin, Type as TypeIcon, Upload, ArrowLeft, LogOut, GripVertical, Brain, Loader2, Heading1, Quote, Pin as PinIcon, FileText, Quote as QuoteIcon, Code, ChevronLeft, ChevronRight, MoreHorizontal, Copy, MessageCircle, Eye, EyeOff, Archive, BookOpen, FileDown, ExternalLink, ChevronUp, ChevronDown } from 'lucide-react'
 import { AgentChat } from '@/components/agent/agent-chat'
 import { AuthorSelector } from '@/components/author'
 import { CategorySelector } from '@/components/category'
@@ -655,22 +655,20 @@ function ArticlesList({ userId, user }: { userId: string; user: any }) {
                                         <Link 
                                             to="/content" 
                                             search={{ articleId: a.$id }} 
-                                            className="hover:underline truncate min-w-0 flex-1"
+                                            className="hover:underline truncate min-w-0 flex-1 flex items-center gap-2"
                                         >
-                                            {a.title || 'Untitled'}
-                                        </Link>
-                                        <div className="flex items-center gap-1 flex-shrink-0">
+                                            <span className="truncate">{a.title || 'Untitled'}</span>
                                             {a.status === 'draft' && (
-                                                <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-white text-black border border-black/20 whitespace-nowrap">
+                                                <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-white text-black border border-black/20 whitespace-nowrap flex-shrink-0">
                                                     Draft
                                                 </span>
                                             )}
                                             {a.status === 'archive' && (
-                                                <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-white text-black border border-black/20 whitespace-nowrap">
+                                                <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-white text-black border border-black/20 whitespace-nowrap flex-shrink-0">
                                                     Archive
                                                 </span>
                                             )}
-                                        </div>
+                                        </Link>
                                     </div>
                                 </TableCell>
                                 <TableCell className="hidden sm:table-cell w-32 text-right text-muted-foreground text-sm">
@@ -1882,6 +1880,34 @@ function ArticleEditor({ articleId, userId, user, onBack }: { articleId: string;
         // Always set hasUserInteracted for drag and drop operations to be consistent with other handlers
         updateChanges(true)
         setHasUserInteractedDebug(true, 'persistOrder')
+    }
+
+    const moveSectionUp = (sectionId: string) => {
+        setLocalSections((prev) => {
+            const currentIndex = prev.findIndex((s) => s.id === sectionId)
+            if (currentIndex <= 0) return prev // Already at top or not found
+            
+            const next = [...prev]
+            const [moved] = next.splice(currentIndex, 1)
+            next.splice(currentIndex - 1, 0, moved)
+            const normalized = next.map((s, i) => ({ ...s, position: i }))
+            persistOrder(normalized)
+            return normalized
+        })
+    }
+
+    const moveSectionDown = (sectionId: string) => {
+        setLocalSections((prev) => {
+            const currentIndex = prev.findIndex((s) => s.id === sectionId)
+            if (currentIndex < 0 || currentIndex >= prev.length - 1) return prev // Already at bottom or not found
+            
+            const next = [...prev]
+            const [moved] = next.splice(currentIndex, 1)
+            next.splice(currentIndex + 1, 0, moved)
+            const normalized = next.map((s, i) => ({ ...s, position: i }))
+            persistOrder(normalized)
+            return normalized
+        })
     }
 
 
@@ -3339,7 +3365,7 @@ function ArticleEditor({ articleId, userId, user, onBack }: { articleId: string;
                                     })()
                                 }}
                             >
-                                <div className="absolute top-12 left-0 -ml-[56px] w-0">
+                                <div className="absolute top-5 left-0 -ml-[56px] w-0">
                                     <DropdownMenu>
                                         <DropdownMenuTrigger asChild>
                                             <Button
@@ -3385,13 +3411,15 @@ function ArticleEditor({ articleId, userId, user, onBack }: { articleId: string;
                                 </div>
                             </div>
                             <div className="rounded-md border overflow-hidden">
-                                <Table className="[&_td]:align-top table-fixed w-full">
+                                <Table className="[&_td]:align-top w-full">
                                     <TableHeader>
                                         <TableRow>
-                                            <TableHead className="w-[30px]">Order</TableHead>
+                                            <TableHead className="w-[30px] hidden sm:table-cell">
+                                                <span className="hidden [@media(hover:hover)]:inline">Order</span>
+                                            </TableHead>
                                             <TableHead className="w-[40px]"></TableHead>
-                                            <TableHead className="w-auto min-w-0">Content</TableHead>
-                                            <TableHead className="w-[50px] text-right"></TableHead>
+                                            <TableHead className="min-w-0 flex-1">Content</TableHead>
+                                            <TableHead className="w-[50px] text-right hidden sm:table-cell"></TableHead>
                                         </TableRow>
                                     </TableHeader>
                                     <TableBody>
@@ -3413,13 +3441,13 @@ function ArticleEditor({ articleId, userId, user, onBack }: { articleId: string;
                                                     className={`relative group ${isTarget ? 'bg-accent/50' : ''} ${borderCue} hover:bg-transparent`}
                                                     data-row-id={s.id}
                                                 >
-                                                    <TableCell>
+                                                    <TableCell className="hidden sm:table-cell">
                                                         <button
                                                             aria-label="Drag to reorder"
                                                             draggable={!isInRevertMode}
                                                             onDragStart={(e) => onDragStart(s.id, e)}
                                                             onDragEnd={() => { setDraggingId(null); setOverInfo({ id: null, where: 'below' }) }}
-                                                            className={`p-1 rounded hover:bg-accent text-muted-foreground ${isInRevertMode ? 'cursor-not-allowed opacity-50' : 'cursor-grab active:cursor-grabbing'} ${draggingId === s.id ? 'opacity-60 ring-2 ring-primary/40' : ''}`}
+                                                            className={`p-1 rounded hover:bg-accent text-muted-foreground hidden [@media(hover:hover)]:block ${isInRevertMode ? 'cursor-not-allowed opacity-50' : 'cursor-grab active:cursor-grabbing'} ${draggingId === s.id ? 'opacity-60 ring-2 ring-primary/40' : ''}`}
                                                             title={isInRevertMode ? "Disabled in revert mode" : "Drag to reorder"}
                                                             disabled={isInRevertMode}
                                                         >
@@ -3431,7 +3459,7 @@ function ArticleEditor({ articleId, userId, user, onBack }: { articleId: string;
                                                             {getSectionTypeIcon(s.type)}
                                                         </div>
                                                     </TableCell>
-                                                    <TableCell className="w-auto min-w-0 max-w-full">
+                                                    <TableCell className="min-w-0 flex-1">
                                                         <div className="w-full min-w-0">
                                                             <SectionEditor
                                                                 section={s}
@@ -3440,9 +3468,41 @@ function ArticleEditor({ articleId, userId, user, onBack }: { articleId: string;
                                                                 userId={userId}
                                                                 disabled={isInRevertMode}
                                                             />
+                                                            {/* Touch-friendly controls - always visible on touch screens */}
+                                                            <div className="touch-manipulation mt-3 flex items-center justify-between pt-3 border-t border-border/50">
+                                                                <div className="flex items-center gap-2">
+                                                                    <Button
+                                                                        variant="outline"
+                                                                        size="sm"
+                                                                        onClick={() => moveSectionUp(s.id)}
+                                                                        disabled={isInRevertMode || localSections?.findIndex(sec => sec.id === s.id) === 0}
+                                                                        className={`h-8 px-2 ${(isInRevertMode || localSections?.findIndex(sec => sec.id === s.id) === 0) ? 'hidden' : ''}`}
+                                                                    >
+                                                                        <ChevronUp className="h-4 w-4" />
+                                                                    </Button>
+                                                                    <Button
+                                                                        variant="outline"
+                                                                        size="sm"
+                                                                        onClick={() => moveSectionDown(s.id)}
+                                                                        disabled={isInRevertMode || localSections?.findIndex(sec => sec.id === s.id) === (localSections?.length || 0) - 1}
+                                                                        className={`h-8 px-2 ${(isInRevertMode || localSections?.findIndex(sec => sec.id === s.id) === (localSections?.length || 0) - 1) ? 'hidden' : ''}`}
+                                                                    >
+                                                                        <ChevronDown className="h-4 w-4" />
+                                                                    </Button>
+                                                                </div>
+                                                                <Button 
+                                                                    variant="outline" 
+                                                                    size="sm" 
+                                                                    onClick={() => deleteSection(s.id)} 
+                                                                    disabled={isInRevertMode}
+                                                                    className={`h-8 px-2 text-destructive hover:text-destructive sm:hidden ${isInRevertMode ? 'hidden' : ''}`}
+                                                                >
+                                                                    <Trash2 className="h-4 w-4" />
+                                                                </Button>
+                                                            </div>
                                                         </div>
                                                     </TableCell>
-                                                    <TableCell className="text-right w-[50px] min-w-[50px]">
+                                                    <TableCell className="text-right w-[50px] min-w-[50px] hidden sm:table-cell">
                                                         <Button variant="ghost" size="icon" onClick={() => deleteSection(s.id)} className="h-8 w-8" disabled={isInRevertMode}>
                                                             <Trash2 className="h-4 w-4" />
                                                         </Button>
@@ -3452,7 +3512,21 @@ function ArticleEditor({ articleId, userId, user, onBack }: { articleId: string;
                                         })}
                                         {/* Content stats row - merged columns, no background, smaller */}
                                         <TableRow className="hover:bg-transparent">
-                                            <TableCell colSpan={4} className="py-2">
+                                            <TableCell colSpan={2} className="py-2 sm:hidden">
+                                                <div className="text-xs text-muted-foreground">
+                                                    {(() => {
+                                                        const stats = getContentStats()
+                                                        return (
+                                                            <>
+                                                                <strong className="text-foreground">{stats.words}</strong> {stats.words === 1 ? 'word' : 'words'} • 
+                                                                <strong className="text-foreground"> {stats.characters}</strong> {stats.characters === 1 ? 'character' : 'characters'} • 
+                                                                <strong className="text-foreground"> {stats.assets}</strong> {stats.assets === 1 ? 'asset' : 'assets'}
+                                                            </>
+                                                        )
+                                                    })()}
+                                                </div>
+                                            </TableCell>
+                                            <TableCell colSpan={4} className="py-2 hidden sm:table-cell">
                                                 <div className="text-xs text-muted-foreground">
                                                     {(() => {
                                                         const stats = getContentStats()

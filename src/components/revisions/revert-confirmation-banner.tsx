@@ -20,13 +20,13 @@ export function RevertConfirmationBanner({
   return (
     <div className="bg-red-50/90 dark:bg-red-950/50 backdrop-blur-sm rounded-lg px-4 py-3">
       <div className="flex items-start justify-between">
-        <div className="flex items-start gap-3">
+        <div className="flex items-start gap-3 min-w-0 flex-1">
           <History className="h-5 w-5 text-red-600 dark:text-red-400 flex-shrink-0 mt-0.5" />
-          <div className="text-sm">
+          <div className="text-sm min-w-0 flex-1">
             <span className="text-red-800 dark:text-red-200 font-semibold">
               Reverting to revision:
             </span>
-            <div className="text-red-700 dark:text-red-300 text-xs mt-1 font-medium">
+            <div className="text-red-700 dark:text-red-300 text-xs mt-1 font-medium truncate">
               {revisionTitle} • {formatDateRelative(revisionDate)}
             </div>
           </div>
