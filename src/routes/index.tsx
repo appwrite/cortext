@@ -324,7 +324,7 @@ function Index() {
                         {/* Example: Show Ashkelon News only for Israel visitors */}
                         {!isLocaleLoading && isCountry('IL') && (
                             <a 
-                                href="https://anews.co.il" 
+                                href="https://ashkelon.news" 
                                 target="_blank" 
                                 rel="noopener noreferrer"
                                 className="hover:opacity-80 transition-opacity duration-200 text-foreground"
