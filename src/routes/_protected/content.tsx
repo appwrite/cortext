@@ -554,15 +554,6 @@ function ArticlesList({ userId, user }: { userId: string; user: any }) {
     const hasNextPage = currentPage < totalPages
     const hasPrevPage = currentPage > 1
 
-    const ColGroup = () => (
-        <colgroup>
-            <col className="w-[24px]" />
-            <col className="w-[76%]" />
-            <col className="hidden sm:table-column w-[15%]" />
-            <col className="w-[24px]" />
-        </colgroup>
-    )
-
     const ArticlesTable = ({ rows }: { rows: Articles[] }) => {
         const allRowIds = rows.map(a => a.$id)
         const selectedRowIds = allRowIds.filter(id => selectedArticles.has(id))
@@ -571,11 +562,10 @@ function ArticlesList({ userId, user }: { userId: string; user: any }) {
 
         return (
             <div className="rounded-md border overflow-hidden">
-                <Table className="table-fixed">
-                    <ColGroup />
+                <Table className="w-full">
                     <TableHeader>
                         <TableRow>
-                            <TableHead className="w-[24px]">
+                            <TableHead className="w-6 min-w-[24px]">
                                 <Checkbox
                                     checked={isAllSelected}
                                     onCheckedChange={(checked) => {
@@ -589,41 +579,51 @@ function ArticlesList({ userId, user }: { userId: string; user: any }) {
                                     }}
                                 />
                             </TableHead>
-                            <TableHead>Title</TableHead>
-                            <TableHead className="hidden sm:table-cell">Updated</TableHead>
-                            <TableHead className="w-[24px]"></TableHead>
+                            <TableHead className="min-w-0">
+                                Title
+                            </TableHead>
+                            <TableHead className="hidden sm:table-cell w-32 text-right">
+                                Updated
+                            </TableHead>
+                            <TableHead className="w-6 min-w-[24px]"></TableHead>
                         </TableRow>
                     </TableHeader>
                     <TableBody>
                         {rows.map((a) => (
                             <TableRow key={a.$id} className="group">
-                                <TableCell className="w-[24px]">
+                                <TableCell className="w-6 min-w-[24px]">
                                     <Checkbox
                                         checked={selectedArticles.has(a.$id)}
                                         onCheckedChange={() => toggleArticleSelection(a.$id)}
                                     />
                                 </TableCell>
-                                <TableCell className="max-w-[420px] truncate">
-                                    <div className="flex items-center gap-2">
-                                        <Link to="/content" search={{ articleId: a.$id }} className="hover:underline">
+                                <TableCell className="min-w-0">
+                                    <div className="flex items-center gap-2 min-w-0">
+                                        <Link 
+                                            to="/content" 
+                                            search={{ articleId: a.$id }} 
+                                            className="hover:underline truncate min-w-0 flex-1"
+                                        >
                                             {a.title || 'Untitled'}
                                         </Link>
-                                        {a.status === 'draft' && (
-                                            <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-white text-black border border-black/20">
-                                                Draft
-                                            </span>
-                                        )}
-                                        {a.status === 'archive' && (
-                                            <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-white text-black border border-black/20">
-                                                Archive
-                                            </span>
-                                        )}
+                                        <div className="flex items-center gap-1 flex-shrink-0">
+                                            {a.status === 'draft' && (
+                                                <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-white text-black border border-black/20 whitespace-nowrap">
+                                                    Draft
+                                                </span>
+                                            )}
+                                            {a.status === 'archive' && (
+                                                <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-white text-black border border-black/20 whitespace-nowrap">
+                                                    Archive
+                                                </span>
+                                            )}
+                                        </div>
                                     </div>
                                 </TableCell>
-                                <TableCell className="hidden sm:table-cell text-muted-foreground text-sm">
+                                <TableCell className="hidden sm:table-cell w-32 text-right text-muted-foreground text-sm">
                                     {formatDateRelative(a.$updatedAt)}
                                 </TableCell>
-                                <TableCell className="w-[24px]">
+                                <TableCell className="w-6 min-w-[24px]">
                                     <Button
                                         variant="ghost"
                                         size="sm"
