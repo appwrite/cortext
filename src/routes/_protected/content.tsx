@@ -150,6 +150,59 @@ function convertSectionsToMarkdown(sections: any[], articleTitle?: string, artic
     return markdown.trim()
 }
 
+// Helper function to convert sections to JSON
+function convertSectionsToJSON(sections: any[], articleTitle?: string, articleSubtitle?: string, articleTrailer?: string): string {
+    const articleData = {
+        title: articleTitle || '',
+        subtitle: articleSubtitle || '',
+        trailer: articleTrailer || '',
+        sections: sections.map(section => ({
+            id: section.id,
+            type: section.type,
+            content: section.content || '',
+            speaker: section.speaker || null,
+            language: section.language || null,
+            imageIds: section.imageIds || null,
+            mediaId: section.mediaId || null,
+            url: section.url || null,
+            location: section.location || null,
+            caption: section.caption || null,
+            order: section.order || 0
+        }))
+    }
+    
+    return JSON.stringify(articleData, null, 2)
+}
+
+// Helper function to copy text to clipboard with fallback
+async function copyToClipboard(text: string): Promise<boolean> {
+    try {
+        // Try modern clipboard API first
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+            await navigator.clipboard.writeText(text)
+            return true
+        }
+        
+        // Fallback for older browsers or non-HTTPS contexts
+        const textArea = document.createElement('textarea')
+        textArea.value = text
+        textArea.style.position = 'fixed'
+        textArea.style.left = '-999999px'
+        textArea.style.top = '-999999px'
+        document.body.appendChild(textArea)
+        textArea.focus()
+        textArea.select()
+        
+        const successful = document.execCommand('copy')
+        document.body.removeChild(textArea)
+        
+        return successful
+    } catch (error) {
+        console.error('Clipboard write failed:', error)
+        return false
+    }
+}
+
 // Helper function to create ChatGPT URL with content
 function createChatGPTURL(sections: any[], articleTitle?: string, articleSubtitle?: string, articleTrailer?: string): string {
     const markdown = convertSectionsToMarkdown(sections, articleTitle, articleSubtitle, articleTrailer)
@@ -2563,33 +2616,63 @@ function ArticleEditor({ articleId, userId, user, onBack }: { articleId: string;
                                         <Button
                                             variant="ghost"
                                             size="sm"
-                                            onClick={() => {
+                                            onClick={async () => {
                                                 const markdown = convertSectionsToMarkdown(
                                                     localSections || [],
                                                     title,
                                                     subtitle,
                                                     trailer
                                                 )
-                                                navigator.clipboard.writeText(markdown).then(() => {
-                                                    setIsMenuOpen(false)
+                                                const success = await copyToClipboard(markdown)
+                                                setIsMenuOpen(false)
+                                                if (success) {
                                                     toast({
                                                         title: "Copied to clipboard",
                                                         description: "Article content copied as markdown",
                                                     })
-                                                }).catch((error) => {
-                                                    console.error('Clipboard write failed:', error)
-                                                    setIsMenuOpen(false)
+                                                } else {
                                                     toast({
                                                         title: "Copy failed",
                                                         description: "Failed to copy to clipboard",
                                                         variant: "destructive",
                                                     })
-                                                })
+                                                }
                                             }}
                                             className="w-full justify-start cursor-pointer hover:bg-accent"
                                         >
                                             <FileDown className="h-4 w-4 mr-2" />
                                             Copy as Markdown
+                                        </Button>
+                                        
+                                        <Button
+                                            variant="ghost"
+                                            size="sm"
+                                            onClick={async () => {
+                                                const json = convertSectionsToJSON(
+                                                    localSections || [],
+                                                    title,
+                                                    subtitle,
+                                                    trailer
+                                                )
+                                                const success = await copyToClipboard(json)
+                                                setIsMenuOpen(false)
+                                                if (success) {
+                                                    toast({
+                                                        title: "Copied to clipboard",
+                                                        description: "Article content copied as JSON",
+                                                    })
+                                                } else {
+                                                    toast({
+                                                        title: "Copy failed",
+                                                        description: "Failed to copy to clipboard",
+                                                        variant: "destructive",
+                                                    })
+                                                }
+                                            }}
+                                            className="w-full justify-start cursor-pointer hover:bg-accent"
+                                        >
+                                            <FileText className="h-4 w-4 mr-2" />
+                                            Copy as JSON
                                         </Button>
                                         
                                         <Button
@@ -3229,7 +3312,33 @@ function ArticleEditor({ articleId, userId, user, onBack }: { articleId: string;
                     ) : (
                         <div className="relative sections-table-container">
                             {/* Sticky Add Section button positioned to the left of the table */}
-                            <div className="sticky top-20 left-0 z-10 w-0">
+                            <div 
+                                className="sticky left-0 z-10 w-0"
+                                style={{
+                                    top: (() => {
+                                        // Base top position when no banners are visible
+                                        let topPosition = '5rem'; // top-20 equivalent
+                                        
+                                        // Check if unpublished changes banner is visible
+                                        const hasUnpublishedBanner = !isInRevertMode && 
+                                            ((hasUnpublishedChanges && !saving) || (bannerWasVisible && saving));
+                                        
+                                        // Check if revert confirmation banner is visible
+                                        const hasRevertBanner = showRevertConfirmation && revertFormData;
+                                        
+                                        // Adjust top position based on visible banners
+                                        if (hasUnpublishedBanner && hasRevertBanner) {
+                                            // Both banners visible - account for both heights
+                                            topPosition = '14rem'; // top-28 + both banner heights + extra clearance
+                                        } else if (hasUnpublishedBanner || hasRevertBanner) {
+                                            // One banner visible - account for one banner height
+                                            topPosition = '11rem'; // top-28 + one banner height + extra clearance
+                                        }
+                                        
+                                        return topPosition;
+                                    })()
+                                }}
+                            >
                                 <div className="absolute top-12 left-0 -ml-[56px] w-0">
                                     <DropdownMenu>
                                         <DropdownMenuTrigger asChild>
