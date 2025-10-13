@@ -1,15 +1,19 @@
 import { useEffect, useRef, useState } from 'react';
 
+export type CrepeTheme = 'crepe' | 'crepe-dark' | 'nord' | 'nord-dark' | 'frame' | 'frame-dark';
+
 interface CrepeEditorProps {
   defaultValue?: string;
   className?: string;
   onChange?: (markdown: string) => void;
+  theme?: CrepeTheme;
 }
 
 export default function CrepeEditor({ 
   defaultValue = '', 
   className = '',
-  onChange
+  onChange,
+  theme = 'crepe'
 }: CrepeEditorProps) {
   console.log('CrepeEditor component rendered');
   
@@ -51,47 +55,73 @@ export default function CrepeEditor({
         console.log('Crepe class:', Crepe);
         console.log('CrepeFeature enum:', CrepeFeature);
         
-        // Load CSS (only if not already loaded)
+        // Load CSS for the selected theme
         const loadCSS = () => {
           return new Promise<void>((resolve) => {
-            console.log('Loading Crepe CSS...');
+            console.log(`Loading Crepe CSS for theme: ${theme}`);
             
-            // Check if CSS is already loaded
-            const existingCommonCSS = document.querySelector('link[href*="common/style.css"]');
-            const existingCrepeCSS = document.querySelector('link[href*="crepe/style.css"]');
-            
-            if (existingCommonCSS && existingCrepeCSS) {
-              console.log('Crepe CSS already loaded, skipping...');
-              resolve();
-              return;
-            }
-            
-            // Load common styles first
-            const commonLink = document.createElement('link');
-            commonLink.rel = 'stylesheet';
-            commonLink.href = '/node_modules/@milkdown/crepe/lib/theme/common/style.css';
-            commonLink.onload = () => {
-              console.log('Common CSS loaded');
+            const loadThemeCSS = () => {
+              // Remove existing theme CSS (but keep common CSS)
+              const existingThemeCSS = document.querySelectorAll('link[href*="/crepe-themes/"]');
+              existingThemeCSS.forEach(link => {
+                const linkElement = link as HTMLLinkElement;
+                if (!linkElement.href.includes('common.css')) {
+                  link.remove();
+                }
+              });
               
-              // Then load crepe theme
-              const crepeLink = document.createElement('link');
-              crepeLink.rel = 'stylesheet';
-              crepeLink.href = '/node_modules/@milkdown/crepe/lib/theme/crepe/style.css';
-              crepeLink.onload = () => {
-                console.log('Crepe CSS loaded successfully');
+              // Load the selected theme CSS
+              const themeLink = document.createElement('link');
+              themeLink.rel = 'stylesheet';
+              themeLink.href = `/crepe-themes/${theme}.css`;
+              themeLink.onload = () => {
+                console.log(`${theme} theme CSS loaded successfully`);
+                console.log('Theme link element:', themeLink);
+                console.log('Theme link href:', themeLink.href);
                 resolve();
               };
-              crepeLink.onerror = () => {
-                console.warn('Failed to load Crepe CSS, continuing without styles...');
-                resolve();
+              themeLink.onerror = () => {
+                console.warn(`Failed to load ${theme} theme CSS, falling back to crepe theme...`);
+                // Fallback to crepe theme
+                const fallbackLink = document.createElement('link');
+                fallbackLink.rel = 'stylesheet';
+                fallbackLink.href = '/crepe-themes/crepe.css';
+                fallbackLink.onload = () => {
+                  console.log('Fallback crepe theme CSS loaded');
+                  resolve();
+                };
+                fallbackLink.onerror = () => {
+                  console.warn('Failed to load fallback CSS, continuing without styles...');
+                  resolve();
+                };
+                document.head.appendChild(fallbackLink);
               };
-              document.head.appendChild(crepeLink);
+              document.head.appendChild(themeLink);
             };
-            commonLink.onerror = () => {
-              console.warn('Failed to load common CSS, continuing without styles...');
-              resolve();
-            };
-            document.head.appendChild(commonLink);
+            
+            // Check if common CSS is already loaded
+            const existingCommonCSS = document.querySelector('link[href*="common.css"]');
+            console.log('Existing common CSS:', existingCommonCSS);
+            
+            if (!existingCommonCSS) {
+              // Load common styles first
+              const commonLink = document.createElement('link');
+              commonLink.rel = 'stylesheet';
+              commonLink.href = '/crepe-themes/common.css';
+              commonLink.onload = () => {
+                console.log('Common CSS loaded successfully');
+                console.log('Common link element:', commonLink);
+                console.log('Common link href:', commonLink.href);
+                loadThemeCSS();
+              };
+              commonLink.onerror = () => {
+                console.warn('Failed to load common CSS, continuing without styles...');
+                loadThemeCSS();
+              };
+              document.head.appendChild(commonLink);
+            } else {
+              loadThemeCSS();
+            }
           });
         };
 
@@ -164,7 +194,7 @@ export default function CrepeEditor({
         }
       }
     };
-  }, []); // Empty dependency array - only run once on mount
+  }, [theme]); // Re-run when theme changes
 
   return (
     <div className={`crepe-editor-container relative ${className}`}>
