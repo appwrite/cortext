@@ -1,3 +1,7 @@
+/* Crepe Editor Styles - must be first */
+@import "@milkdown/crepe/lib/theme/common/style.css";
+@import "@milkdown/crepe/lib/theme/crepe/style.css";
+
 @import "tailwindcss";
 @import "tw-animate-css";
 

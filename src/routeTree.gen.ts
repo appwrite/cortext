@@ -12,6 +12,7 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as VerifyEmailRouteImport } from './routes/verify-email'
 import { Route as TestErrorRouteImport } from './routes/test-error'
 import { Route as DocsRouteImport } from './routes/docs'
+import { Route as CrepeEditorRouteImport } from './routes/crepe-editor'
 import { Route as ProtectedRouteImport } from './routes/_protected'
 import { Route as AuthRouteImport } from './routes/_auth'
 import { Route as R404RouteImport } from './routes/404'
@@ -46,6 +47,11 @@ const TestErrorRoute = TestErrorRouteImport.update({
 const DocsRoute = DocsRouteImport.update({
   id: '/docs',
   path: '/docs',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const CrepeEditorRoute = CrepeEditorRouteImport.update({
+  id: '/crepe-editor',
+  path: '/crepe-editor',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ProtectedRoute = ProtectedRouteImport.update({
@@ -151,6 +157,7 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/$': typeof SplatRoute
   '/404': typeof R404Route
+  '/crepe-editor': typeof CrepeEditorRoute
   '/docs': typeof DocsRouteWithChildren
   '/test-error': typeof TestErrorRoute
   '/verify-email': typeof VerifyEmailRoute
@@ -174,6 +181,7 @@ export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/$': typeof SplatRoute
   '/404': typeof R404Route
+  '/crepe-editor': typeof CrepeEditorRoute
   '/test-error': typeof TestErrorRoute
   '/verify-email': typeof VerifyEmailRoute
   '/sign-in': typeof AuthSignInRoute
@@ -199,6 +207,7 @@ export interface FileRoutesById {
   '/404': typeof R404Route
   '/_auth': typeof AuthRouteWithChildren
   '/_protected': typeof ProtectedRouteWithChildren
+  '/crepe-editor': typeof CrepeEditorRoute
   '/docs': typeof DocsRouteWithChildren
   '/test-error': typeof TestErrorRoute
   '/verify-email': typeof VerifyEmailRoute
@@ -224,6 +233,7 @@ export interface FileRouteTypes {
     | '/'
     | '/$'
     | '/404'
+    | '/crepe-editor'
     | '/docs'
     | '/test-error'
     | '/verify-email'
@@ -247,6 +257,7 @@ export interface FileRouteTypes {
     | '/'
     | '/$'
     | '/404'
+    | '/crepe-editor'
     | '/test-error'
     | '/verify-email'
     | '/sign-in'
@@ -271,6 +282,7 @@ export interface FileRouteTypes {
     | '/404'
     | '/_auth'
     | '/_protected'
+    | '/crepe-editor'
     | '/docs'
     | '/test-error'
     | '/verify-email'
@@ -297,6 +309,7 @@ export interface RootRouteChildren {
   R404Route: typeof R404Route
   AuthRoute: typeof AuthRouteWithChildren
   ProtectedRoute: typeof ProtectedRouteWithChildren
+  CrepeEditorRoute: typeof CrepeEditorRoute
   DocsRoute: typeof DocsRouteWithChildren
   TestErrorRoute: typeof TestErrorRoute
   VerifyEmailRoute: typeof VerifyEmailRoute
@@ -323,6 +336,13 @@ declare module '@tanstack/react-router' {
       path: '/docs'
       fullPath: '/docs'
       preLoaderRoute: typeof DocsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/crepe-editor': {
+      id: '/crepe-editor'
+      path: '/crepe-editor'
+      fullPath: '/crepe-editor'
+      preLoaderRoute: typeof CrepeEditorRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/_protected': {
@@ -539,6 +559,7 @@ const rootRouteChildren: RootRouteChildren = {
   R404Route: R404Route,
   AuthRoute: AuthRouteWithChildren,
   ProtectedRoute: ProtectedRouteWithChildren,
+  CrepeEditorRoute: CrepeEditorRoute,
   DocsRoute: DocsRouteWithChildren,
   TestErrorRoute: TestErrorRoute,
   VerifyEmailRoute: VerifyEmailRoute,
