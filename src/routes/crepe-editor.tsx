@@ -138,8 +138,7 @@ The following are the *primary concerns* raised by experts:
     { value: 'nord-dark', label: 'Nord Dark', description: 'Dark variant of the Nord theme' },
     { value: 'frame', label: 'Frame', description: 'Frame theme with structured layout' },
     { value: 'frame-dark', label: 'Frame Dark', description: 'Dark variant of the Frame theme' },
-    { value: 'cortext', label: 'Cortext', description: 'Cortext theme integrated with app styles (supports light/dark)' },
-    { value: 'cortext-dark', label: 'Cortext Dark', description: 'Dark variant of the Cortext theme' },
+    { value: 'cortext', label: 'Cortext', description: 'Cortext theme integrated with app styles' },
   ];
 
   return (
