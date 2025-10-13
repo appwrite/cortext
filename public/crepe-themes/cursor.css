@@ -20,3 +20,7 @@
 .milkdown .ProseMirror-focused {
     --prosemirror-virtual-cursor-color: var(--crepe-color-outline);
   }
+
+.milkdown .prosemirror-virtual-cursor {
+    position: absolute;
+  }
