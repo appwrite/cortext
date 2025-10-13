@@ -91,17 +91,14 @@ function DocsIndex() {
         <div className="space-y-6">
             {/* Hero */}
             <div id="welcome" className="py-4">
-                <div className="flex items-center justify-between mb-3">
-                    <div className="inline-flex items-center gap-2 rounded-full border px-2 py-0.5 text-xs font-medium text-foreground/70">
-                        Documentation
-                    </div>
+                <div className="flex items-center justify-between mb-6">
+                    <h1 className="text-3xl font-medium tracking-tight">
+                        Welcome to Cortext
+                    </h1>
                     <div className="mt-1">
                         <PageActions />
                     </div>
                 </div>
-                <h1 className="text-2xl font-medium tracking-tight mb-6">
-                    Welcome to Cortext
-                </h1>
                 <div className="text-base text-foreground/70 max-w-2xl space-y-5 leading-relaxed">
                     <p className="font-normal">
                         Documentation for building content management systems with AI-powered collaboration features. 

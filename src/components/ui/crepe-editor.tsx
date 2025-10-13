@@ -55,6 +55,131 @@ export default function CrepeEditor({
         console.log('Crepe class:', Crepe);
         console.log('CrepeFeature enum:', CrepeFeature);
         
+        // Function to add CSS that prevents layout shifts
+        const addLayoutShiftPreventionCSS = () => {
+          // Check if we already added the CSS
+          if (document.getElementById('crepe-layout-shift-fix')) {
+            return;
+          }
+          
+          const style = document.createElement('style');
+          style.id = 'crepe-layout-shift-fix';
+          style.textContent = `
+            /* Prevent layout shifts by ensuring stable positioning during selection */
+            .milkdown .ProseMirror {
+              position: relative !important;
+              /* Keep original padding but ensure it doesn't shift */
+              padding: 60px 120px !important;
+            }
+            
+            /* Ensure block handles are positioned absolutely and don't affect layout */
+            .milkdown .milkdown-block-handle {
+              position: absolute !important;
+              /* Remove any transforms that might cause shifts */
+              transform: none !important;
+              /* Ensure handles don't push content */
+              z-index: 10 !important;
+              /* Fix the problematic transition that causes layout shifts */
+              transition: opacity 0.2s ease, visibility 0.2s ease !important;
+              /* Prevent any layout-affecting properties from being transitioned */
+              width: auto !important;
+              height: auto !important;
+              margin: 0 !important;
+              padding: 0 !important;
+            }
+            
+            /* Ensure block handles don't affect layout when showing/hiding */
+            .milkdown .milkdown-block-handle[data-show='false'] {
+              opacity: 0 !important;
+              visibility: hidden !important;
+              pointer-events: none !important;
+            }
+            
+            .milkdown .milkdown-block-handle[data-show='true'] {
+              opacity: 1 !important;
+              visibility: visible !important;
+              pointer-events: auto !important;
+            }
+            
+            /* Prevent content from shifting when selection changes */
+            .milkdown .ProseMirror * {
+              box-sizing: border-box;
+            }
+            
+            /* Ensure selected nodes don't cause layout shifts */
+            .milkdown .ProseMirror .ProseMirror-selectednode {
+              position: relative;
+              z-index: 1;
+              /* Prevent margin/padding changes during selection */
+              margin: 0 !important;
+              padding: 0 !important;
+            }
+            
+            
+            /* Ensure the editor container maintains stable positioning */
+            .crepe-editor-container .milkdown {
+              position: relative;
+              overflow: visible;
+            }
+            
+            /* Prevent any layout shifts from selection highlighting */
+            .milkdown .ProseMirror *::selection {
+              background: var(--crepe-color-selected) !important;
+            }
+            
+            .milkdown .ProseMirror *::-moz-selection {
+              background: var(--crepe-color-selected) !important;
+            }
+            
+            /* Ensure slash menu doesn't cause layout shifts */
+            .milkdown .milkdown-slash-menu {
+              position: absolute !important;
+              z-index: 20 !important;
+              /* Prevent any layout-affecting transitions */
+              transition: none !important;
+            }
+            
+            .milkdown .milkdown-slash-menu[data-show='false'] {
+              display: none !important;
+            }
+            
+            .milkdown .milkdown-slash-menu[data-show='true'] {
+              display: block !important;
+            }
+            
+            /* Ensure toolbar doesn't cause layout shifts */
+            .milkdown .milkdown-toolbar {
+              position: absolute !important;
+              z-index: 15 !important;
+              /* Prevent any layout-affecting transitions */
+              transition: none !important;
+            }
+            
+            .milkdown .milkdown-toolbar[data-show='false'] {
+              display: none !important;
+            }
+            
+            .milkdown .milkdown-toolbar[data-show='true'] {
+              display: flex !important;
+            }
+            
+            /* Style links with soft blue background */
+            .milkdown .ProseMirror a {
+              background-color: rgba(59, 130, 246, 0.1) !important; /* blue-500 with 10% opacity */
+              padding: 0.125rem 0.25rem !important;
+              border-radius: 0.25rem !important;
+              text-decoration: none !important;
+              transition: background-color 0.2s ease !important;
+            }
+            
+            .milkdown .ProseMirror a:hover {
+              background-color: rgba(59, 130, 246, 0.2) !important; /* blue-500 with 20% opacity on hover */
+            }
+          `;
+          document.head.appendChild(style);
+          console.log('Layout shift prevention CSS added');
+        };
+        
         // Load CSS for the selected theme
         const loadCSS = () => {
           return new Promise<void>((resolve) => {
@@ -78,6 +203,9 @@ export default function CrepeEditor({
                 console.log(`${theme} theme CSS loaded successfully`);
                 console.log('Theme link element:', themeLink);
                 console.log('Theme link href:', themeLink.href);
+                
+                // Add custom CSS to prevent layout shifts
+                addLayoutShiftPreventionCSS();
                 resolve();
               };
               themeLink.onerror = () => {
@@ -88,10 +216,12 @@ export default function CrepeEditor({
                 fallbackLink.href = '/crepe-themes/crepe.css';
                 fallbackLink.onload = () => {
                   console.log('Fallback crepe theme CSS loaded');
+                  addLayoutShiftPreventionCSS();
                   resolve();
                 };
                 fallbackLink.onerror = () => {
                   console.warn('Failed to load fallback CSS, continuing without styles...');
+                  addLayoutShiftPreventionCSS();
                   resolve();
                 };
                 document.head.appendChild(fallbackLink);
@@ -193,6 +323,13 @@ export default function CrepeEditor({
           console.warn('Error destroying Crepe instance:', error);
         }
       }
+      
+      // Remove the custom CSS to prevent it from affecting other instances
+      const customCSS = document.getElementById('crepe-layout-shift-fix');
+      if (customCSS) {
+        customCSS.remove();
+        console.log('Layout shift prevention CSS removed');
+      }
     };
   }, [theme]); // Re-run when theme changes
 
@@ -201,6 +338,10 @@ export default function CrepeEditor({
       <div 
         ref={editorRef} 
         className="min-h-[400px] border border-gray-200 rounded"
+        style={{
+          // Prevent layout shifts by ensuring stable positioning
+          position: 'relative'
+        }}
       />
       
       {isLoading && (

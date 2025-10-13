@@ -77,7 +77,7 @@ export function PageActions({ className }: PageActionsProps) {
         variant="outline"
         size="sm"
         onClick={() => setIsOpen(!isOpen)}
-        className="h-8 px-3 text-xs font-medium"
+        className="h-8 px-3 text-xs font-medium cursor-pointer"
       >
         Copy page
         <div className="w-px h-4 bg-border mx-2" />

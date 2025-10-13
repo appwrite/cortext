@@ -15,7 +15,7 @@
   --crepe-color-inline-code: var(--destructive);
   --crepe-color-error: var(--destructive);
   --crepe-color-hover: var(--accent);
-  --crepe-color-selected: var(--secondary);
+  --crepe-color-selected: #ffeb3b; /* Bright yellow marker color */
   --crepe-color-inline-area: var(--muted);
 
   /* Typography matching app's font system */
@@ -52,13 +52,13 @@
     0px 2px 6px 2px rgba(0, 0, 0, 0.1), 0px 1px 2px 0px rgba(0, 0, 0, 0.06);
 }
 
-/* Override heading sizes to match app's more modest typography */
+/* Override heading sizes to match app's more modest typography with very light font weights */
 .milkdown .ProseMirror h1 {
   font-size: 1.5rem !important;     /* 24px - text-2xl */
   line-height: 1.25 !important;     /* tight line height */
   margin-top: 1.5rem !important;    /* 24px */
   margin-bottom: 0.75rem !important; /* 12px */
-  font-weight: 600 !important;       /* font-semibold */
+  font-weight: 400 !important;       /* font-normal - very light */
 }
 
 .milkdown .ProseMirror h2 {
@@ -66,7 +66,7 @@
   line-height: 1.25 !important;      /* tight line height */
   margin-top: 1.25rem !important;    /* 20px */
   margin-bottom: 0.5rem !important;  /* 8px */
-  font-weight: 600 !important;       /* font-semibold */
+  font-weight: 400 !important;       /* font-normal - very light */
 }
 
 .milkdown .ProseMirror h3 {
@@ -74,7 +74,7 @@
   line-height: 1.25 !important;      /* tight line height */
   margin-top: 1rem !important;       /* 16px */
   margin-bottom: 0.5rem !important;  /* 8px */
-  font-weight: 600 !important;       /* font-semibold */
+  font-weight: 400 !important;       /* font-normal - very light */
 }
 
 .milkdown .ProseMirror h4 {
@@ -82,7 +82,7 @@
   line-height: 1.25 !important;     /* tight line height */
   margin-top: 0.75rem !important;    /* 12px */
   margin-bottom: 0.25rem !important; /* 4px */
-  font-weight: 600 !important;       /* font-semibold */
+  font-weight: 400 !important;       /* font-normal - very light */
 }
 
 .milkdown .ProseMirror h5 {
@@ -90,7 +90,7 @@
   line-height: 1.25 !important;      /* tight line height */
   margin-top: 0.75rem !important;    /* 12px */
   margin-bottom: 0.25rem !important; /* 4px */
-  font-weight: 600 !important;       /* font-semibold */
+  font-weight: 400 !important;       /* font-normal - very light */
 }
 
 .milkdown .ProseMirror h6 {
@@ -98,7 +98,37 @@
   line-height: 1.25 !important;      /* tight line height */
   margin-top: 0.75rem !important;    /* 12px */
   margin-bottom: 0.25rem !important; /* 4px */
-  font-weight: 600 !important;       /* font-semibold */
+  font-weight: 400 !important;       /* font-normal - very light */
+}
+
+/* Set very light font weight for default text */
+.milkdown .ProseMirror p {
+  font-weight: 300 !important;
+  margin-bottom: 20px !important;       /* font-light - very light */
+}
+
+.milkdown .ProseMirror {
+  font-weight: 300 !important;       /* font-light for all text content */
+}
+
+/* Ensure bold text appears properly bold */
+.milkdown .ProseMirror strong,
+.milkdown .ProseMirror b {
+  font-weight: 700 !important;       /* font-bold - very bold to contrast with light base */
+}
+
+/* Ensure other emphasis elements are visible */
+.milkdown .ProseMirror em,
+.milkdown .ProseMirror i {
+  font-style: italic !important;
+}
+
+/* Make sure inline code stands out */
+.milkdown .ProseMirror code {
+  font-weight: 500 !important;       /* font-medium for code */
+  background-color: var(--crepe-color-surface-low) !important;
+  padding: 0.125rem 0.25rem !important;
+  border-radius: 0.25rem !important;
 }
 
 /* Improve visibility of bullet points and list items */
@@ -109,6 +139,10 @@
 
 .milkdown .ProseMirror li {
   color: var(--crepe-color-on-surface) !important; /* Match regular text color */
+}
+
+.milkdown .ProseMirror li p {
+  margin-bottom: 0 !important;
 }
 
 /* Improve visibility of operation buttons and toolbar elements */
@@ -185,7 +219,7 @@
   --crepe-color-inline-code: var(--destructive);
   --crepe-color-error: var(--destructive);
   --crepe-color-hover: var(--accent);
-  --crepe-color-selected: var(--secondary);
+  --crepe-color-selected: #ffeb3b; /* Bright yellow marker color */
   --crepe-color-inline-area: var(--muted);
 }
 
@@ -227,4 +261,89 @@
 
 .dark .milkdown .ProseMirror-gapcursor:after {
   border-top: 1px solid var(--crepe-color-on-surface) !important; /* Match regular text color */
+}
+
+/* Customize toolbar/action bar for cortext theme */
+.milkdown .milkdown-toolbar {
+  background-color: var(--crepe-color-on-background) !important; /* Same as text color */
+  color: var(--crepe-color-background) !important; /* Same as background color */
+  box-shadow: none !important; /* Remove shadow */
+  border-radius: 0.5rem !important; /* Match app card border radius */
+}
+
+.milkdown .milkdown-toolbar .toolbar-item {
+  color: var(--crepe-color-background) !important; /* Same as background color */
+}
+
+.milkdown .milkdown-toolbar .toolbar-item:hover {
+  background-color: rgba(255, 255, 255, 0.1) !important; /* Light hover effect */
+}
+
+.milkdown .milkdown-toolbar .toolbar-item:active {
+  background-color: rgba(255, 255, 255, 0.2) !important; /* Active state */
+}
+
+.milkdown .milkdown-toolbar .toolbar-item svg {
+  color: var(--crepe-color-background) !important; /* Same as background color */
+  fill: var(--crepe-color-background) !important; /* Same as background color */
+}
+
+.milkdown .milkdown-toolbar .toolbar-item.active svg {
+  opacity: 0.6 !important; /* 60% opacity for active state */
+}
+
+.milkdown .milkdown-toolbar .divider {
+  width: 1px !important; /* Ensure width is set */
+  height: 24px !important; /* Ensure height is set */
+  background-color: rgba(0, 0, 0, 0.2) !important; /* More visible opacity */
+  margin: 0 4px !important; /* Add some spacing */
+}
+
+/* Ensure table text is vertically aligned to top */
+.milkdown .ProseMirror table,
+.milkdown .ProseMirror table td,
+.milkdown .ProseMirror table th {
+  vertical-align: top !important;
+}
+
+.milkdown .ProseMirror table td,
+.milkdown .ProseMirror table th {
+  padding-top: 0.5rem !important;
+  padding-bottom: 0.5rem !important;
+}
+
+/* Make selected text color always black while keeping yellow background */
+.milkdown .ProseMirror *::selection {
+  background: var(--crepe-color-selected) !important; /* Keep yellow background */
+  color: #000000 !important; /* Always black text */
+}
+
+.milkdown .ProseMirror *::-moz-selection {
+  background: var(--crepe-color-selected) !important; /* Keep yellow background */
+  color: #000000 !important; /* Always black text */
+}
+
+/* Override blockquote border to use default text color instead of yellow selection color */
+.milkdown .ProseMirror blockquote::before {
+  background: var(--crepe-color-on-background) !important; /* Use default text color */
+}
+
+/* Add arrow pointing from toolbar to selected text */
+.milkdown .milkdown-toolbar {
+  overflow: visible !important; /* Ensure arrow is visible */
+}
+
+.milkdown .milkdown-toolbar::after {
+  content: '' !important;
+  position: absolute !important;
+  bottom: -8px !important;
+  left: 50% !important;
+  transform: translateX(-50%) !important;
+  width: 0 !important;
+  height: 0 !important;
+  border-left: 8px solid transparent !important;
+  border-right: 8px solid transparent !important;
+  border-top: 8px solid #000000 !important; /* Use black for better visibility */
+  z-index: 30 !important; /* Higher than toolbar z-index */
+  pointer-events: none !important; /* Don't interfere with clicks */
 }
