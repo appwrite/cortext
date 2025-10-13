@@ -1,0 +1,230 @@
+.milkdown {
+  /* Light mode colors based on app's CSS variables */
+  --crepe-color-background: var(--background);
+  --crepe-color-on-background: var(--foreground);
+  --crepe-color-surface: var(--card);
+  --crepe-color-surface-low: var(--muted);
+  --crepe-color-on-surface: var(--card-foreground);
+  --crepe-color-on-surface-variant: oklch(0.4 0 0); /* More visible than muted-foreground */
+  --crepe-color-outline: var(--border);
+  --crepe-color-primary: var(--primary);
+  --crepe-color-secondary: var(--secondary);
+  --crepe-color-on-secondary: var(--secondary-foreground);
+  --crepe-color-inverse: var(--accent);
+  --crepe-color-on-inverse: var(--accent-foreground);
+  --crepe-color-inline-code: var(--destructive);
+  --crepe-color-error: var(--destructive);
+  --crepe-color-hover: var(--accent);
+  --crepe-color-selected: var(--secondary);
+  --crepe-color-inline-area: var(--muted);
+
+  /* Typography matching app's font system */
+  --crepe-font-title: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, 'Noto Sans', sans-serif;
+  --crepe-font-default: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, 'Noto Sans', sans-serif;
+  --crepe-font-code: ui-monospace, SFMono-Regular, 'SF Mono', Consolas, 'Liberation Mono', Menlo, monospace;
+
+  /* Font sizes matching Tailwind's scale */
+  --crepe-font-size-xs: 0.75rem;     /* 12px - text-xs */
+  --crepe-font-size-sm: 0.875rem;    /* 14px - text-sm */
+  --crepe-font-size-base: 1rem;      /* 16px - text-base */
+  --crepe-font-size-lg: 1.125rem;    /* 18px - text-lg */
+  --crepe-font-size-xl: 1.25rem;     /* 20px - text-xl */
+  --crepe-font-size-2xl: 1.5rem;     /* 24px - text-2xl */
+  --crepe-font-size-3xl: 1.875rem;   /* 30px - text-3xl */
+  --crepe-font-size-4xl: 2.25rem;    /* 36px - text-4xl */
+  --crepe-font-size-5xl: 3rem;       /* 48px - text-5xl */
+
+  /* Font weights matching app's usage */
+  --crepe-font-weight-normal: 400;   /* font-normal */
+  --crepe-font-weight-medium: 500;   /* font-medium */
+  --crepe-font-weight-semibold: 600; /* font-semibold */
+  --crepe-font-weight-bold: 700;     /* font-bold */
+
+  /* Line heights for better readability */
+  --crepe-line-height-tight: 1.25;
+  --crepe-line-height-normal: 1.5;
+  --crepe-line-height-relaxed: 1.625;
+
+  /* Subtle shadows that work with the app's design */
+  --crepe-shadow-1:
+    0px 1px 3px 1px rgba(0, 0, 0, 0.1), 0px 1px 2px 0px rgba(0, 0, 0, 0.06);
+  --crepe-shadow-2:
+    0px 2px 6px 2px rgba(0, 0, 0, 0.1), 0px 1px 2px 0px rgba(0, 0, 0, 0.06);
+}
+
+/* Override heading sizes to match app's more modest typography */
+.milkdown .ProseMirror h1 {
+  font-size: 1.5rem !important;     /* 24px - text-2xl */
+  line-height: 1.25 !important;     /* tight line height */
+  margin-top: 1.5rem !important;    /* 24px */
+  margin-bottom: 0.75rem !important; /* 12px */
+  font-weight: 600 !important;       /* font-semibold */
+}
+
+.milkdown .ProseMirror h2 {
+  font-size: 1.25rem !important;     /* 20px - text-xl */
+  line-height: 1.25 !important;      /* tight line height */
+  margin-top: 1.25rem !important;    /* 20px */
+  margin-bottom: 0.5rem !important;  /* 8px */
+  font-weight: 600 !important;       /* font-semibold */
+}
+
+.milkdown .ProseMirror h3 {
+  font-size: 1.125rem !important;    /* 18px - text-lg */
+  line-height: 1.25 !important;      /* tight line height */
+  margin-top: 1rem !important;       /* 16px */
+  margin-bottom: 0.5rem !important;  /* 8px */
+  font-weight: 600 !important;       /* font-semibold */
+}
+
+.milkdown .ProseMirror h4 {
+  font-size: 1rem !important;        /* 16px - text-base */
+  line-height: 1.25 !important;     /* tight line height */
+  margin-top: 0.75rem !important;    /* 12px */
+  margin-bottom: 0.25rem !important; /* 4px */
+  font-weight: 600 !important;       /* font-semibold */
+}
+
+.milkdown .ProseMirror h5 {
+  font-size: 0.875rem !important;    /* 14px - text-sm */
+  line-height: 1.25 !important;      /* tight line height */
+  margin-top: 0.75rem !important;    /* 12px */
+  margin-bottom: 0.25rem !important; /* 4px */
+  font-weight: 600 !important;       /* font-semibold */
+}
+
+.milkdown .ProseMirror h6 {
+  font-size: 0.75rem !important;     /* 12px - text-xs */
+  line-height: 1.25 !important;      /* tight line height */
+  margin-top: 0.75rem !important;    /* 12px */
+  margin-bottom: 0.25rem !important; /* 4px */
+  font-weight: 600 !important;       /* font-semibold */
+}
+
+/* Improve visibility of bullet points and list items */
+.milkdown .ProseMirror ul,
+.milkdown .ProseMirror ol {
+  color: var(--crepe-color-on-surface) !important; /* Match regular text color */
+}
+
+.milkdown .ProseMirror li {
+  color: var(--crepe-color-on-surface) !important; /* Match regular text color */
+}
+
+/* Improve visibility of operation buttons and toolbar elements */
+.milkdown .toolbar button,
+.milkdown .toolbar .button,
+.milkdown [role="button"] {
+  color: oklch(0.4 0 0) !important; /* More visible than default muted color */
+}
+
+.milkdown .toolbar button:hover,
+.milkdown .toolbar .button:hover,
+.milkdown [role="button"]:hover {
+  color: oklch(0.2 0 0) !important; /* Even more visible on hover */
+}
+
+/* Fix visibility of specific UI elements - bullet points, numbers, plus icons, drag handles */
+.milkdown .milkdown-list-item-block li .label-wrapper,
+.milkdown .milkdown-list-item-block li .label-wrapper .label {
+  color: oklch(0.3 0 0) !important; /* Darker for better visibility */
+}
+
+.milkdown .milkdown-list-item-block li .label-wrapper svg {
+  fill: oklch(0.3 0 0) !important; /* Darker for better visibility */
+}
+
+/* Plus icons and operation buttons */
+.milkdown .milkdown-block-handle .operation-item svg {
+  fill: oklch(0.3 0 0) !important; /* Darker for better visibility */
+}
+
+/* Drag handles and indicators */
+.milkdown .milkdown-table-block svg {
+  fill: oklch(0.3 0 0) !important; /* Darker for better visibility */
+}
+
+.milkdown .milkdown-table-block .cell-handle {
+  color: oklch(0.3 0 0) !important; /* Darker for better visibility */
+}
+
+/* Drag lines - make them match regular text color */
+.milkdown .milkdown-table-block .line-handle {
+  background-color: var(--crepe-color-on-surface) !important; /* Match regular text color */
+}
+
+/* Slash menu icons */
+.milkdown .milkdown-slash-menu .menu-groups .menu-group li svg {
+  color: oklch(0.3 0 0) !important; /* Darker for better visibility */
+  fill: oklch(0.3 0 0) !important; /* Darker for better visibility */
+}
+
+/* Drop indicator lines - make them match regular text color */
+.milkdown .crepe-drop-cursor {
+  background-color: var(--crepe-color-on-surface) !important; /* Match regular text color */
+}
+
+.milkdown .ProseMirror-gapcursor:after {
+  border-top: 1px solid var(--crepe-color-on-surface) !important; /* Match regular text color */
+}
+
+/* Dark mode support using CSS custom properties */
+.dark .milkdown {
+  --crepe-color-background: var(--background);
+  --crepe-color-on-background: var(--foreground);
+  --crepe-color-surface: var(--card);
+  --crepe-color-surface-low: var(--muted);
+  --crepe-color-on-surface: var(--card-foreground);
+  --crepe-color-on-surface-variant: oklch(0.8 0 0); /* More visible than muted-foreground in dark mode */
+  --crepe-color-outline: var(--border);
+  --crepe-color-primary: var(--primary);
+  --crepe-color-secondary: var(--secondary);
+  --crepe-color-on-secondary: var(--secondary-foreground);
+  --crepe-color-inverse: var(--accent);
+  --crepe-color-on-inverse: var(--accent-foreground);
+  --crepe-color-inline-code: var(--destructive);
+  --crepe-color-error: var(--destructive);
+  --crepe-color-hover: var(--accent);
+  --crepe-color-selected: var(--secondary);
+  --crepe-color-inline-area: var(--muted);
+}
+
+/* Dark mode specific UI element visibility fixes */
+.dark .milkdown .milkdown-list-item-block li .label-wrapper,
+.dark .milkdown .milkdown-list-item-block li .label-wrapper .label {
+  color: oklch(0.7 0 0) !important; /* Brighter for dark mode */
+}
+
+.dark .milkdown .milkdown-list-item-block li .label-wrapper svg {
+  fill: oklch(0.7 0 0) !important; /* Brighter for dark mode */
+}
+
+.dark .milkdown .milkdown-block-handle .operation-item svg {
+  fill: oklch(0.7 0 0) !important; /* Brighter for dark mode */
+}
+
+.dark .milkdown .milkdown-table-block svg {
+  fill: oklch(0.7 0 0) !important; /* Brighter for dark mode */
+}
+
+.dark .milkdown .milkdown-table-block .cell-handle {
+  color: oklch(0.7 0 0) !important; /* Brighter for dark mode */
+}
+
+.dark .milkdown .milkdown-table-block .line-handle {
+  background-color: var(--crepe-color-on-surface) !important; /* Match regular text color */
+}
+
+.dark .milkdown .milkdown-slash-menu .menu-groups .menu-group li svg {
+  color: oklch(0.7 0 0) !important; /* Brighter for dark mode */
+  fill: oklch(0.7 0 0) !important; /* Brighter for dark mode */
+}
+
+/* Dark mode drop indicator lines */
+.dark .milkdown .crepe-drop-cursor {
+  background-color: var(--crepe-color-on-surface) !important; /* Match regular text color */
+}
+
+.dark .milkdown .ProseMirror-gapcursor:after {
+  border-top: 1px solid var(--crepe-color-on-surface) !important; /* Match regular text color */
+}

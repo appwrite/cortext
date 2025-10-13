@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 
-export type CrepeTheme = 'crepe' | 'crepe-dark' | 'nord' | 'nord-dark' | 'frame' | 'frame-dark';
+export type CrepeTheme = 'crepe' | 'crepe-dark' | 'nord' | 'nord-dark' | 'frame' | 'frame-dark' | 'cortext' | 'cortext-dark';
 
 interface CrepeEditorProps {
   defaultValue?: string;
