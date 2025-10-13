@@ -1,10 +1,12 @@
 import { createFileRoute } from '@tanstack/react-router';
 import CrepeEditor from '../components/ui/crepe-editor';
-import { useState } from 'react';
+import { useState, useCallback } from 'react';
 
 function CrepeEditorPage() {
   console.log('CrepeEditorPage component rendered');
-  const [content, setContent] = useState(`# Welcome to Crepe Milkdown Editor
+  
+  // Initial content - this should be static
+  const initialContent = `# Welcome to Crepe Milkdown Editor
 
 This is a **WYSIWYG Markdown editor** built with Crepe theme. You can:
 
@@ -35,7 +37,14 @@ function hello() {
 
 ---
 
-**Enjoy writing!** ✨`);
+**Enjoy writing!** ✨`;
+
+  const [content, setContent] = useState(initialContent);
+
+  // Memoize the onChange callback to prevent unnecessary rerenders
+  const handleContentChange = useCallback((newContent: string) => {
+    setContent(newContent);
+  }, []);
 
   return (
     <div className="container mx-auto py-8 px-4 max-w-6xl">
@@ -49,8 +58,8 @@ function hello() {
       <div className="bg-white rounded-lg shadow-lg border">
         <div className="p-6">
           <CrepeEditor 
-            defaultValue={content} 
-            onChange={setContent}
+            defaultValue={initialContent} 
+            onChange={handleContentChange}
             className="min-h-[500px]"
           />
         </div>

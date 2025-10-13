@@ -18,13 +18,12 @@ export default function CrepeEditor({
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
+  // Initialize Crepe only once when component mounts
   useEffect(() => {
-    console.log('useEffect triggered');
-    console.log('Editor ref current:', editorRef.current);
+    console.log('useEffect triggered - initializing Crepe');
     
     let isMounted = true;
     
-    // Wait for the ref to be available
     const initializeCrepe = async () => {
       try {
         console.log('Starting Crepe initialization...');
@@ -106,13 +105,6 @@ export default function CrepeEditor({
           return;
         }
         
-        // Check if Crepe instance already exists
-        if (crepeInstanceRef.current) {
-          console.log('Crepe instance already exists, skipping creation...');
-          setIsLoading(false);
-          return;
-        }
-        
         console.log('Creating Crepe instance...');
         crepeInstanceRef.current = new Crepe({
           root: editorRef.current,
@@ -123,6 +115,23 @@ export default function CrepeEditor({
             [CrepeFeature.Toolbar]: true,
           },
         });
+        
+        // Set up change listener using Crepe's built-in listener
+        if (onChange && crepeInstanceRef.current) {
+          try {
+            crepeInstanceRef.current.on(listener => {
+              listener.markdownUpdated((_, markdown, prevMarkdown) => {
+                if (markdown !== prevMarkdown && isMounted) {
+                  console.log('Editor content changed:', markdown);
+                  onChange(markdown);
+                }
+              });
+            });
+            console.log('Change listener set up successfully using Crepe built-in listener');
+          } catch (error) {
+            console.warn('Error setting up change listener:', error);
+          }
+        }
         
         console.log('Calling crepe.create()...');
         await crepeInstanceRef.current.create();
@@ -155,7 +164,7 @@ export default function CrepeEditor({
         }
       }
     };
-  }, [defaultValue]);
+  }, []); // Empty dependency array - only run once on mount
 
   return (
     <div className={`crepe-editor-container relative ${className}`}>
