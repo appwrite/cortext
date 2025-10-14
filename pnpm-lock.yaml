@@ -23,6 +23,12 @@ importers:
       '@milkdown/crepe':
         specifier: ^7.17.1
         version: 7.17.1(prosemirror-model@1.25.3)(prosemirror-state@1.4.3)(prosemirror-view@1.41.3)(typescript@5.9.3)
+      '@milkdown/plugin-history':
+        specifier: ^7.17.1
+        version: 7.17.1
+      '@milkdown/plugin-slash':
+        specifier: ^7.17.1
+        version: 7.17.1
       '@monaco-editor/react':
         specifier: ^4.7.0
         version: 4.7.0(monaco-editor@0.53.0)(react-dom@19.1.1(react@19.1.1))(react@19.1.1)

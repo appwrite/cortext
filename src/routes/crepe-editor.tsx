@@ -124,11 +124,419 @@ The following are the *primary concerns* raised by experts:
 
   const [content, setContent] = useState(initialContent);
   const [currentTheme, setCurrentTheme] = useState<CrepeTheme>('crepe');
+  const [editorInstance, setEditorInstance] = useState<any>(null);
 
   // Memoize the onChange callback to prevent unnecessary rerenders
   const handleContentChange = useCallback((newContent: string) => {
     setContent(newContent);
   }, []);
+
+  // Handle editor ready callback
+  const handleEditorReady = useCallback(async (editor: any) => {
+    console.log('Editor ready:', editor);
+    console.log('Available methods:', Object.getOwnPropertyNames(editor));
+    console.log('Editor prototype methods:', Object.getOwnPropertyNames(Object.getPrototypeOf(editor)));
+    if (editor.editor) {
+      console.log('Editor.editor methods:', Object.getOwnPropertyNames(editor.editor));
+      if (editor.editor.commands) {
+        console.log('Editor.editor.commands methods:', Object.getOwnPropertyNames(editor.editor.commands));
+      }
+    }
+    
+    // Try to add history feature if addFeature method exists
+    if (editor.addFeature && typeof editor.addFeature === 'function') {
+      console.log('Found addFeature method, trying to add history...');
+      try {
+        // Try to add history feature
+        editor.addFeature('history');
+        console.log('History feature added successfully');
+      } catch (error) {
+        console.log('Error adding history feature:', error);
+      }
+    } else {
+      console.log('No addFeature method found');
+    }
+    
+    // Try to access underlying Milkdown editor and add history plugin
+    if (editor.editor && editor.editor.ctx) {
+      console.log('Found underlying Milkdown editor, trying to add history plugin...');
+      try {
+        // Check if history plugin is already available
+        const ctx = editor.editor.ctx;
+        console.log('Checking for existing history functionality...');
+        
+        // Try to find any existing history-related contexts
+        const possibleHistoryKeys = ['history', 'undoCommand', 'redoCommand', 'historyPlugin'];
+        for (const key of possibleHistoryKeys) {
+          try {
+            const value = ctx.get(key);
+            console.log(`Found existing ${key}:`, value);
+          } catch (error) {
+            console.log(`${key} not found:`, error.message);
+          }
+        }
+        
+        // Try to import and add history plugin dynamically using proper Milkdown API
+        try {
+          const historyModule = await import('@milkdown/plugin-history');
+          console.log('History module loaded:', historyModule);
+          const { history } = historyModule;
+          console.log('History plugin:', history);
+          console.log('Available exports:', Object.keys(historyModule));
+          
+          // Try to use the history plugin with proper Milkdown API
+          console.log('Available context methods:', Object.keys(ctx));
+          
+          // Method 1: Try using ctx.use() - this is the correct Milkdown way
+          if (typeof ctx.use === 'function') {
+            console.log('Trying ctx.use() method (proper Milkdown API)...');
+            try {
+              ctx.use(history);
+              console.log('Used history plugin via ctx.use()');
+              
+              // Now try to get the commands using common command names
+              try {
+                const undoCommand = ctx.get('undoCommand');
+                console.log('Found undoCommand after ctx.use():', undoCommand);
+              } catch (error) {
+                console.log('undoCommand not found after ctx.use():', error.message);
+              }
+              
+              try {
+                const redoCommand = ctx.get('redoCommand');
+                console.log('Found redoCommand after ctx.use():', redoCommand);
+              } catch (error) {
+                console.log('redoCommand not found after ctx.use():', error.message);
+              }
+            } catch (error) {
+              console.log('Error using ctx.use():', error);
+            }
+          }
+          
+          // Method 2: Try using ctx.inject() as fallback
+          if (typeof ctx.inject === 'function') {
+            console.log('Trying ctx.inject() method as fallback...');
+            try {
+              ctx.inject(history);
+              console.log('Injected history plugin via ctx.inject()');
+            } catch (error) {
+              console.log('Error using ctx.inject():', error);
+            }
+          }
+          
+          // Try to get undo command after injection
+          try {
+            const undoCommand = ctx.get('undoCommand');
+            if (undoCommand) {
+              console.log('Found undoCommand after Milkdown injection:', undoCommand);
+            }
+          } catch (error) {
+            console.log('Still no undoCommand after Milkdown injection:', error.message);
+          }
+        } catch (importError) {
+          console.log('Failed to load history module:', importError);
+        }
+      } catch (error) {
+        console.log('Error accessing Milkdown editor:', error);
+      }
+    } else {
+      console.log('No underlying Milkdown editor found');
+    }
+    
+    setEditorInstance(editor);
+  }, []);
+
+  // Undo function
+  const handleUndo = useCallback(() => {
+    if (editorInstance) {
+      console.log('Attempting undo...');
+      console.log('Editor instance:', editorInstance);
+      try {
+        // Try common undo methods
+        if (editorInstance.undo) {
+          console.log('Calling editorInstance.undo()');
+          editorInstance.undo();
+        } else if (editorInstance.commands?.undo) {
+          console.log('Calling editorInstance.commands.undo()');
+          editorInstance.commands.undo();
+        } else if (editorInstance.editor?.commands?.undo) {
+          console.log('Calling editorInstance.editor.commands.undo()');
+          editorInstance.editor.commands.undo();
+        } else if (editorInstance.editor?.action) {
+          console.log('Found action property:', editorInstance.editor.action);
+          console.log('Action type:', typeof editorInstance.editor.action);
+          if (typeof editorInstance.editor.action === 'function') {
+            console.log('Trying editorInstance.editor.action with undo command');
+            try {
+              // The action function takes a command function as parameter
+              editorInstance.editor.action((ctx: any) => {
+                console.log('Inside action callback, trying to find undo command');
+                console.log('Context object:', ctx);
+                console.log('Context type:', typeof ctx);
+                
+                // Safely inspect context properties
+                if (ctx && typeof ctx === 'object') {
+                  console.log('Available context properties:', Object.keys(ctx));
+                  if (ctx._) {
+                    console.log('Available context keys:', Object.keys(ctx._));
+                  } else {
+                    console.log('ctx._ is undefined');
+                  }
+                } else {
+                  console.log('Context is not an object or is null');
+                }
+                
+                     // Try different command names for undo using proper Milkdown API
+                     const undoCommands = ['undoCommand', 'undo', 'historyUndo', 'history.undo', 'historyUndoCommand'];
+                     let commandFound = false;
+                     
+                     // Try to get undo command using common names
+                     try {
+                       const undoCommand = ctx.get('undoCommand');
+                       if (undoCommand) {
+                         console.log(`Found undoCommand:`, undoCommand);
+                         undoCommand.run();
+                         commandFound = true;
+                       }
+                     } catch (error) {
+                       console.log('Could not get undoCommand:', error.message);
+                     }
+                     
+                     // Fallback to trying different command names
+                     if (!commandFound) {
+                       for (const cmdName of undoCommands) {
+                         try {
+                           const command = ctx.get(cmdName);
+                           if (command) {
+                             console.log(`Found command: ${cmdName}`, command);
+                             command.run();
+                             commandFound = true;
+                             break;
+                           }
+                         } catch (error) {
+                           console.log(`Command ${cmdName} not found:`, error.message);
+                         }
+                       }
+                     }
+                
+                if (!commandFound) {
+                  console.log('No undo commands found, trying to access history plugin directly');
+                  try {
+                    const historyPlugin = ctx.get('history');
+                    if (historyPlugin) {
+                      console.log('Found history plugin:', historyPlugin);
+                      if (historyPlugin.undo) {
+                        historyPlugin.undo();
+                      }
+                    }
+                  } catch (error) {
+                    console.log('History plugin not found:', error.message);
+                  }
+                }
+              });
+            } catch (error) {
+              console.log('Error calling action with undo:', error);
+            }
+          } else {
+            console.log('Action is not a function, skipping');
+          }
+        } else if (editorInstance.editor?.ctx) {
+          console.log('Trying Milkdown ctx commands');
+          // Try Milkdown's command system
+          const ctx = editorInstance.editor.ctx;
+          console.log('Available ctx keys:', Object.keys(ctx._));
+          
+          // Try different history command names
+          const historyCommands = ['undoCommand', 'redoCommand', 'undo', 'redo', 'historyUndo', 'historyRedo'];
+          let commandFound = false;
+          
+          for (const cmdName of historyCommands) {
+            if (ctx.get(cmdName)) {
+              console.log(`Found command: ${cmdName}`);
+              try {
+                ctx.get(cmdName).run();
+                commandFound = true;
+                break;
+              } catch (error) {
+                console.log(`Error running ${cmdName}:`, error);
+              }
+            }
+          }
+          
+          if (!commandFound) {
+            console.log('No history commands found in ctx');
+          }
+        } else {
+          console.log('Trying keyboard shortcut simulation');
+          // Try simulating Ctrl+Z keyboard shortcut
+          const editorElement = document.querySelector('.milkdown .ProseMirror');
+          if (editorElement) {
+            const event = new KeyboardEvent('keydown', {
+              key: 'z',
+              code: 'KeyZ',
+              ctrlKey: true,
+              bubbles: true,
+              cancelable: true
+            });
+            editorElement.dispatchEvent(event);
+            console.log('Dispatched Ctrl+Z event');
+          } else {
+            console.log('Could not find editor element for keyboard simulation');
+          }
+        }
+      } catch (error) {
+        console.error('Error calling undo:', error);
+      }
+    } else {
+      console.log('No editor instance available');
+    }
+  }, [editorInstance]);
+
+  // Redo function
+  const handleRedo = useCallback(() => {
+    if (editorInstance) {
+      console.log('Attempting redo...');
+      console.log('Editor instance:', editorInstance);
+      try {
+        // Try common redo methods
+        if (editorInstance.redo) {
+          console.log('Calling editorInstance.redo()');
+          editorInstance.redo();
+        } else if (editorInstance.commands?.redo) {
+          console.log('Calling editorInstance.commands.redo()');
+          editorInstance.commands.redo();
+        } else if (editorInstance.editor?.commands?.redo) {
+          console.log('Calling editorInstance.editor.commands.redo()');
+          editorInstance.editor.commands.redo();
+        } else if (editorInstance.editor?.action) {
+          console.log('Found action property:', editorInstance.editor.action);
+          console.log('Action type:', typeof editorInstance.editor.action);
+          if (typeof editorInstance.editor.action === 'function') {
+            console.log('Trying editorInstance.editor.action with redo command');
+            try {
+              // The action function takes a command function as parameter
+              editorInstance.editor.action((ctx: any) => {
+                console.log('Inside action callback, trying to find redo command');
+                console.log('Context object:', ctx);
+                console.log('Context type:', typeof ctx);
+                
+                // Safely inspect context properties
+                if (ctx && typeof ctx === 'object') {
+                  console.log('Available context properties:', Object.keys(ctx));
+                  if (ctx._) {
+                    console.log('Available context keys:', Object.keys(ctx._));
+                  } else {
+                    console.log('ctx._ is undefined');
+                  }
+                } else {
+                  console.log('Context is not an object or is null');
+                }
+                
+                     // Try different command names for redo using proper Milkdown API
+                     const redoCommands = ['redoCommand', 'redo', 'historyRedo', 'history.redo', 'historyRedoCommand'];
+                     let commandFound = false;
+                     
+                     // Try to get redo command using common names
+                     try {
+                       const redoCommand = ctx.get('redoCommand');
+                       if (redoCommand) {
+                         console.log(`Found redoCommand:`, redoCommand);
+                         redoCommand.run();
+                         commandFound = true;
+                       }
+                     } catch (error) {
+                       console.log('Could not get redoCommand:', error.message);
+                     }
+                     
+                     // Fallback to trying different command names
+                     if (!commandFound) {
+                       for (const cmdName of redoCommands) {
+                         try {
+                           const command = ctx.get(cmdName);
+                           if (command) {
+                             console.log(`Found command: ${cmdName}`, command);
+                             command.run();
+                             commandFound = true;
+                             break;
+                           }
+                         } catch (error) {
+                           console.log(`Command ${cmdName} not found:`, error.message);
+                         }
+                       }
+                     }
+                
+                if (!commandFound) {
+                  console.log('No redo commands found, trying to access history plugin directly');
+                  try {
+                    const historyPlugin = ctx.get('history');
+                    if (historyPlugin) {
+                      console.log('Found history plugin:', historyPlugin);
+                      if (historyPlugin.redo) {
+                        historyPlugin.redo();
+                      }
+                    }
+                  } catch (error) {
+                    console.log('History plugin not found:', error.message);
+                  }
+                }
+              });
+            } catch (error) {
+              console.log('Error calling action with redo:', error);
+            }
+          } else {
+            console.log('Action is not a function, skipping');
+          }
+        } else if (editorInstance.editor?.ctx) {
+          console.log('Trying Milkdown ctx commands');
+          // Try Milkdown's command system
+          const ctx = editorInstance.editor.ctx;
+          console.log('Available ctx keys:', Object.keys(ctx._));
+          
+          // Try different history command names
+          const historyCommands = ['undoCommand', 'redoCommand', 'undo', 'redo', 'historyUndo', 'historyRedo'];
+          let commandFound = false;
+          
+          for (const cmdName of historyCommands) {
+            if (ctx.get(cmdName)) {
+              console.log(`Found command: ${cmdName}`);
+              try {
+                ctx.get(cmdName).run();
+                commandFound = true;
+                break;
+              } catch (error) {
+                console.log(`Error running ${cmdName}:`, error);
+              }
+            }
+          }
+          
+          if (!commandFound) {
+            console.log('No history commands found in ctx');
+          }
+        } else {
+          console.log('Trying keyboard shortcut simulation');
+          // Try simulating Ctrl+Y keyboard shortcut for redo
+          const editorElement = document.querySelector('.milkdown .ProseMirror');
+          if (editorElement) {
+            const event = new KeyboardEvent('keydown', {
+              key: 'y',
+              code: 'KeyY',
+              ctrlKey: true,
+              bubbles: true,
+              cancelable: true
+            });
+            editorElement.dispatchEvent(event);
+            console.log('Dispatched Ctrl+Y event');
+          } else {
+            console.log('Could not find editor element for keyboard simulation');
+          }
+        }
+      } catch (error) {
+        console.error('Error calling redo:', error);
+      }
+    } else {
+      console.log('No editor instance available');
+    }
+  }, [editorInstance]);
 
   // Theme options
   const themes: { value: CrepeTheme; label: string; description: string }[] = [
@@ -172,11 +580,35 @@ The following are the *primary concerns* raised by experts:
       </div>
 
       <div className="bg-white rounded-lg shadow-lg border">
+        {/* Undo/Redo Controls */}
+        <div className="border-b border-gray-200 p-4">
+          <div className="flex items-center gap-2">
+            <button
+              onClick={handleUndo}
+              disabled={!editorInstance}
+              className="px-3 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              ↶ Undo
+            </button>
+            <button
+              onClick={handleRedo}
+              disabled={!editorInstance}
+              className="px-3 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              ↷ Redo
+            </button>
+            <div className="text-sm text-gray-500 ml-4">
+              {editorInstance ? 'Editor ready' : 'Loading editor...'}
+            </div>
+          </div>
+        </div>
+        
         <div className="p-6">
           <CrepeEditor 
             defaultValue={initialContent} 
             onChange={handleContentChange}
             theme={currentTheme}
+            onEditorReady={handleEditorReady}
             className="min-h-[500px]"
           />
         </div>

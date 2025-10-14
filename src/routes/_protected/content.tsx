@@ -24,7 +24,7 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { Separator } from '@/components/ui/separator'
 import { toast } from '@/hooks/use-toast'
-import { Image as ImageIcon, Plus, Trash2, Save, Video, MapPin, Type as TypeIcon, Upload, ArrowLeft, LogOut, GripVertical, Brain, Loader2, Heading1, Quote, Pin as PinIcon, FileText, Quote as QuoteIcon, Code, ChevronLeft, ChevronRight, MoreHorizontal, Copy, MessageCircle, Eye, EyeOff, Archive, BookOpen, FileDown, ExternalLink, ChevronUp, ChevronDown } from 'lucide-react'
+import { Image as ImageIcon, Plus, Trash2, Save, Video, MapPin, Type as TypeIcon, Upload, ArrowLeft, LogOut, GripVertical, Brain, Loader2, Heading1, Quote, Pin as PinIcon, FileText, Quote as QuoteIcon, Code, Bug, ChevronLeft, ChevronRight, MoreHorizontal, Copy, MessageCircle, Eye, EyeOff, Archive, BookOpen, FileDown, ExternalLink, ChevronUp, ChevronDown } from 'lucide-react'
 import { AgentChat } from '@/components/agent/agent-chat'
 import { AuthorSelector } from '@/components/author'
 import { CategorySelector } from '@/components/category'
@@ -318,7 +318,7 @@ function Header({ userId, onSignOut, user }: { userId: string; onSignOut: () => 
                             }`}
                             title={`Debug Mode ${isDebugMode ? 'ON' : 'OFF'} (Cmd+. or Ctrl+.)`}
                         >
-                            <Code className="h-4 w-4" />
+                            <Bug className="h-4 w-4" />
                         </button>
                     )}
                     <Link 
@@ -2859,439 +2859,450 @@ function ArticleEditor({ articleId, userId, user, onBack }: { articleId: string;
             </div>
 
             <div 
-                className="main-content-area flex justify-center px-6 sm:px-12 lg:px-20 py-8 pb-24"
+                className="main-content-area py-8 pb-24"
                 style={{ 
                     marginLeft: !isMobile 
                         ? (isMinimized ? '60px' : `${chatWidth}px`) 
                         : '0px' 
                 }}
             >
-                <div className="w-full max-w-3xl space-y-8">
-
                 {/* Debug panel */}
                 {showDebug && (
-                    <div className="mb-6 p-4 bg-purple-50/90 dark:bg-purple-950/50 backdrop-blur-sm rounded-lg">
-                        <div className="flex items-center justify-between mb-3">
-                            <h3 className="text-sm font-semibold text-purple-800 dark:text-purple-200">
-                                Debug
-                                {latestRevision && (
-                                    <span className="ml-2 text-xs font-normal text-purple-600 dark:text-purple-300">
-                                        v{latestRevision.version}
-                                    </span>
-                                )}
-                            </h3>
-                            <button 
-                                onClick={() => setShowDebug(false)}
-                                className="text-xs text-purple-600 hover:text-purple-800 dark:text-purple-400 dark:hover:text-purple-200"
-                            >
-                                ×
-                            </button>
-                        </div>
-                        <div className="grid grid-cols-2 gap-4 text-xs">
-                            <div>
-                                <div className="font-medium text-purple-700 dark:text-purple-300 mb-1">Status</div>
-                                <div className="space-y-1">
-                                    <div className="flex justify-between items-center">
-                                        <span className="flex items-center gap-1">
-                                            Unpublished Changes
-                                            <div className="group relative">
-                                                <span className="text-purple-500 dark:text-purple-400 cursor-help text-xs w-3 h-3 rounded-full border border-current flex items-center justify-center text-[8px]">i</span>
-                                                <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-2 py-1 bg-gray-900 dark:bg-gray-100 text-white dark:text-gray-900 text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none whitespace-nowrap z-10">
-                                                    Changes that haven't been published to the live article yet
-                                                </div>
+                    <div className="flex justify-center px-6 sm:px-12 lg:px-20 mb-6">
+                        <div className="w-full max-w-3xl">
+                            <div className="p-4 bg-purple-50/90 dark:bg-purple-950/50 backdrop-blur-sm rounded-lg">
+                                <div className="flex items-center justify-between mb-3">
+                                    <h3 className="text-sm font-semibold text-purple-800 dark:text-purple-200">
+                                        Debug
+                                        {latestRevision && (
+                                            <span className="ml-2 text-xs font-normal text-purple-600 dark:text-purple-300">
+                                                v{latestRevision.version}
+                                            </span>
+                                        )}
+                                    </h3>
+                                    <button 
+                                        onClick={() => setShowDebug(false)}
+                                        className="text-xs text-purple-600 hover:text-purple-800 dark:text-purple-400 dark:hover:text-purple-200"
+                                    >
+                                        ×
+                                    </button>
+                                </div>
+                                <div className="grid grid-cols-2 gap-4 text-xs">
+                                    <div>
+                                        <div className="font-medium text-purple-700 dark:text-purple-300 mb-1">Status</div>
+                                        <div className="space-y-1">
+                                            <div className="flex justify-between items-center">
+                                                <span className="flex items-center gap-1">
+                                                    Unpublished Changes
+                                                    <div className="group relative">
+                                                        <span className="text-purple-500 dark:text-purple-400 cursor-help text-xs w-3 h-3 rounded-full border border-current flex items-center justify-center text-[8px]">i</span>
+                                                        <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-2 py-1 bg-gray-900 dark:bg-gray-100 text-white dark:text-gray-900 text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none whitespace-nowrap z-10">
+                                                            Changes that haven't been published to the live article yet
+                                                        </div>
+                                                    </div>
+                                                </span>
+                                                <span className={hasUnpublishedChanges ? 'text-orange-600 dark:text-orange-400' : 'text-green-600 dark:text-green-400'}>
+                                                    {hasUnpublishedChanges ? 'Yes' : 'No'}
+                                                </span>
                                             </div>
-                                        </span>
-                                        <span className={hasUnpublishedChanges ? 'text-orange-600 dark:text-orange-400' : 'text-green-600 dark:text-green-400'}>
-                                            {hasUnpublishedChanges ? 'Yes' : 'No'}
-                                        </span>
-                                    </div>
-                                    <div className="flex justify-between items-center">
-                                        <span className="flex items-center gap-1">
-                                            Save Status
-                                        </span>
-                                        <span className={`font-mono ${
-                                            isSaving ? 'text-blue-600 dark:text-blue-400' :
-                                            'text-gray-600 dark:text-gray-400'
-                                        }`}>
-                                            {isSaving ? 'Saving...' : 'Ready'}
-                                        </span>
-                                    </div>
-                                    <div className="flex justify-between items-center">
-                                        <span className="flex items-center gap-1">
-                                            Revert Mode
-                                            <div className="group relative">
-                                                <span className="text-purple-500 dark:text-purple-400 cursor-help text-xs w-3 h-3 rounded-full border border-current flex items-center justify-center text-[8px]">i</span>
-                                                <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-2 py-1 bg-gray-900 dark:bg-gray-100 text-white dark:text-gray-900 text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none whitespace-nowrap z-10">
-                                                    Whether you're currently viewing a previous version of the article
-                                                </div>
+                                            <div className="flex justify-between items-center">
+                                                <span className="flex items-center gap-1">
+                                                    Save Status
+                                                </span>
+                                                <span className={`font-mono ${
+                                                    isSaving ? 'text-blue-600 dark:text-blue-400' :
+                                                    'text-gray-600 dark:text-gray-400'
+                                                }`}>
+                                                    {isSaving ? 'Saving...' : 'Ready'}
+                                                </span>
                                             </div>
-                                        </span>
-                                        <span className={isInRevertMode ? 'text-purple-600 dark:text-purple-400' : 'text-gray-500 dark:text-gray-400'}>
-                                            {isInRevertMode ? 'Active' : 'Inactive'}
-                                        </span>
+                                            <div className="flex justify-between items-center">
+                                                <span className="flex items-center gap-1">
+                                                    Revert Mode
+                                                    <div className="group relative">
+                                                        <span className="text-purple-500 dark:text-purple-400 cursor-help text-xs w-3 h-3 rounded-full border border-current flex items-center justify-center text-[8px]">i</span>
+                                                        <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-2 py-1 bg-gray-900 dark:bg-gray-100 text-white dark:text-gray-900 text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none whitespace-nowrap z-10">
+                                                            Whether you're currently viewing a previous version of the article
+                                                        </div>
+                                                    </div>
+                                                </span>
+                                                <span className={isInRevertMode ? 'text-purple-600 dark:text-purple-400' : 'text-gray-500 dark:text-gray-400'}>
+                                                    {isInRevertMode ? 'Active' : 'Inactive'}
+                                                </span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div>
+                                        <div className="font-medium text-purple-700 dark:text-purple-300 mb-1">Revisions</div>
+                                        <div className="space-y-1">
+                                            <div className="flex justify-between items-center">
+                                                <span className="flex items-center gap-1">
+                                                    Active
+                                                    <div className="group relative">
+                                                        <span className="text-purple-500 dark:text-purple-400 cursor-help text-xs w-3 h-3 rounded-full border border-current flex items-center justify-center text-[8px]">i</span>
+                                                        <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-2 py-1 bg-gray-900 dark:bg-gray-100 text-white dark:text-gray-900 text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none whitespace-nowrap z-10">
+                                                            The revision ID that's currently published and visible to readers
+                                                        </div>
+                                                    </div>
+                                                </span>
+                                                <span className="font-mono text-xs">
+                                                    {article?.activeRevisionId || 'None'}
+                                                </span>
+                                            </div>
+                                            <div className="flex justify-between items-center">
+                                                <span className="flex items-center gap-1">
+                                                    Latest
+                                                    <div className="group relative">
+                                                        <span className="text-purple-500 dark:text-purple-400 cursor-help text-xs w-3 h-3 rounded-full border border-current flex items-center justify-center text-[8px]">i</span>
+                                                        <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-2 py-1 bg-gray-900 dark:bg-gray-100 text-white dark:text-gray-900 text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none whitespace-nowrap z-10">
+                                                            The most recent revision ID that exists in the database
+                                                        </div>
+                                                    </div>
+                                                </span>
+                                                <span className="font-mono text-xs">
+                                                    {latestRevision?.$id || 'None'}
+                                                </span>
+                                            </div>
+                                            <div className="flex justify-between items-center">
+                                                <span className="flex items-center gap-1">
+                                                    Match
+                                                    <div className="group relative">
+                                                        <span className="text-purple-500 dark:text-purple-400 cursor-help text-xs w-3 h-3 rounded-full border border-current flex items-center justify-center text-[8px]">i</span>
+                                                        <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-2 py-1 bg-gray-900 dark:bg-gray-100 text-white dark:text-gray-900 text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none whitespace-nowrap z-10">
+                                                            Whether the active and latest revisions are the same (should be ✓ for normal operation)
+                                                        </div>
+                                                    </div>
+                                                </span>
+                                                <span className={article?.activeRevisionId === latestRevision?.$id ? 'text-green-600 dark:text-green-400' : 'text-orange-600 dark:text-orange-400'}>
+                                                    {article?.activeRevisionId === latestRevision?.$id ? '✓' : '✗'}
+                                                </span>
+                                            </div>
+                                        </div>
                                     </div>
                                 </div>
-                            </div>
-                            <div>
-                                <div className="font-medium text-purple-700 dark:text-purple-300 mb-1">Revisions</div>
-                                <div className="space-y-1">
-                                    <div className="flex justify-between items-center">
-                                        <span className="flex items-center gap-1">
-                                            Active
-                                            <div className="group relative">
-                                                <span className="text-purple-500 dark:text-purple-400 cursor-help text-xs w-3 h-3 rounded-full border border-current flex items-center justify-center text-[8px]">i</span>
-                                                <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-2 py-1 bg-gray-900 dark:bg-gray-100 text-white dark:text-gray-900 text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none whitespace-nowrap z-10">
-                                                    The revision ID that's currently published and visible to readers
-                                                </div>
-                                            </div>
-                                        </span>
-                                        <span className="font-mono text-xs">
-                                            {article?.activeRevisionId || 'None'}
-                                        </span>
-                                    </div>
-                                    <div className="flex justify-between items-center">
-                                        <span className="flex items-center gap-1">
-                                            Latest
-                                            <div className="group relative">
-                                                <span className="text-purple-500 dark:text-purple-400 cursor-help text-xs w-3 h-3 rounded-full border border-current flex items-center justify-center text-[8px]">i</span>
-                                                <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-2 py-1 bg-gray-900 dark:bg-gray-100 text-white dark:text-gray-900 text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none whitespace-nowrap z-10">
-                                                    The most recent revision ID that exists in the database
-                                                </div>
-                                            </div>
-                                        </span>
-                                        <span className="font-mono text-xs">
-                                            {latestRevision?.$id || 'None'}
-                                        </span>
-                                    </div>
-                                    <div className="flex justify-between items-center">
-                                        <span className="flex items-center gap-1">
-                                            Match
-                                            <div className="group relative">
-                                                <span className="text-purple-500 dark:text-purple-400 cursor-help text-xs w-3 h-3 rounded-full border border-current flex items-center justify-center text-[8px]">i</span>
-                                                <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-2 py-1 bg-gray-900 dark:bg-gray-100 text-white dark:text-gray-900 text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none whitespace-nowrap z-10">
-                                                    Whether the active and latest revisions are the same (should be ✓ for normal operation)
-                                                </div>
-                                            </div>
-                                        </span>
-                                        <span className={article?.activeRevisionId === latestRevision?.$id ? 'text-green-600 dark:text-green-400' : 'text-orange-600 dark:text-orange-400'}>
-                                            {article?.activeRevisionId === latestRevision?.$id ? '✓' : '✗'}
-                                        </span>
+                                <div className="mt-3 pt-2">
+                                    <div className="flex items-center justify-between text-xs">
+                                        <div className="flex items-center gap-4">
+                                        </div>
                                     </div>
                                 </div>
-                            </div>
-                        </div>
-                        <div className="mt-3 pt-2">
-                            <div className="flex items-center justify-between text-xs">
-                                <div className="flex items-center gap-4">
+                                
+                                <div className="mt-3 pt-2 border-t border-purple-200 dark:border-purple-700">
+                                    <div className="text-sm font-semibold text-purple-800 dark:text-purple-200 mb-2 flex items-center gap-1">
+                                        Save Status
+                                        <div className="group relative">
+                                            <span className="text-purple-500 dark:text-purple-400 cursor-help text-xs w-3 h-3 rounded-full border border-current flex items-center justify-center text-[8px]">i</span>
+                                            <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-2 py-1 bg-gray-900 dark:bg-gray-100 text-white dark:text-gray-900 text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none whitespace-nowrap z-10">
+                                                Debug information for manual save functionality
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div className="grid grid-cols-2 gap-4 text-xs">
+                                        <div className="space-y-1">
+                                            <div className="flex justify-between items-center">
+                                                <span className="flex items-center gap-1">
+                                                    Has Changes
+                                                    <div className="group relative">
+                                                        <span className="text-purple-500 dark:text-purple-400 cursor-help text-xs w-3 h-3 rounded-full border border-current flex items-center justify-center text-[8px]">i</span>
+                                                        <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-2 py-1 bg-gray-900 dark:bg-gray-100 text-white dark:text-gray-900 text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none whitespace-nowrap z-10">
+                                                            Whether user has made changes that need to be saved
+                                                        </div>
+                                                    </div>
+                                                </span>
+                                                <span className={hasChanges ? 'text-orange-600 dark:text-orange-400' : 'text-green-600 dark:text-green-400'}>
+                                                    {hasChanges ? 'Yes' : 'No'}
+                                                </span>
+                                            </div>
+                                            <div className="flex justify-between items-center">
+                                                <span className="flex items-center gap-1">
+                                                    Last Change
+                                                    <div className="group relative">
+                                                        <span className="text-purple-500 dark:text-purple-400 cursor-help text-xs w-3 h-3 rounded-full border border-current flex items-center justify-center text-[8px]">i</span>
+                                                        <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-2 py-1 bg-gray-900 dark:bg-gray-100 text-white dark:text-gray-900 text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none whitespace-nowrap z-10">
+                                                            When the last change was made
+                                                        </div>
+                                                    </div>
+                                                </span>
+                                                <span className="text-gray-600 dark:text-gray-400 font-mono text-xs">
+                                                    {hasChanges && lastChangeTimestamp ? 
+                                                        `${lastChangeTimestamp.toLocaleTimeString()} (${Math.round((Date.now() - lastChangeTimestamp.getTime()) / 1000)}s ago)` :
+                                                        'No changes'
+                                                    }
+                                                </span>
+                                            </div>
+                                            <div className="flex justify-between items-center">
+                                                <span className="flex items-center gap-1">
+                                                    Save Status
+                                                    <div className="group relative">
+                                                        <span className="text-purple-500 dark:text-purple-400 cursor-help text-xs w-3 h-3 rounded-full border border-current flex items-center justify-center text-[8px]">i</span>
+                                                        <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-2 py-1 bg-gray-900 dark:bg-gray-100 text-white dark:text-gray-900 text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none whitespace-nowrap z-10">
+                                                            Current state of the save process
+                                                        </div>
+                                                    </div>
+                                                </span>
+                                                <span className={`font-mono ${
+                                                    isSaving ? 'text-blue-600 dark:text-blue-400' :
+                                                    'text-gray-600 dark:text-gray-400'
+                                                }`}>
+                                                    {isSaving ? 'Saving...' : 'Ready'}
+                                                </span>
+                                            </div>
+                                            <div className="flex justify-between items-center">
+                                                <span className="flex items-center gap-1">
+                                                    Last Save
+                                                    <div className="group relative">
+                                                        <span className="text-purple-500 dark:text-purple-400 cursor-help text-xs w-3 h-3 rounded-full border border-current flex items-center justify-center text-[8px]">i</span>
+                                                        <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-2 py-1 bg-gray-900 dark:bg-gray-100 text-white dark:text-gray-900 text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none whitespace-nowrap z-10">
+                                                            When the article was last saved
+                                                        </div>
+                                                    </div>
+                                                </span>
+                                                <span className="text-gray-600 dark:text-gray-400 font-mono text-xs">
+                                                    {lastSaveTimestamp ? 
+                                                        `${lastSaveTimestamp.toLocaleTimeString()} (${formatDateRelative(lastSaveTimestamp)})` :
+                                                        'Never'
+                                                    }
+                                                </span>
+                                            </div>
+                                        </div>
+                                        <div className="space-y-1">
+                                            <div className="flex justify-between items-center">
+                                                <span className="flex items-center gap-1">
+                                                    User Interacted
+                                                    <div className="group relative">
+                                                        <span className="text-purple-500 dark:text-purple-400 cursor-help text-xs w-3 h-3 rounded-full border border-current flex items-center justify-center text-[8px]">i</span>
+                                                        <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-2 py-1 bg-gray-900 dark:bg-gray-100 text-white dark:text-gray-900 text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none whitespace-nowrap z-10">
+                                                            Whether the user has made any changes to the form
+                                                        </div>
+                                                    </div>
+                                                </span>
+                                                <span className={hasUserInteracted ? 'text-blue-600 dark:text-blue-400' : 'text-gray-600 dark:text-gray-400'}>
+                                                    {hasUserInteracted ? 'Yes' : 'No'}
+                                                </span>
+                                            </div>
+                                            <div className="flex justify-between items-center">
+                                                <span className="flex items-center gap-1">
+                                                    Fully Loaded
+                                                    <div className="group relative">
+                                                        <span className="text-purple-500 dark:text-purple-400 cursor-help text-xs w-3 h-3 rounded-full border border-current flex items-center justify-center text-[8px]">i</span>
+                                                        <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-2 py-1 bg-gray-900 dark:bg-gray-100 text-white dark:text-gray-900 text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none whitespace-nowrap z-10">
+                                                            Whether the component has finished loading all data
+                                                        </div>
+                                                    </div>
+                                                </span>
+                                                <span className={isFullyLoaded ? 'text-green-600 dark:text-green-400' : 'text-orange-600 dark:text-orange-400'}>
+                                                    {isFullyLoaded ? 'Yes' : 'No'}
+                                                </span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    
+                                    <div className="mt-2 flex gap-2 flex-wrap">
+                                        <Button 
+                                            size="sm" 
+                                            variant="outline" 
+                                            onClick={() => {
+                                                updateChanges(true)
+                                            }}
+                                            className="h-6 px-2 text-xs text-purple-600 border-purple-300 hover:bg-purple-200 dark:text-purple-400 dark:border-purple-700 dark:hover:bg-purple-800"
+                                        >
+                                            Trigger Changes
+                                        </Button>
+                                        <Button 
+                                            size="sm" 
+                                            variant="outline" 
+                                            onClick={() => {
+                                                updateChanges(false)
+                                            }}
+                                            className="h-6 px-2 text-xs text-purple-600 border-purple-300 hover:bg-purple-200 dark:text-purple-400 dark:border-purple-700 dark:hover:bg-purple-800"
+                                        >
+                                            Clear Changes
+                                        </Button>
+                                        <Button 
+                                            size="sm" 
+                                            variant="outline" 
+                                            onClick={handleSave}
+                                            disabled={isSaving || !hasChanges}
+                                            className="h-6 px-2 text-xs text-purple-600 border-purple-300 hover:bg-purple-200 dark:text-purple-400 dark:border-purple-700 dark:hover:bg-purple-800"
+                                        >
+                                            Manual Save
+                                        </Button>
+                                        <Button 
+                                            size="sm" 
+                                            variant="outline" 
+                                            onClick={() => {
+                                                setMockSkeletonState(!mockSkeletonState)
+                                            }}
+                                            className="h-6 px-2 text-xs text-purple-600 border-purple-300 hover:bg-purple-200 dark:text-purple-400 dark:border-purple-700 dark:hover:bg-purple-800"
+                                        >
+                                            {mockSkeletonState ? 'Hide Skeleton' : 'Mock Skeleton'}
+                                        </Button>
+                                    </div>
                                 </div>
-                            </div>
-                        </div>
-                        
-                        <div className="mt-3 pt-2 border-t border-purple-200 dark:border-purple-700">
-                            <div className="text-sm font-semibold text-purple-800 dark:text-purple-200 mb-2 flex items-center gap-1">
-                                Save Status
-                                <div className="group relative">
-                                    <span className="text-purple-500 dark:text-purple-400 cursor-help text-xs w-3 h-3 rounded-full border border-current flex items-center justify-center text-[8px]">i</span>
-                                    <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-2 py-1 bg-gray-900 dark:bg-gray-100 text-white dark:text-gray-900 text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none whitespace-nowrap z-10">
-                                        Debug information for manual save functionality
-                                    </div>
-                                </div>
-                            </div>
-                            <div className="grid grid-cols-2 gap-4 text-xs">
-                                <div className="space-y-1">
-                                    <div className="flex justify-between items-center">
-                                        <span className="flex items-center gap-1">
-                                            Has Changes
-                                            <div className="group relative">
-                                                <span className="text-purple-500 dark:text-purple-400 cursor-help text-xs w-3 h-3 rounded-full border border-current flex items-center justify-center text-[8px]">i</span>
-                                                <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-2 py-1 bg-gray-900 dark:bg-gray-100 text-white dark:text-gray-900 text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none whitespace-nowrap z-10">
-                                                    Whether user has made changes that need to be saved
-                                                </div>
-                                            </div>
-                                        </span>
-                                        <span className={hasChanges ? 'text-orange-600 dark:text-orange-400' : 'text-green-600 dark:text-green-400'}>
-                                            {hasChanges ? 'Yes' : 'No'}
-                                        </span>
-                                    </div>
-                                    <div className="flex justify-between items-center">
-                                        <span className="flex items-center gap-1">
-                                            Last Change
-                                            <div className="group relative">
-                                                <span className="text-purple-500 dark:text-purple-400 cursor-help text-xs w-3 h-3 rounded-full border border-current flex items-center justify-center text-[8px]">i</span>
-                                                <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-2 py-1 bg-gray-900 dark:bg-gray-100 text-white dark:text-gray-900 text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none whitespace-nowrap z-10">
-                                                    When the last change was made
-                                                </div>
-                                            </div>
-                                        </span>
-                                        <span className="text-gray-600 dark:text-gray-400 font-mono text-xs">
-                                            {hasChanges && lastChangeTimestamp ? 
-                                                `${lastChangeTimestamp.toLocaleTimeString()} (${Math.round((Date.now() - lastChangeTimestamp.getTime()) / 1000)}s ago)` :
-                                                'No changes'
-                                            }
-                                        </span>
-                                    </div>
-                                    <div className="flex justify-between items-center">
-                                        <span className="flex items-center gap-1">
-                                            Save Status
-                                            <div className="group relative">
-                                                <span className="text-purple-500 dark:text-purple-400 cursor-help text-xs w-3 h-3 rounded-full border border-current flex items-center justify-center text-[8px]">i</span>
-                                                <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-2 py-1 bg-gray-900 dark:bg-gray-100 text-white dark:text-gray-900 text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none whitespace-nowrap z-10">
-                                                    Current state of the save process
-                                                </div>
-                                            </div>
-                                        </span>
-                                        <span className={`font-mono ${
-                                            isSaving ? 'text-blue-600 dark:text-blue-400' :
-                                            'text-gray-600 dark:text-gray-400'
-                                        }`}>
-                                            {isSaving ? 'Saving...' : 'Ready'}
-                                        </span>
-                                    </div>
-                                    <div className="flex justify-between items-center">
-                                        <span className="flex items-center gap-1">
-                                            Last Save
-                                            <div className="group relative">
-                                                <span className="text-purple-500 dark:text-purple-400 cursor-help text-xs w-3 h-3 rounded-full border border-current flex items-center justify-center text-[8px]">i</span>
-                                                <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-2 py-1 bg-gray-900 dark:bg-gray-100 text-white dark:text-gray-900 text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none whitespace-nowrap z-10">
-                                                    When the article was last saved
-                                                </div>
-                                            </div>
-                                        </span>
-                                        <span className="text-gray-600 dark:text-gray-400 font-mono text-xs">
-                                            {lastSaveTimestamp ? 
-                                                `${lastSaveTimestamp.toLocaleTimeString()} (${formatDateRelative(lastSaveTimestamp)})` :
-                                                'Never'
-                                            }
-                                        </span>
-                                    </div>
-                                </div>
-                                <div className="space-y-1">
-                                    <div className="flex justify-between items-center">
-                                        <span className="flex items-center gap-1">
-                                            User Interacted
-                                            <div className="group relative">
-                                                <span className="text-purple-500 dark:text-purple-400 cursor-help text-xs w-3 h-3 rounded-full border border-current flex items-center justify-center text-[8px]">i</span>
-                                                <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-2 py-1 bg-gray-900 dark:bg-gray-100 text-white dark:text-gray-900 text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none whitespace-nowrap z-10">
-                                                    Whether the user has made any changes to the form
-                                                </div>
-                                            </div>
-                                        </span>
-                                        <span className={hasUserInteracted ? 'text-blue-600 dark:text-blue-400' : 'text-gray-600 dark:text-gray-400'}>
-                                            {hasUserInteracted ? 'Yes' : 'No'}
-                                        </span>
-                                    </div>
-                                    <div className="flex justify-between items-center">
-                                        <span className="flex items-center gap-1">
-                                            Fully Loaded
-                                            <div className="group relative">
-                                                <span className="text-purple-500 dark:text-purple-400 cursor-help text-xs w-3 h-3 rounded-full border border-current flex items-center justify-center text-[8px]">i</span>
-                                                <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-2 py-1 bg-gray-900 dark:bg-gray-100 text-white dark:text-gray-900 text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none whitespace-nowrap z-10">
-                                                    Whether the component has finished loading all data
-                                                </div>
-                                            </div>
-                                        </span>
-                                        <span className={isFullyLoaded ? 'text-green-600 dark:text-green-400' : 'text-orange-600 dark:text-orange-400'}>
-                                            {isFullyLoaded ? 'Yes' : 'No'}
-                                        </span>
-                                    </div>
-                                </div>
-                            </div>
-                            
-                            <div className="mt-2 flex gap-2 flex-wrap">
-                                <Button 
-                                    size="sm" 
-                                    variant="outline" 
-                                    onClick={() => {
-                                        updateChanges(true)
-                                    }}
-                                    className="h-6 px-2 text-xs text-purple-600 border-purple-300 hover:bg-purple-200 dark:text-purple-400 dark:border-purple-700 dark:hover:bg-purple-800"
-                                >
-                                    Trigger Changes
-                                </Button>
-                                <Button 
-                                    size="sm" 
-                                    variant="outline" 
-                                    onClick={() => {
-                                        updateChanges(false)
-                                    }}
-                                    className="h-6 px-2 text-xs text-purple-600 border-purple-300 hover:bg-purple-200 dark:text-purple-400 dark:border-purple-700 dark:hover:bg-purple-800"
-                                >
-                                    Clear Changes
-                                </Button>
-                                <Button 
-                                    size="sm" 
-                                    variant="outline" 
-                                    onClick={handleSave}
-                                    disabled={isSaving || !hasChanges}
-                                    className="h-6 px-2 text-xs text-purple-600 border-purple-300 hover:bg-purple-200 dark:text-purple-400 dark:border-purple-700 dark:hover:bg-purple-800"
-                                >
-                                    Manual Save
-                                </Button>
-                                <Button 
-                                    size="sm" 
-                                    variant="outline" 
-                                    onClick={() => {
-                                        setMockSkeletonState(!mockSkeletonState)
-                                    }}
-                                    className="h-6 px-2 text-xs text-purple-600 border-purple-300 hover:bg-purple-200 dark:text-purple-400 dark:border-purple-700 dark:hover:bg-purple-800"
-                                >
-                                    {mockSkeletonState ? 'Hide Skeleton' : 'Mock Skeleton'}
-                                </Button>
                             </div>
                         </div>
                     </div>
                 )}
 
-
-
-                {/* Article meta form */}
-                <section className="space-y-4">
-                    <div>
-                        <Label htmlFor="trailer">Trailer</Label>
-                        {hideComments || isInRevertMode ? (
-                            <Input id="trailer" value={trailer} onChange={handleTrailerChange} placeholder="Breaking news, Exclusive..." disabled={isInRevertMode} />
-                        ) : (
-                            <CommentableInput
-                                articleId={articleId}
-                                blogId={currentBlog?.$id || ''}
-                                targetType="trailer"
-                                 commentCount={trailerCommentCount?.count || 0}
-                                hasNewComments={trailerCommentCount?.hasNewComments || false}
-                                className="items-center"
-                            >
-                                <Input id="trailer" value={trailer} onChange={handleTrailerChange} placeholder="Breaking news, Exclusive..." disabled={isInRevertMode} />
-                            </CommentableInput>
-                        )}
-                    </div>
-                    <div className="md:col-span-2">
-                        <Label htmlFor="title">Title</Label>
-                        <div className="relative">
-                            {hideComments || isInRevertMode ? (
-                                <Input 
-                                    id="title" 
-                                    value={title} 
-                                    onChange={handleTitleChange} 
-                                    placeholder="Article title" 
-                                    className="pr-20" 
-                                    disabled={isInRevertMode}
-                                />
-                            ) : (
-                                <CommentableInput
-                                    articleId={articleId}
-                                    blogId={currentBlog?.$id || ''}
-                                    targetType="title"
-                                     commentCount={titleCommentCount?.count || 0}
-                                    hasNewComments={titleCommentCount?.hasNewComments || false}
-                                    className="items-center"
-                                >
-                                    <Input 
-                                        id="title" 
-                                        value={title} 
-                                        onChange={handleTitleChange} 
-                                        placeholder="Article title" 
-                                        className="pr-20" 
-                                        disabled={isInRevertMode}
-                                    />
-                                </CommentableInput>
-                            )}
-                            <div className="absolute right-3 mr-2 top-1/2 -translate-y-1/2 flex items-center space-x-2">
-                                <Checkbox id="live" checked={live} onCheckedChange={(checked) => handleLiveChange(checked === true)} disabled={isInRevertMode} />
-                                <Label htmlFor="live" className="text-xs text-muted-foreground inline-label">Live</Label>
+                {/* Top form container */}
+                <div className="flex justify-center px-6 sm:px-12 lg:px-20">
+                    <div className="w-full max-w-3xl space-y-8">
+                        {/* Article meta form */}
+                        <section className="space-y-4">
+                            <div>
+                                <Label htmlFor="trailer">Trailer</Label>
+                                {hideComments || isInRevertMode ? (
+                                    <Input id="trailer" value={trailer} onChange={handleTrailerChange} placeholder="Breaking news, Exclusive..." disabled={isInRevertMode} />
+                                ) : (
+                                    <CommentableInput
+                                        articleId={articleId}
+                                        blogId={currentBlog?.$id || ''}
+                                        targetType="trailer"
+                                         commentCount={trailerCommentCount?.count || 0}
+                                        hasNewComments={trailerCommentCount?.hasNewComments || false}
+                                        className="items-center"
+                                    >
+                                        <Input id="trailer" value={trailer} onChange={handleTrailerChange} placeholder="Breaking news, Exclusive..." disabled={isInRevertMode} />
+                                    </CommentableInput>
+                                )}
                             </div>
-                        </div>
-                    </div>
-                    <div>
-                        <Label htmlFor="subtitle">Subtitle</Label>
-                        {hideComments || isInRevertMode ? (
-                            <Textarea 
-                                id="subtitle" 
-                                ref={subtitleRef}
-                                value={subtitle} 
-                                onChange={handleSubtitleChange} 
-                                placeholder="Short summary (optional)" 
-                                disabled={isInRevertMode} 
-                                rows={1}
-                                className="min-h-[40px] text-sm w-full min-w-0"
-                                style={{ overflow: 'hidden', resize: 'none', width: '100%', maxWidth: '100%' }}
-                            />
-                        ) : (
-                            <CommentableInput
-                                articleId={articleId}
-                                blogId={currentBlog?.$id || ''}
-                                targetType="subtitle"
-                                 commentCount={subtitleCommentCount?.count || 0}
-                                hasNewComments={subtitleCommentCount?.hasNewComments || false}
-                                className="items-start"
-                            >
-                                <Textarea 
-                                    id="subtitle" 
-                                    ref={subtitleRef}
-                                    value={subtitle} 
-                                    onChange={handleSubtitleChange} 
-                                    placeholder="Short summary (optional)" 
-                                    disabled={isInRevertMode} 
-                                    rows={1}
-                                    className="min-h-[40px] text-sm w-full min-w-0"
-                                    style={{ overflow: 'hidden', resize: 'none', width: '100%', maxWidth: '100%' }}
-                                />
-                            </CommentableInput>
-                        )}
-                    </div>
-                    <div>
-                        <Label htmlFor="status">Status</Label>
-                        <Select value={status} onValueChange={handleStatusChange} disabled={isInRevertMode}>
-                            <SelectTrigger>
-                                <div className="flex items-center gap-2">
-                                    <div className={`w-3 h-3 rounded-full ${
-                                        status === 'unpublish' ? 'bg-gray-400' :
-                                        status === 'publish' ? 'bg-green-500' :
-                                        status === 'draft' ? 'bg-blue-500' :
-                                        status === 'archive' ? 'bg-orange-500' :
-                                        'bg-gray-300'
-                                    }`} />
-                                    <span className="text-sm">
-                                        {status === 'publish' ? 'Publish' :
-                                         status === 'draft' ? 'Draft' :
-                                         status === 'archive' ? 'Archive' :
-                                         'Select status'}
-                                    </span>
+                            <div className="md:col-span-2">
+                                <Label htmlFor="title">Title</Label>
+                                <div className="relative">
+                                    {hideComments || isInRevertMode ? (
+                                        <Input 
+                                            id="title" 
+                                            value={title} 
+                                            onChange={handleTitleChange} 
+                                            placeholder="Article title" 
+                                            className="pr-20" 
+                                            disabled={isInRevertMode}
+                                        />
+                                    ) : (
+                                        <CommentableInput
+                                            articleId={articleId}
+                                            blogId={currentBlog?.$id || ''}
+                                            targetType="title"
+                                             commentCount={titleCommentCount?.count || 0}
+                                            hasNewComments={titleCommentCount?.hasNewComments || false}
+                                            className="items-center"
+                                        >
+                                            <Input 
+                                                id="title" 
+                                                value={title} 
+                                                onChange={handleTitleChange} 
+                                                placeholder="Article title" 
+                                                className="pr-20" 
+                                                disabled={isInRevertMode}
+                                            />
+                                        </CommentableInput>
+                                    )}
+                                    <div className="absolute right-3 mr-2 top-1/2 -translate-y-1/2 flex items-center space-x-2">
+                                        <Checkbox id="live" checked={live} onCheckedChange={(checked) => handleLiveChange(checked === true)} disabled={isInRevertMode} />
+                                        <Label htmlFor="live" className="text-xs text-muted-foreground inline-label">Live</Label>
+                                    </div>
                                 </div>
-                            </SelectTrigger>
-                            <SelectContent>
-                                <SelectItem value="publish">
-                                    <div className="flex items-center gap-2">
-                                        <div className="w-3 h-3 rounded-full bg-green-500" />
-                                        <span>Publish</span>
-                                    </div>
-                                </SelectItem>
-                                <SelectItem value="draft">
-                                    <div className="flex items-center gap-2">
-                                        <div className="w-3 h-3 rounded-full bg-blue-500" />
-                                        <span>Draft</span>
-                                    </div>
-                                </SelectItem>
-                                <SelectItem value="archive">
-                                    <div className="flex items-center gap-2">
-                                        <div className="w-3 h-3 rounded-full bg-orange-500" />
-                                        <span>Archive</span>
-                                    </div>
-                                </SelectItem>
-                            </SelectContent>
-                        </Select>
+                            </div>
+                            <div>
+                                <Label htmlFor="subtitle">Subtitle</Label>
+                                {hideComments || isInRevertMode ? (
+                                    <Textarea 
+                                        id="subtitle" 
+                                        ref={subtitleRef}
+                                        value={subtitle} 
+                                        onChange={handleSubtitleChange} 
+                                        placeholder="Short summary (optional)" 
+                                        disabled={isInRevertMode} 
+                                        rows={1}
+                                        className="min-h-[40px] text-sm w-full min-w-0"
+                                        style={{ overflow: 'hidden', resize: 'none', width: '100%', maxWidth: '100%' }}
+                                    />
+                                ) : (
+                                    <CommentableInput
+                                        articleId={articleId}
+                                        blogId={currentBlog?.$id || ''}
+                                        targetType="subtitle"
+                                         commentCount={subtitleCommentCount?.count || 0}
+                                        hasNewComments={subtitleCommentCount?.hasNewComments || false}
+                                        className="items-start"
+                                    >
+                                        <Textarea 
+                                            id="subtitle" 
+                                            ref={subtitleRef}
+                                            value={subtitle} 
+                                            onChange={handleSubtitleChange} 
+                                            placeholder="Short summary (optional)" 
+                                            disabled={isInRevertMode} 
+                                            rows={1}
+                                            className="min-h-[40px] text-sm w-full min-w-0"
+                                            style={{ overflow: 'hidden', resize: 'none', width: '100%', maxWidth: '100%' }}
+                                        />
+                                    </CommentableInput>
+                                )}
+                            </div>
+                            <div>
+                                <Label htmlFor="status">Status</Label>
+                                <Select value={status} onValueChange={handleStatusChange} disabled={isInRevertMode}>
+                                    <SelectTrigger>
+                                        <div className="flex items-center gap-2">
+                                            <div className={`w-3 h-3 rounded-full ${
+                                                status === 'unpublish' ? 'bg-gray-400' :
+                                                status === 'publish' ? 'bg-green-500' :
+                                                status === 'draft' ? 'bg-blue-500' :
+                                                status === 'archive' ? 'bg-orange-500' :
+                                                'bg-gray-300'
+                                            }`} />
+                                            <span className="text-sm">
+                                                {status === 'publish' ? 'Publish' :
+                                                 status === 'draft' ? 'Draft' :
+                                                 status === 'archive' ? 'Archive' :
+                                                 'Select status'}
+                                            </span>
+                                        </div>
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        <SelectItem value="publish">
+                                            <div className="flex items-center gap-2">
+                                                <div className="w-3 h-3 rounded-full bg-green-500" />
+                                                <span>Publish</span>
+                                            </div>
+                                        </SelectItem>
+                                        <SelectItem value="draft">
+                                            <div className="flex items-center gap-2">
+                                                <div className="w-3 h-3 rounded-full bg-blue-500" />
+                                                <span>Draft</span>
+                                            </div>
+                                        </SelectItem>
+                                        <SelectItem value="archive">
+                                            <div className="flex items-center gap-2">
+                                                <div className="w-3 h-3 rounded-full bg-orange-500" />
+                                                <span>Archive</span>
+                                            </div>
+                                        </SelectItem>
+                                    </SelectContent>
+                                </Select>
+                            </div>
+                            <div className="mt-6">
+                                {memoizedAuthorSelector}
+                            </div>
+                            <div className="mt-6">
+                                {memoizedCategorySelector}
+                            </div>
+                        </section>
                     </div>
-                    <div className="mt-6">
-                        {memoizedAuthorSelector}
-                    </div>
-                    <div className="mt-6">
-                        {memoizedCategorySelector}
-                    </div>
-                </section>
+                </div>
 
-                {/* Sections composer */}
-                <section className="space-y-4">
-                    <div>
-                        <h2 className="text-base font-medium mb-3">Sections</h2>
-                    </div>
+                {/* Edge-to-edge border */}
+                <div className="border-t border-border w-full my-16"></div>
+
+                {/* Bottom form container */}
+                <div className="flex justify-center px-6 sm:px-12 lg:px-20">
+                    <div className="w-full max-w-3xl space-y-8">
+                        {/* Sections composer */}
+                        <section className="space-y-4">
+                            <div>
+                                <h2 className="text-base font-medium mb-3">Body</h2>
+                            </div>
 
                     {(localSections?.length ?? 0) === 0 ? (
                         <div className="flex flex-col items-center justify-center py-8 px-4 text-center border-2 border-dashed border-muted-foreground/25 rounded-lg bg-muted/5">
@@ -3589,28 +3600,30 @@ function ArticleEditor({ articleId, userId, user, onBack }: { articleId: string;
                             })}
                         </div>
                     )}
-                </section>
+                    </section>
 
-                {/* Redirect URL */}
-                <section className="space-y-4">
-                    <div>
-                        <Label htmlFor="redirect">Redirect URL</Label>
-                        {hideComments || isInRevertMode ? (
-                            <Input id="redirect" value={redirect} onChange={handleRedirectChange} placeholder="Redirect URL (optional)" disabled={isInRevertMode} />
-                        ) : (
-                            <CommentableInput
-                                articleId={articleId}
-                                blogId={currentBlog?.$id || ''}
-                                targetType="redirect"
-                                 commentCount={redirectCommentCount?.count || 0}
-                                hasNewComments={redirectCommentCount?.hasNewComments || false}
-                                className="items-center"
-                            >
+                    {/* Redirect URL */}
+                    <section className="space-y-4">
+                        <div>
+                            <Label htmlFor="redirect">Redirect URL</Label>
+                            {hideComments || isInRevertMode ? (
                                 <Input id="redirect" value={redirect} onChange={handleRedirectChange} placeholder="Redirect URL (optional)" disabled={isInRevertMode} />
-                            </CommentableInput>
-                        )}
+                            ) : (
+                                <CommentableInput
+                                    articleId={articleId}
+                                    blogId={currentBlog?.$id || ''}
+                                    targetType="redirect"
+                                     commentCount={redirectCommentCount?.count || 0}
+                                    hasNewComments={redirectCommentCount?.hasNewComments || false}
+                                    className="items-center"
+                                >
+                                    <Input id="redirect" value={redirect} onChange={handleRedirectChange} placeholder="Redirect URL (optional)" disabled={isInRevertMode} />
+                                </CommentableInput>
+                            )}
+                        </div>
+                        </section>
                     </div>
-                </section>
+                </div>
 
 
                 {/* Sticky bottom actions — stop before agent rail */}
@@ -3688,7 +3701,6 @@ function ArticleEditor({ articleId, userId, user, onBack }: { articleId: string;
                             </Button>
                         </div>
                     </div>
-                </div>
                 </div>
             </div>
 

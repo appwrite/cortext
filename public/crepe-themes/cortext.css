@@ -253,11 +253,6 @@
   background-color: var(--crepe-color-on-surface) !important; /* Match regular text color */
 }
 
-/* Slash menu icons */
-.milkdown .milkdown-slash-menu .menu-groups .menu-group li svg {
-  color: oklch(0.3 0 0) !important; /* Darker for better visibility */
-  fill: oklch(0.3 0 0) !important; /* Darker for better visibility */
-}
 
 /* Drop indicator lines - make them match regular text color */
 .milkdown .crepe-drop-cursor {
@@ -313,11 +308,6 @@
 
 .dark .milkdown .milkdown-table-block .line-handle {
   background-color: var(--crepe-color-on-surface) !important; /* Match regular text color */
-}
-
-.dark .milkdown .milkdown-slash-menu .menu-groups .menu-group li svg {
-  color: oklch(0.7 0 0) !important; /* Brighter for dark mode */
-  fill: oklch(0.7 0 0) !important; /* Brighter for dark mode */
 }
 
 /* Dark mode drop indicator lines */
@@ -392,6 +382,98 @@
 /* Override blockquote border to use default text color instead of yellow selection color */
 .milkdown .ProseMirror blockquote::before {
   background: var(--crepe-color-on-background) !important; /* Use default text color */
+}
+
+/* Style HR divider as 3 centered circles using CSS */
+.milkdown .ProseMirror hr {
+  border: none !important;
+  height: 20px !important;
+  margin: 2rem 0 !important; /* Add some spacing */
+  position: relative !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  background-color: transparent !important; /* No background color */
+}
+
+.milkdown .ProseMirror hr::before {
+  content: '' !important;
+  position: absolute !important;
+  top: 50% !important;
+  left: 50% !important;
+  transform: translate(-50%, -50%) !important;
+  width: 60px !important;
+  height: 6px !important;
+  background-image: 
+    radial-gradient(circle, var(--crepe-color-on-background) 2px, transparent 2px),
+    radial-gradient(circle, var(--crepe-color-on-background) 2px, transparent 2px),
+    radial-gradient(circle, var(--crepe-color-on-background) 2px, transparent 2px);
+  background-size: 6px 6px, 6px 6px, 6px 6px;
+  background-position: 0% 50%, 50% 50%, 100% 50%;
+  background-repeat: no-repeat;
+}
+
+/* Prevent layout shift when HR is selected */
+.milkdown .ProseMirror hr.ProseMirror-selectednode {
+  margin: 2rem 0 !important; /* Maintain margin when selected */
+  position: relative !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  background-color: var(--crepe-color-selected) !important; /* Yellow background when selected */
+  color: #000000 !important; /* Black text when selected */
+}
+
+.milkdown .ProseMirror hr.ProseMirror-selectednode::before {
+  content: '' !important;
+  position: absolute !important;
+  top: 50% !important;
+  left: 50% !important;
+  transform: translate(-50%, -50%) !important;
+  width: 60px !important;
+  height: 6px !important;
+  background-image: 
+    radial-gradient(circle, #000000 2px, transparent 2px),
+    radial-gradient(circle, #000000 2px, transparent 2px),
+    radial-gradient(circle, #000000 2px, transparent 2px);
+  background-size: 6px 6px, 6px 6px, 6px 6px;
+  background-position: 0% 50%, 50% 50%, 100% 50%;
+  background-repeat: no-repeat;
+}
+
+/* Style slash menu to match actions bar - override block-edit.css */
+.milkdown .milkdown-slash-menu {
+  background: var(--crepe-color-on-background) !important; /* Same as text color */
+  color: var(--crepe-color-background) !important; /* Same as background color */
+  box-shadow: none !important; /* Remove shadow */
+  border-radius: 0.5rem !important; /* Match app card border radius */
+}
+
+.milkdown .milkdown-slash-menu .menu-groups .menu-group li {
+  color: var(--crepe-color-background) !important; /* Same as background color */
+}
+
+.milkdown .milkdown-slash-menu .menu-groups .menu-group li:hover,
+.milkdown .milkdown-slash-menu .menu-groups .menu-group li.hover {
+  background: rgba(255, 255, 255, 0.1) !important; /* Light hover effect */
+}
+
+.milkdown .milkdown-slash-menu .menu-groups .menu-group li:active,
+.milkdown .milkdown-slash-menu .menu-groups .menu-group li.active {
+  background: rgba(255, 255, 255, 0.2) !important; /* Active state */
+}
+
+.milkdown .milkdown-slash-menu .menu-groups .menu-group li svg {
+  color: var(--crepe-color-background) !important; /* Same as background color */
+  fill: var(--crepe-color-background) !important; /* Same as background color */
+}
+
+.milkdown .milkdown-slash-menu .menu-groups .menu-group li.active svg {
+  opacity: 0.6 !important; /* 60% opacity for active state */
+}
+
+.milkdown .milkdown-slash-menu .menu-groups .menu-group li > span {
+  color: var(--crepe-color-background) !important; /* Same as background color */
 }
 
 /* Add arrow pointing from toolbar to selected text */
