@@ -178,27 +178,6 @@ export default function CrepeEditor({
               display: flex !important;
             }
             
-                   /* Style links with same blue background as unpublished changes alert */
-                   .milkdown .ProseMirror a {
-                     background-color: rgba(239, 246, 255, 0.9) !important; /* blue-50/90 - same as unpublished alert */
-                     padding: 0.125rem 0.25rem !important;
-                     border-radius: 0.25rem !important;
-                     text-decoration: none !important;
-                     transition: background-color 0.2s ease !important;
-                   }
-                   
-                   .milkdown .ProseMirror a:hover {
-                     background-color: rgba(239, 246, 255, 1) !important; /* blue-50 full opacity on hover */
-                   }
-                   
-            /* Dark mode link styling to match unpublished changes alert */
-            .dark .milkdown .ProseMirror a {
-              background-color: rgba(30, 58, 138, 0.5) !important; /* blue-950/50 - same as unpublished alert dark mode */
-            }
-            
-            .dark .milkdown .ProseMirror a:hover {
-              background-color: rgba(30, 58, 138, 0.7) !important; /* blue-950 with higher opacity on hover */
-            }
             
             /* Hide H1 options from slash menu - multiple approaches */
             .milkdown .milkdown-slash-menu [data-id="h1"],
