@@ -2,6 +2,7 @@ import { createFileRoute, Link, useNavigate, useSearch } from '@tanstack/react-r
 import { useAuth } from '@/hooks/use-auth'
 import { useEffect, useMemo, useRef, useState, useCallback, memo } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { useEditor, Editable } from '@wysimark/react'
 import { db, createInitialRevision, createUpdateRevision, createRevertRevision } from '@/lib/appwrite/db'
 import { useLatestRevision } from '@/hooks/use-latest-revision'
 import { useArticle, ArticleProvider } from '@/contexts/article-context'
@@ -3293,7 +3294,7 @@ function ArticleEditor({ articleId, userId, user, onBack }: { articleId: string;
                 </div>
 
                 {/* Edge-to-edge border */}
-                <div className="border-t border-border w-full my-16"></div>
+                <div className="border-t border-border w-full my-8"></div>
 
                 {/* Bottom form container */}
                 <div className="flex justify-center px-6 sm:px-12 lg:px-20">
@@ -3997,35 +3998,15 @@ const QuoteEditor = memo(({ section, onLocalChange, disabled = false }: { sectio
 
 const TextEditor = memo(({ section, onLocalChange, disabled = false }: { section: any; onLocalChange: (data: Partial<any>) => void; disabled?: boolean }) => {
     const [value, setValue] = useState(section.content ?? '')
-    const ref = useRef<HTMLTextAreaElement | null>(null)
     const onLocalChangeRef = useRef(onLocalChange)
     const isInternalUpdate = useRef(false)
     const debounceTimeoutRef = useRef<NodeJS.Timeout | null>(null)
     onLocalChangeRef.current = onLocalChange
 
-    // Function to adjust textarea height (optimized)
-    const adjustHeight = useCallback(() => {
-        if (!ref.current) return
-        // Reset height to auto to get accurate scrollHeight
-        ref.current.style.height = 'auto'
-        const scrollHeight = ref.current.scrollHeight
-        ref.current.style.height = `${scrollHeight}px`
-    }, [])
-
-    // Debounced height adjustment
-    const debouncedAdjustHeight = useCallback(() => {
-        if (debounceTimeoutRef.current) {
-            clearTimeout(debounceTimeoutRef.current)
-        }
-        debounceTimeoutRef.current = setTimeout(() => {
-            adjustHeight()
-        }, 16) // ~60fps
-    }, [adjustHeight])
-
-    // Adjust height when value changes (debounced)
-    useEffect(() => {
-        debouncedAdjustHeight()
-    }, [value])
+    // Create Wysimark editor instance
+    const editor = useEditor({
+        minHeight: 200,
+    })
 
     // Sync external changes to local state (when section content changes externally)
     useEffect(() => {
@@ -4033,24 +4014,6 @@ const TextEditor = memo(({ section, onLocalChange, disabled = false }: { section
             setValue(section.content ?? '')
         }
     }, [section.content, value])
-
-    // Adjust height on initial render and window resize
-    useEffect(() => {
-        const handleResize = () => adjustHeight()
-        
-        // Initial adjustment
-        const timer = setTimeout(() => {
-            adjustHeight()
-        }, 0)
-        
-        // Add resize listener
-        window.addEventListener('resize', handleResize)
-        
-        return () => {
-            clearTimeout(timer)
-            window.removeEventListener('resize', handleResize)
-        }
-    }, [adjustHeight])
 
     // Debounced parent notification (only on internal changes)
     useEffect(() => {
@@ -4076,25 +4039,22 @@ const TextEditor = memo(({ section, onLocalChange, disabled = false }: { section
         }
     }, [])
 
-    const handleChange = useCallback((e: React.ChangeEvent<HTMLTextAreaElement>) => {
+    const handleChange = useCallback((markdown: string) => {
         isInternalUpdate.current = true
-        setValue(e.target.value)
+        setValue(markdown)
     }, [])
 
     return (
         <div className="space-y-1 w-full min-w-0">
             <Label htmlFor={`text-${section.id}`}>Text</Label>
-            <Textarea
-                id={`text-${section.id}`}
-                ref={ref}
-                value={value}
-                onChange={handleChange}
-                placeholder="Write text…"
-                rows={1}
-                className="min-h-[40px] text-sm w-full min-w-0"
-                style={{ overflow: 'hidden', resize: 'none', width: '100%', maxWidth: '100%' }}
-                disabled={disabled}
-            />
+            <div className={cn("min-w-0 wysimark-editor-container", disabled && 'pointer-events-none opacity-50')}>
+                <Editable
+                    editor={editor}
+                    value={value}
+                    onChange={handleChange}
+                    placeholder="Write text in Markdown…"
+                />
+            </div>
         </div>
     )
 })

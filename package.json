@@ -55,6 +55,7 @@
     "@tanstack/react-router": "^1.130.12",
     "@tanstack/react-router-devtools": "^1.130.13",
     "@vitejs/plugin-react-swc": "^3.10.2",
+    "@wysimark/react": "^3.0.20",
     "appwrite": "^20.1.0",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",

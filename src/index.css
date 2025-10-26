@@ -366,3 +366,277 @@
   max-width: 100%;
   box-sizing: border-box;
 }
+
+/* Override Wysimark editor border radius - remove rounded corners */
+.wysimark-editor-container div[class^="css-"] {
+  border-radius: 0 !important;
+}
+
+/* Dark mode styling for Wysimark editor - apply to all internal elements */
+.dark .wysimark-editor-container {
+  color-scheme: dark;
+}
+
+/* Dark mode - override backgrounds to match dark theme */
+.dark .wysimark-editor-container > * {
+  background-color: var(--card) !important;
+}
+
+.dark .wysimark-editor-container div[class^="css-"] {
+  background-color: var(--card) !important;
+  border-color: var(--border) !important;
+}
+
+/* Dark mode - ensure all text is visible */
+.dark .wysimark-editor-container,
+.dark .wysimark-editor-container > *,
+.dark .wysimark-editor-container p,
+.dark .wysimark-editor-container span,
+.dark .wysimark-editor-container div {
+  color: var(--card-foreground) !important;
+}
+
+/* Dark mode - style toolbar buttons */
+.dark .wysimark-editor-container button,
+.dark .wysimark-editor-container [role="button"] {
+  color: var(--card-foreground) !important;
+  background-color: transparent !important;
+}
+
+.dark .wysimark-editor-container button:hover,
+.dark .wysimark-editor-container [role="button"]:hover {
+  background-color: var(--accent) !important;
+  color: var(--accent-foreground) !important;
+}
+
+/* Dark mode - placeholder text */
+.dark .wysimark-editor-container ::placeholder,
+.dark .wysimark-editor-container [data-placeholder] {
+  color: var(--muted-foreground) !important;
+  opacity: 0.6;
+}
+
+/* Dark mode - text selection */
+.dark .wysimark-editor-container ::selection {
+  background-color: oklch(0.3 0 0) !important;
+}
+
+/* Dark mode - ProseMirror editor content area */
+.dark .wysimark-editor-container .ProseMirror {
+  background-color: var(--card) !important;
+  color: var(--card-foreground) !important;
+  outline: none !important;
+}
+
+.dark .wysimark-editor-container .ProseMirror p {
+  color: var(--card-foreground) !important;
+}
+
+/* Dark mode - ensure the main editor area has proper styling */
+.dark .wysimark-editor-container [contenteditable] {
+  background-color: var(--card) !important;
+  color: var(--card-foreground) !important;
+}
+
+/* Dark mode - links in editor */
+.dark .wysimark-editor-container a {
+  color: var(--primary) !important;
+}
+
+/* Dark mode - code blocks and inline code */
+.dark .wysimark-editor-container code {
+  background-color: var(--muted) !important;
+  color: var(--card-foreground) !important;
+}
+
+.dark .wysimark-editor-container pre {
+  background-color: var(--muted) !important;
+  color: var(--card-foreground) !important;
+}
+
+/* Dark mode - dropdown menus */
+.dark .wysimark-editor-container [role="listbox"],
+.dark .wysimark-editor-container [role="menu"],
+.dark .wysimark-editor-container .dropdown-content,
+.dark .wysimark-editor-container [data-radix-popper-content-wrapper],
+.dark .wysimark-editor-container [data-radix-menu-content],
+.dark .wysimark-editor-container [data-radix-popover-content] {
+  background-color: var(--card) !important;
+  color: var(--card-foreground) !important;
+  border: 1px solid var(--border) !important;
+}
+
+/* Dark mode - dropdown items */
+.dark .wysimark-editor-container [role="menuitem"],
+.dark .wysimark-editor-container [role="option"],
+.dark .wysimark-editor-container [role="listbox"] > * {
+  background-color: var(--card) !important;
+  color: var(--card-foreground) !important;
+}
+
+/* Dark mode - dropdown items hover/active */
+.dark .wysimark-editor-container [role="menuitem"]:hover,
+.dark .wysimark-editor-container [role="option"]:hover,
+.dark .wysimark-editor-container [role="listbox"] > *:hover {
+  background-color: var(--accent) !important;
+  color: var(--accent-foreground) !important;
+}
+
+/* Dark mode - remove unwanted borders from buttons */
+.dark .wysimark-editor-container button {
+  border: none !important;
+  border-color: transparent !important;
+}
+
+/* Dark mode - active/selected button styling */
+.dark .wysimark-editor-container button[aria-pressed="true"],
+.dark .wysimark-editor-container button[data-active="true"] {
+  background-color: var(--accent) !important;
+  color: var(--accent-foreground) !important;
+  border: none !important;
+}
+
+/* Dark mode - ensure tooltips and other popover elements are dark */
+.dark .wysimark-editor-container [role="tooltip"],
+.dark .wysimark-editor-container [data-radix-tooltip-content] {
+  background-color: var(--card) !important;
+  color: var(--card-foreground) !important;
+  border-color: var(--border) !important;
+}
+
+/* Dark mode - override any portaled dropdown/menu with light background */
+.dark [id*="radix"],
+.dark [data-radix-portal],
+.dark [data-portal],
+.dark [role="presentation"] {
+  background-color: var(--card) !important;
+  color: var(--card-foreground) !important;
+  border-color: var(--border) !important;
+}
+
+/* Dark mode - ensure all direct children of portaled elements are also dark */
+.dark [data-radix-portal] > *,
+.dark [data-portal] > *,
+.dark [role="presentation"] > * {
+  background-color: var(--card) !important;
+  color: var(--card-foreground) !important;
+}
+
+/* Dark mode - menu items in portaled menus */
+.dark [data-radix-menu-item],
+.dark [data-radix-dropdown-menu-item] {
+  background-color: var(--card) !important;
+  color: var(--card-foreground) !important;
+}
+
+.dark [data-radix-menu-item]:hover,
+.dark [data-radix-dropdown-menu-item]:hover,
+.dark [data-radix-menu-item][data-highlighted],
+.dark [data-radix-dropdown-menu-item][data-highlighted] {
+  background-color: var(--accent) !important;
+  color: var(--accent-foreground) !important;
+}
+
+/* Catch-all for any white/light backgrounds in dark mode - be very specific */
+.dark body > div > div[style*="rgb(255"] {
+  background-color: var(--card) !important;
+}
+
+.dark body > div > div[style*="rgb(255"] > * {
+  color: var(--card-foreground) !important;
+}
+
+.dark body > div > div[style*="rgb(255"] [style*="color: rgb(0"] {
+  color: var(--card-foreground) !important;
+}
+
+/* Hover states for menu items with light backgrounds */
+.dark body > div > div[style*="rgb(255"] > div:hover {
+  background-color: var(--accent) !important;
+  color: var(--accent-foreground) !important;
+}
+
+/* Dark mode - remove borders from buttons */
+.dark [data-item-type="button"] {
+  border: none !important;
+  border-color: transparent !important;
+}
+
+/* Dark mode - style specific dropdown/popover elements */
+.dark .css-7rwo4q,
+.dark [class*="css-7rwo4q"],
+.dark .css-1rcsakw,
+.dark [class*="css-1rcsakw"] {
+  background-color: var(--card) !important;
+  color: var(--card-foreground) !important;
+  border-color: var(--border) !important;
+  border-radius: 0 !important;
+  filter: drop-shadow(0 4px 6px rgb(0 0 0 / 0.3)) drop-shadow(0 2px 4px rgb(0 0 0 / 0.2)) !important;
+}
+
+/* Dark mode - text color in dropdown */
+.dark .css-7rwo4q *,
+.dark [class*="css-7rwo4q"] *,
+.dark .css-1rcsakw *,
+.dark [class*="css-1rcsakw"] * {
+  color: var(--card-foreground) !important;
+}
+
+/* Dark mode - catch all Wysimark CSS-in-JS classes that are dropdowns/menus (with white background inline) */
+.dark [class^="css-"][style*="background"] {
+  background-color: var(--card) !important;
+}
+
+/* Dark mode - ensure text in those elements is visible */
+.dark [class^="css-"][style*="background"] * {
+  color: var(--card-foreground) !important;
+}
+
+/* Dark mode - hover states for dropdown menu items */
+.dark [class^="css-"][style*="background"] > div:hover,
+.dark [class^="css-"] [role="menuitem"]:hover,
+.dark [class^="css-"] [role="option"]:hover {
+  background-color: var(--accent) !important;
+  color: var(--accent-foreground) !important;
+}
+
+/* Nuclear option: Force any element with inline white background to be dark */
+.dark body *[style*="background:white"],
+.dark body *[style*="background: white"],
+.dark body *[style*="background-color:white"],
+.dark body *[style*="background-color: white"],
+.dark body *[style*="background-color:rgb(255, 255, 255)"],
+.dark body *[style*="background-color: rgb(255, 255, 255)"] {
+  background-color: var(--card) !important;
+}
+
+.dark body *[style*="background:white"] *,
+.dark body *[style*="background: white"] *,
+.dark body *[style*="background-color:white"] *,
+.dark body *[style*="background-color: white"] * {
+  color: var(--card-foreground) !important;
+}
+
+.dark body *[style*="background:white"] > *:hover,
+.dark body *[style*="background: white"] > *:hover {
+  background-color: var(--accent) !important;
+  color: var(--accent-foreground) !important;
+}
+
+/* Dark mode - target Wysimark CSS-in-JS classes for hover states only on buttons */
+.dark [data-item-type="button"]:hover,
+.dark [class^="css-"][data-item-type="button"]:hover,
+.dark [class*=" css-"][data-item-type="button"]:hover {
+  background-color: var(--accent) !important;
+  color: var(--accent-foreground) !important;
+  border: none !important;
+}
+
+/* Dark mode - override any light hover backgrounds in Wysimark editor buttons */
+.dark .wysimark-editor-container [data-item-type="button"]:hover,
+.dark .wysimark-editor-container [class^="css-"][data-item-type="button"]:hover,
+.dark .wysimark-editor-container [class*=" css-"][data-item-type="button"]:hover {
+  background-color: var(--accent) !important;
+  color: var(--accent-foreground) !important;
+  border: none !important;
+}
