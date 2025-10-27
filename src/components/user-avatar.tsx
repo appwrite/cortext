@@ -178,8 +178,8 @@ export function UserAvatar({ user, onSignOut }: UserAvatarProps) {
       {isOpen && (
         <>
           {/* Arrow pointing to the avatar - matching notification style */}
-          <div className="absolute right-3 top-full w-0 h-0 border-l-[6px] border-r-[6px] border-b-[6px] border-l-transparent border-r-transparent border-b-border z-50" />
-          <div className="absolute right-0 top-full mt-1 w-80 bg-background border rounded-xl shadow-xl z-50 animate-in fade-in-0 zoom-in-95 duration-200 overflow-hidden">
+          <div className="absolute right-3 top-full w-0 h-0 border-l-[6px] border-r-[6px] border-b-[6px] border-l-transparent border-r-transparent border-b-border z-[70]" />
+          <div className="absolute right-0 top-full mt-1 w-80 bg-background border rounded-xl shadow-xl z-[70] animate-in fade-in-0 zoom-in-95 duration-200 overflow-hidden">
             {/* User details section */}
             <div className="p-4 space-y-4">
               {/* Email */}

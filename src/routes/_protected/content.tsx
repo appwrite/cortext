@@ -277,7 +277,7 @@ function RouteComponent() {
 
     return (
         <TeamBlogProvider userId={userId}>
-            <div className="h-dvh overflow-y-auto overscroll-none flex flex-col">
+            <div className="h-dvh overflow-y-auto overscroll-contain flex flex-col">
                 <Header userId={userId} onSignOut={() => signOut.mutate()} user={user} />
                 <Content userId={userId} user={user} />
             </div>
@@ -289,7 +289,7 @@ function Header({ userId, onSignOut, user }: { userId: string; onSignOut: () => 
     const { isDebugMode, toggleDebugMode } = useDebugMode()
     
     return (
-        <header className="sticky top-0 z-20 border-b bg-background/80 backdrop-blur supports-[backdrop-filter]:bg-background/70">
+        <header className="sticky top-0 z-[60] border-b bg-background/80 backdrop-blur supports-[backdrop-filter]:bg-background/70">
             <div className="px-6 h-16 flex items-center justify-between">
                 {/* Left side - Team/Blog Selector */}
                 <div className="flex items-center gap-6 -ml-2">
@@ -1563,12 +1563,77 @@ function ArticleEditor({ articleId, userId, user, onBack }: { articleId: string;
     const [isInRevertMode, setIsInRevertMode] = useState(false)
     const isRevertingRef = useRef(false)
 
+    // Auto-scroll during drag near viewport edges
+    const scrollIntervalRef = useRef<number | null>(null)
+    
+    const clearScrollInterval = useCallback(() => {
+        if (scrollIntervalRef.current !== null) {
+            clearInterval(scrollIntervalRef.current)
+            scrollIntervalRef.current = null
+        }
+    }, [])
+    
+    useEffect(() => {
+        if (!draggingId) {
+            clearScrollInterval()
+            return
+        }
+        
+        const handleGlobalDrag = (e: DragEvent) => {
+            const viewportHeight = window.innerHeight
+            const scrollThreshold = 100 // pixels from edge to trigger scroll
+            const scrollSpeed = 8
+            
+            // Check if near top or bottom of viewport and scroll accordingly
+            if (e.clientY < scrollThreshold) {
+                if (!scrollIntervalRef.current) {
+                    scrollIntervalRef.current = window.setInterval(() => {
+                        // Try to find and use the scrollable container
+                        const scrollContainer = document.querySelector('.h-dvh.overflow-y-auto') as HTMLElement
+                        if (scrollContainer) {
+                            scrollContainer.scrollBy({ top: -scrollSpeed, behavior: 'auto' })
+                        } else {
+                            window.scrollBy({ top: -scrollSpeed, behavior: 'auto' })
+                        }
+                    }, 16)
+                }
+            } else if (e.clientY > viewportHeight - scrollThreshold) {
+                if (!scrollIntervalRef.current) {
+                    scrollIntervalRef.current = window.setInterval(() => {
+                        // Try to find and use the scrollable container
+                        const scrollContainer = document.querySelector('.h-dvh.overflow-y-auto') as HTMLElement
+                        if (scrollContainer) {
+                            scrollContainer.scrollBy({ top: scrollSpeed, behavior: 'auto' })
+                        } else {
+                            window.scrollBy({ top: scrollSpeed, behavior: 'auto' })
+                        }
+                    }, 16)
+                }
+            } else {
+                clearScrollInterval()
+            }
+        }
+        
+        document.addEventListener('dragover', handleGlobalDrag)
+        
+        return () => {
+            clearScrollInterval()
+            document.removeEventListener('dragover', handleGlobalDrag)
+        }
+    }, [draggingId, clearScrollInterval])
+
     const onDragStart = (id: string, e: React.DragEvent) => {
         dragIdRef.current = id
         setDraggingId(id)
         e.dataTransfer.effectAllowed = 'move'
         try { e.dataTransfer.setData('text/plain', id) } catch { }
     }
+    
+    const onDragEnd = useCallback(() => {
+        setDraggingId(null)
+        setOverInfo({ id: null, where: 'below' })
+        clearScrollInterval()
+    }, [clearScrollInterval])
 
     const onDragOverRow = (id: string, e: React.DragEvent) => {
         e.preventDefault()
@@ -2460,7 +2525,7 @@ function ArticleEditor({ articleId, userId, user, onBack }: { articleId: string;
                     onToggle={() => setIsCommentsOpen(!isCommentsOpen)}
                     sections={localSections}
                 />
-                <div className="sticky top-[4.0625rem] z-5 bg-background/80 backdrop-blur supports-[backdrop-filter]:bg-background/70 border-b h-12">
+                <div className="sticky top-[4.0625rem] z-[50] bg-background/80 backdrop-blur supports-[backdrop-filter]:bg-background/70 border-b h-12">
                     <div 
                         className="px-4 sm:px-6 h-12 flex items-center justify-between"
                         style={{ 
@@ -2485,7 +2550,7 @@ function ArticleEditor({ articleId, userId, user, onBack }: { articleId: string;
                 </div>
 
                 <div 
-                    className="main-content-area flex justify-center px-6 sm:px-12 lg:px-20 py-8 pb-24"
+                    className="main-content-area flex justify-center px-6 sm:px-12 lg:px-20 py-8 pb-32"
                     style={{ 
                         marginLeft: !isMobile 
                             ? (isMinimized ? '60px' : `${chatWidth}px`) 
@@ -2575,7 +2640,7 @@ function ArticleEditor({ articleId, userId, user, onBack }: { articleId: string;
                 onToggle={() => setIsCommentsOpen(!isCommentsOpen)}
                 sections={localSections}
             />
-            <div className="sticky top-[4.0625rem] z-5 bg-background/80 backdrop-blur supports-[backdrop-filter]:bg-background/70 border-b h-12">
+            <div className="sticky top-[4.0625rem] z-[50] bg-background/80 backdrop-blur supports-[backdrop-filter]:bg-background/70 border-b h-12">
                     <div 
                         className="px-4 sm:px-6 h-12 flex items-center justify-between"
                         style={{ 
@@ -2602,7 +2667,7 @@ function ArticleEditor({ articleId, userId, user, onBack }: { articleId: string;
                             <MessageCircle className="h-4 w-4" />
                         </Button>
                         
-                        <div ref={menuRef} className="relative">
+                        <div ref={menuRef} className="relative z-[100]">
                             <Button 
                                 variant="ghost" 
                                 size="sm" 
@@ -2859,7 +2924,7 @@ function ArticleEditor({ articleId, userId, user, onBack }: { articleId: string;
             </div>
 
             <div 
-                className="main-content-area py-8 pb-24"
+                className="main-content-area py-8 pb-32"
                 style={{ 
                     marginLeft: !isMobile 
                         ? (isMinimized ? '60px' : `${chatWidth}px`) 
@@ -3352,7 +3417,7 @@ function ArticleEditor({ articleId, userId, user, onBack }: { articleId: string;
                             </div>
                         </div>
                     ) : (
-                        <div className="relative sections-table-container">
+                        <div className="relative sections-table-container pb-4">
                             {/* Sticky Add Section button positioned to the left of the table */}
                             <div 
                                 className="sticky left-0 z-10 w-0"
@@ -3462,7 +3527,7 @@ function ArticleEditor({ articleId, userId, user, onBack }: { articleId: string;
                                                             aria-label="Drag to reorder"
                                                             draggable={!isInRevertMode}
                                                             onDragStart={(e) => onDragStart(s.id, e)}
-                                                            onDragEnd={() => { setDraggingId(null); setOverInfo({ id: null, where: 'below' }) }}
+                                                            onDragEnd={onDragEnd}
                                                             className={`p-1 rounded hover:bg-accent text-muted-foreground hidden [@media(hover:hover)]:block ${isInRevertMode ? 'cursor-not-allowed opacity-50' : 'cursor-grab active:cursor-grabbing'} ${draggingId === s.id ? 'opacity-60 ring-2 ring-primary/40' : ''}`}
                                                             title={isInRevertMode ? "Disabled in revert mode" : "Drag to reorder"}
                                                             disabled={isInRevertMode}
@@ -3789,7 +3854,31 @@ function SectionEditor({ section, onLocalChange, isDragging = false, userId, dis
         return <QuoteEditor section={section} onLocalChange={onLocalChange} disabled={disabled} />
     }
     if (section.type === 'text' || section.type === 'paragraph') {
-        return <TextEditor section={section} onLocalChange={onLocalChange} disabled={disabled} />
+        return <TextEditor 
+            section={section} 
+            onLocalChange={onLocalChange} 
+            disabled={disabled}
+            toolbarConfig={{
+                toolbar: {
+                    bold: true,
+                    italic: true,
+                    underline: false,
+                    strikethrough: true,
+                    link: true,
+                    code: true,
+                    heading: false,
+                    blockquote: false,
+                    unorderedList: true,
+                    orderedList: true
+                },
+                floatingToolbar: {
+                    bold: true,
+                    italic: true,
+                    strikethrough: true,
+                    link: true
+                }
+            }}
+        />
     }
     if (section.type === 'image') {
         return <ImageEditor section={section} onLocalChange={onLocalChange} userId={userId} disabled={disabled} />
@@ -4162,14 +4251,172 @@ const markdownToHtml = (markdown: string): string => {
     return html || '<p><br></p>'
 }
 
-const TextEditor = memo(({ section, onLocalChange, disabled = false }: { section: any; onLocalChange: (data: Partial<any>) => void; disabled?: boolean }) => {
+interface TextEditorToolbarConfig {
+    toolbar?: {
+        bold?: boolean
+        italic?: boolean
+        underline?: boolean
+        strikethrough?: boolean
+        link?: boolean
+        code?: boolean
+        heading?: boolean
+        blockquote?: boolean
+        unorderedList?: boolean
+        orderedList?: boolean
+    }
+    floatingToolbar?: {
+        bold?: boolean
+        italic?: boolean
+        strikethrough?: boolean
+        link?: boolean
+    }
+}
+
+const LinkEditPopup = ({ linkElement, position, onClose, onUpdate, onUnlink }: { 
+    linkElement: HTMLAnchorElement
+    position: { x: number; y: number }
+    onClose: () => void
+    onUpdate: (newUrl: string) => void
+    onUnlink?: () => void
+}) => {
+    const [url, setUrl] = useState(linkElement.href)
+    const inputRef = useRef<HTMLInputElement>(null)
+
+    useEffect(() => {
+        inputRef.current?.focus()
+        inputRef.current?.select()
+    }, [])
+
+    const handleSubmit = (e: React.FormEvent) => {
+        e.preventDefault()
+        if (url && url !== linkElement.href) {
+            onUpdate(url)
+        }
+        onClose()
+    }
+
+    const handleUnlink = () => {
+        if (linkElement.parentNode) {
+            const textNode = document.createTextNode(linkElement.textContent || '')
+            linkElement.parentNode.replaceChild(textNode, linkElement)
+            onUnlink?.()
+        }
+        onClose()
+    }
+
+    const linkText = linkElement.textContent || linkElement.innerText
+
+    return (
+        <div
+            className="link-popup fixed z-50 bg-popover border border-border rounded-md shadow-md p-3 w-80"
+            style={{ left: position.x, top: position.y }}
+            onClick={(e) => e.stopPropagation()}
+        >
+            <div className="space-y-2">
+                <div className="text-xs font-medium mb-1">Edit Link</div>
+                <form onSubmit={handleSubmit} className="space-y-2">
+                    <Input
+                        ref={inputRef}
+                        value={url}
+                        onChange={(e) => setUrl(e.target.value)}
+                        className="text-xs"
+                        placeholder="Enter URL"
+                    />
+                    <div className="flex gap-1">
+                        <Button
+                            type="submit"
+                            variant="default"
+                            size="sm"
+                            className="h-7 px-3 text-xs"
+                        >
+                            Update
+                        </Button>
+                        <Button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            className="h-7 px-3 text-xs"
+                            onClick={handleUnlink}
+                        >
+                            Unlink
+                        </Button>
+                        <Button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            className="h-7 px-3 text-xs"
+                            onClick={onClose}
+                        >
+                            Cancel
+                        </Button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    )
+}
+
+const TextEditor = memo(({ 
+    section, 
+    onLocalChange, 
+    disabled = false,
+    toolbarConfig = {
+        toolbar: {
+            bold: true,
+            italic: true,
+            underline: true,
+            strikethrough: true,
+            link: true,
+            code: true,
+            heading: true,
+            blockquote: true,
+            unorderedList: true,
+            orderedList: true
+        },
+        floatingToolbar: {
+            bold: true,
+            italic: true,
+            link: true
+        }
+    }
+}: { 
+    section: any; 
+    onLocalChange: (data: Partial<any>) => void; 
+    disabled?: boolean;
+    toolbarConfig?: TextEditorToolbarConfig;
+}) => {
     const [value, setValue] = useState(section.content ?? '')
     const [linkPopup, setLinkPopup] = useState<{ element: HTMLAnchorElement; x: number; y: number } | null>(null)
+    const [floatingToolbar, setFloatingToolbar] = useState<{ x: number; y: number } | null>(null)
     const editorRef = useRef<HTMLDivElement | null>(null)
     const onLocalChangeRef = useRef(onLocalChange)
     const isInternalUpdate = useRef(false)
     const debounceTimeoutRef = useRef<NodeJS.Timeout | null>(null)
     onLocalChangeRef.current = onLocalChange
+
+    // Merge config with defaults
+    const config = {
+        toolbar: {
+            bold: true,
+            italic: true,
+            underline: true,
+            strikethrough: true,
+            link: true,
+            code: true,
+            heading: true,
+            blockquote: true,
+            unorderedList: true,
+            orderedList: true,
+            ...toolbarConfig?.toolbar
+        },
+        floatingToolbar: {
+            bold: true,
+            italic: true,
+            strikethrough: true,
+            link: true,
+            ...toolbarConfig?.floatingToolbar
+        }
+    }
 
     // Initialize editor content
     useEffect(() => {
@@ -4207,6 +4454,30 @@ const TextEditor = memo(({ section, onLocalChange, disabled = false }: { section
                 clearTimeout(debounceTimeoutRef.current)
             }
         }
+    }, [])
+
+    // Track selection changes for floating toolbar
+    useEffect(() => {
+        const handleSelectionChange = () => {
+            const selection = window.getSelection()
+            if (selection && selection.rangeCount > 0 && !selection.isCollapsed) {
+                const range = selection.getRangeAt(0)
+                const rect = range.getBoundingClientRect()
+                
+                // Check if selection is within editor
+                if (editorRef.current && editorRef.current.contains(range.commonAncestorContainer)) {
+                    setFloatingToolbar({
+                        x: rect.left + (rect.width / 2),
+                        y: rect.top - 40
+                    })
+                }
+            } else {
+                setFloatingToolbar(null)
+            }
+        }
+
+        document.addEventListener('selectionchange', handleSelectionChange)
+        return () => document.removeEventListener('selectionchange', handleSelectionChange)
     }, [])
 
     const handleContentChange = useCallback(() => {
@@ -4341,161 +4612,187 @@ const TextEditor = memo(({ section, onLocalChange, disabled = false }: { section
             {/* Toolbar */}
             <div className="border border-input rounded-md">
                 <div className="flex items-center gap-0.5 p-1 border-b border-input bg-muted/20 rounded-t-md">
-                    <Button
-                        type="button"
-                        variant="ghost"
-                        size="sm"
-                        className="h-8 w-8 p-0"
-                        onClick={() => execCommand('bold')}
+                    {config.toolbar.bold && (
+                        <Button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            className="h-8 w-8 p-0"
+                            onClick={() => execCommand('bold')}
                 disabled={disabled}
-                    >
-                        <Bold className="h-4 w-4" />
-                    </Button>
-                    <Button
-                        type="button"
-                        variant="ghost"
-                        size="sm"
-                        className="h-8 w-8 p-0"
-                        onClick={() => execCommand('italic')}
-                        disabled={disabled}
-                    >
-                        <Italic className="h-4 w-4" />
-                    </Button>
-                    <Button
-                        type="button"
-                        variant="ghost"
-                        size="sm"
-                        className="h-8 w-8 p-0"
-                        onClick={() => execCommand('underline')}
-                        disabled={disabled}
-                    >
-                        <Underline className="h-4 w-4" />
-                    </Button>
-                    <Button
-                        type="button"
-                        variant="ghost"
-                        size="sm"
-                        className="h-8 w-8 p-0"
-                        onClick={() => execCommand('strikeThrough')}
-                        disabled={disabled}
-                    >
-                        <Strikethrough className="h-4 w-4" />
-                    </Button>
-                    <div className="h-6 w-px bg-border mx-1" />
-                    <Button
-                        type="button"
-                        variant="ghost"
-                        size="sm"
-                        className="h-8 w-8 p-0"
-                        onClick={() => {
-                            const url = prompt('Enter URL:')
-                            if (url) execCommand('createLink', url)
-                        }}
-                        disabled={disabled}
-                    >
-                        <LinkIcon className="h-4 w-4" />
-                    </Button>
-                    <Button
-                        type="button"
-                        variant="ghost"
-                        size="sm"
-                        className="h-8 w-8 p-0"
-                        onClick={() => {
-                            const selection = window.getSelection()
-                            if (selection && selection.rangeCount > 0) {
-                                const range = selection.getRangeAt(0)
-                                const selectedText = range.toString()
-                                
-                                if (selectedText) {
-                                    // Check if already in a code tag
-                                    let node: Node | null = range.commonAncestorContainer
-                                    while (node && node.nodeType !== Node.ELEMENT_NODE) {
-                                        node = node.parentNode
-                                    }
-                                    let element = node as HTMLElement | null
-                                    while (element && element.tagName !== 'CODE' && element.parentElement) {
-                                        element = element.parentElement
-                                    }
+                        >
+                            <Bold className="h-4 w-4" />
+                        </Button>
+                    )}
+                    {config.toolbar.italic && (
+                        <Button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            className="h-8 w-8 p-0"
+                            onClick={() => execCommand('italic')}
+                            disabled={disabled}
+                        >
+                            <Italic className="h-4 w-4" />
+                        </Button>
+                    )}
+                    {config.toolbar.underline && (
+                        <Button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            className="h-8 w-8 p-0"
+                            onClick={() => execCommand('underline')}
+                            disabled={disabled}
+                        >
+                            <Underline className="h-4 w-4" />
+                        </Button>
+                    )}
+                    {config.toolbar.strikethrough && (
+                        <Button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            className="h-8 w-8 p-0"
+                            onClick={() => execCommand('strikeThrough')}
+                            disabled={disabled}
+                        >
+                            <Strikethrough className="h-4 w-4" />
+                        </Button>
+                    )}
+                    {(config.toolbar.bold || config.toolbar.italic || config.toolbar.underline || config.toolbar.strikethrough) && 
+                     (config.toolbar.link || config.toolbar.code) && 
+                     <div className="h-6 w-px bg-border mx-1" />}
+                    {config.toolbar.link && (
+                        <Button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            className="h-8 w-8 p-0"
+                            onClick={() => {
+                                const url = prompt('Enter URL:')
+                                if (url) execCommand('createLink', url)
+                            }}
+                            disabled={disabled}
+                        >
+                            <LinkIcon className="h-4 w-4" />
+                        </Button>
+                    )}
+                    {config.toolbar.code && (
+                        <Button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            className="h-8 w-8 p-0"
+                            onClick={() => {
+                                const selection = window.getSelection()
+                                if (selection && selection.rangeCount > 0) {
+                                    const range = selection.getRangeAt(0)
+                                    const selectedText = range.toString()
                                     
-                                    if (element && element.tagName === 'CODE' && element.parentNode) {
-                                        // Unwrap: replace code element with its text content
-                                        const textNode = document.createTextNode(selectedText)
-                                        element.parentNode.replaceChild(textNode, element)
-                                        handleContentChange()
+                                    if (selectedText) {
+                                        // Check if already in a code tag
+                                        let node: Node | null = range.commonAncestorContainer
+                                        while (node && node.nodeType !== Node.ELEMENT_NODE) {
+                                            node = node.parentNode
+                                        }
+                                        let element = node as HTMLElement | null
+                                        while (element && element.tagName !== 'CODE' && element.parentElement) {
+                                            element = element.parentElement
+                                        }
+                                        
+                                        if (element && element.tagName === 'CODE' && element.parentNode) {
+                                            // Unwrap: replace code element with its text content
+                                            const textNode = document.createTextNode(selectedText)
+                                            element.parentNode.replaceChild(textNode, element)
+                                            handleContentChange()
+                                        } else {
+                                            // Wrap: create code element
+                                            const codeElement = document.createElement('code')
+                                            codeElement.textContent = selectedText
+                                            range.deleteContents()
+                                            range.insertNode(codeElement)
+                                            handleContentChange()
+                                        }
                                     } else {
-                                        // Wrap: create code element
-                                        const codeElement = document.createElement('code')
-                                        codeElement.textContent = selectedText
-                                        range.deleteContents()
-                                        range.insertNode(codeElement)
-                                        handleContentChange()
-                                    }
-                                } else {
-                                    // No selection, prompt for text
-                                    const code = prompt('Enter code:')
-                                    if (code) {
-                                        const codeElement = document.createElement('code')
-                                        codeElement.textContent = code
-                                        range.insertNode(codeElement)
-                                        handleContentChange()
+                                        // No selection, prompt for text
+                                        const code = prompt('Enter code:')
+                                        if (code) {
+                                            const codeElement = document.createElement('code')
+                                            codeElement.textContent = code
+                                            range.insertNode(codeElement)
+                                            handleContentChange()
+                                        }
                                     }
                                 }
-                            }
-                        }}
-                        disabled={disabled}
-                    >
-                        <Code className="h-4 w-4" />
-                    </Button>
-                    <div className="h-6 w-px bg-border mx-1" />
-                    <Button
-                        type="button"
-                        variant="ghost"
-                        size="sm"
-                        className="h-8 w-8 p-0"
-                        onClick={() => {
-                            const heading = prompt('Enter heading text:')
-                            if (heading) {
-                                document.execCommand('formatBlock', false, 'h2')
-                                editorRef.current?.focus()
-                            }
-                        }}
-                        disabled={disabled}
-                    >
-                        <Heading1 className="h-4 w-4" />
-                    </Button>
-                    <Button
-                        type="button"
-                        variant="ghost"
-                        size="sm"
-                        className="h-8 w-8 p-0"
-                        onClick={() => {
-                            execCommand('formatBlock', 'blockquote')
-                        }}
-                        disabled={disabled}
-                    >
-                        <Quote className="h-4 w-4" />
-                    </Button>
-                    <div className="h-6 w-px bg-border mx-1" />
-                    <Button
-                        type="button"
-                        variant="ghost"
-                        size="sm"
-                        className="h-8 w-8 p-0"
-                        onClick={() => execCommand('insertUnorderedList')}
-                        disabled={disabled}
-                    >
-                        <List className="h-4 w-4" />
-                    </Button>
-                    <Button
-                        type="button"
-                        variant="ghost"
-                        size="sm"
-                        className="h-8 w-8 p-0"
-                        onClick={() => execCommand('insertOrderedList')}
-                        disabled={disabled}
-                    >
-                        <ListOrdered className="h-4 w-4" />
-                    </Button>
+                            }}
+                            disabled={disabled}
+                        >
+                            <Code className="h-4 w-4" />
+                        </Button>
+                    )}
+                    {(config.toolbar.link || config.toolbar.code) && 
+                     (config.toolbar.heading || config.toolbar.blockquote) && 
+                     <div className="h-6 w-px bg-border mx-1" />}
+                    {config.toolbar.heading && (
+                        <Button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            className="h-8 w-8 p-0"
+                            onClick={() => {
+                                const heading = prompt('Enter heading text:')
+                                if (heading) {
+                                    document.execCommand('formatBlock', false, 'h2')
+                                    editorRef.current?.focus()
+                                }
+                            }}
+                            disabled={disabled}
+                        >
+                            <Heading1 className="h-4 w-4" />
+                        </Button>
+                    )}
+                    {config.toolbar.blockquote && (
+                        <Button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            className="h-8 w-8 p-0"
+                            onClick={() => {
+                                execCommand('formatBlock', 'blockquote')
+                            }}
+                            disabled={disabled}
+                        >
+                            <Quote className="h-4 w-4" />
+                        </Button>
+                    )}
+                    {(config.toolbar.heading || config.toolbar.blockquote) && 
+                     (config.toolbar.unorderedList || config.toolbar.orderedList) && 
+                     <div className="h-6 w-px bg-border mx-1" />}
+                    {config.toolbar.unorderedList && (
+                        <Button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            className="h-8 w-8 p-0"
+                            onClick={() => execCommand('insertUnorderedList')}
+                            disabled={disabled}
+                        >
+                            <List className="h-4 w-4" />
+                        </Button>
+                    )}
+                    {config.toolbar.orderedList && (
+                        <Button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            className="h-8 w-8 p-0"
+                            onClick={() => execCommand('insertOrderedList')}
+                            disabled={disabled}
+                        >
+                            <ListOrdered className="h-4 w-4" />
+                        </Button>
+                    )}
                 </div>
                 {/* Editor */}
                 <div
@@ -4526,44 +4823,115 @@ const TextEditor = memo(({ section, onLocalChange, disabled = false }: { section
             
             {/* Link popup */}
             {linkPopup && (
+                <LinkEditPopup
+                    linkElement={linkPopup.element}
+                    position={{ x: linkPopup.x, y: linkPopup.y }}
+                    onClose={() => setLinkPopup(null)}
+                    onUpdate={(newUrl) => {
+                        linkPopup.element.href = newUrl
+                        linkPopup.element.setAttribute('href', newUrl)
+                        handleContentChange()
+                    }}
+                    onUnlink={() => handleContentChange()}
+                />
+            )}
+            
+            {/* Floating toolbar */}
+            {floatingToolbar && (
                 <div
-                    className="link-popup fixed z-50 bg-popover border border-border rounded-md shadow-md p-2 flex gap-1"
-                    style={{ left: linkPopup.x, top: linkPopup.y }}
+                    className="fixed z-50 bg-popover border border-border rounded-md shadow-lg p-1 flex items-center gap-0.5"
+                    style={{ 
+                        left: `${floatingToolbar.x}px`, 
+                        top: `${floatingToolbar.y}px`,
+                        transform: 'translateX(-50%)'
+                    }}
+                    onMouseDown={(e) => {
+                        e.preventDefault()
+                        e.stopPropagation()
+                    }}
                     onClick={(e) => e.stopPropagation()}
                 >
-                    <Button
-                        type="button"
-                        variant="ghost"
-                        size="sm"
-                        className="h-7 px-2 text-xs"
-                        onClick={() => {
-                            const newUrl = prompt('Edit URL:', linkPopup.element.href)
-                            if (newUrl && newUrl !== linkPopup.element.href) {
-                                linkPopup.element.href = newUrl
-                                linkPopup.element.setAttribute('href', newUrl)
-                                handleContentChange()
-                            }
-                            setLinkPopup(null)
-                        }}
-                    >
-                        Edit
-                    </Button>
-                    <Button
-                        type="button"
-                        variant="ghost"
-                        size="sm"
-                        className="h-7 px-2 text-xs"
-                        onClick={() => {
-                            if (linkPopup.element.parentNode) {
-                                const textNode = document.createTextNode(linkPopup.element.textContent || '')
-                                linkPopup.element.parentNode.replaceChild(textNode, linkPopup.element)
-                                handleContentChange()
-                            }
-                            setLinkPopup(null)
-                        }}
-                    >
-                        Unlink
-                    </Button>
+                    {config.floatingToolbar.bold && (
+                        <Button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            className="h-7 w-7 p-0"
+                            onMouseDown={(e) => {
+                                e.preventDefault()
+                                execCommand('bold')
+                                setFloatingToolbar(null)
+                                // Restore focus and selection
+                                setTimeout(() => {
+                                    editorRef.current?.focus()
+                                }, 0)
+                            }}
+                            disabled={disabled}
+                        >
+                            <Bold className="h-4 w-4" />
+                        </Button>
+                    )}
+                    {config.floatingToolbar.italic && (
+                        <Button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            className="h-7 w-7 p-0"
+                            onMouseDown={(e) => {
+                                e.preventDefault()
+                                execCommand('italic')
+                                setFloatingToolbar(null)
+                                setTimeout(() => {
+                                    editorRef.current?.focus()
+                                }, 0)
+                            }}
+                            disabled={disabled}
+                        >
+                            <Italic className="h-4 w-4" />
+                        </Button>
+                    )}
+                    {config.floatingToolbar.strikethrough && (
+                        <Button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            className="h-7 w-7 p-0"
+                            onMouseDown={(e) => {
+                                e.preventDefault()
+                                execCommand('strikeThrough')
+                                setFloatingToolbar(null)
+                                setTimeout(() => {
+                                    editorRef.current?.focus()
+                                }, 0)
+                            }}
+                            disabled={disabled}
+                        >
+                            <Strikethrough className="h-4 w-4" />
+                        </Button>
+                    )}
+                    {(config.floatingToolbar.bold || config.floatingToolbar.italic || config.floatingToolbar.strikethrough) && config.floatingToolbar.link && 
+                     <div className="h-5 w-px bg-border mx-0.5" />}
+                    {config.floatingToolbar.link && (
+                        <Button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            className="h-7 px-2 text-xs"
+                            onMouseDown={(e) => {
+                                e.preventDefault()
+                                const url = prompt('Add link:')
+                                if (url) execCommand('createLink', url)
+                                setFloatingToolbar(null)
+                                setTimeout(() => {
+                                    editorRef.current?.focus()
+                                }, 0)
+                            }}
+                            disabled={disabled}
+                        >
+                            <LinkIcon className="h-3 w-3 mr-1" />
+                            Link
+                        </Button>
+                    )}
                 </div>
             )}
         </div>

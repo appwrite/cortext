@@ -121,18 +121,18 @@
     color: var(--foreground);
     margin: 0;
     padding: 0;
-    overscroll-behavior: none;
+    overscroll-behavior: contain;
     -webkit-overflow-scrolling: touch;
   }
   
-  /* Disable elastic scroll on the entire page */
+  /* Contain elastic scroll */
   html {
-    overscroll-behavior-y: none;
+    overscroll-behavior-y: contain;
     -webkit-overflow-scrolling: touch;
   }
   
   body {
-    overscroll-behavior: none;
+    overscroll-behavior: contain;
     -webkit-overflow-scrolling: touch;
   }
   

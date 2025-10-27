@@ -76,7 +76,7 @@ export function FullscreenLoader({ isVisible, onComplete }: FullscreenLoaderProp
           initial={{ opacity: 1 }}
           exit={{ opacity: 0 }}
           transition={{ duration: 0.5, ease: "easeInOut" }}
-          className="fixed inset-0 z-50 bg-background loader-container"
+          className="fixed inset-0 z-[9999] bg-background loader-container"
         >
           {/* Centered Welcome Message */}
           <div className="absolute inset-0 flex items-center justify-center">

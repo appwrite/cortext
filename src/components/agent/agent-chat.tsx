@@ -1986,7 +1986,7 @@ I've made several changes to your content including creating new paragraphs, upd
     return (
         <TooltipProvider>
             <aside
-                className="fixed left-0 z-10 flex flex-col border-r bg-background"
+                className="fixed left-0 z-[60] flex flex-col border-r bg-background"
                 style={{ 
                     top: topOffset, 
                     bottom: 0, 
@@ -1996,7 +1996,7 @@ I've made several changes to your content including creating new paragraphs, upd
             >
             {/* Resize handle */}
             <div
-                className="absolute -right-2 top-0 bottom-0 w-4 cursor-col-resize z-20"
+                className="absolute -right-2 top-0 bottom-0 w-4 cursor-col-resize z-[70]"
                 onMouseDown={handleMouseDown}
             >
                 {/* Visual hover effect - split 50-50 across the border line */}
