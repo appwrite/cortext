@@ -60,8 +60,8 @@ export function NotificationBell({ userId, className }: NotificationBellProps) {
       {isOpen && (
         <>
           {/* Arrow pointing to the bell */}
-          <div className="absolute right-3 top-full w-0 h-0 border-l-[6px] border-r-[6px] border-b-[6px] border-l-transparent border-r-transparent border-b-border z-50" />
-          <div className="absolute right-0 top-full mt-1 w-80 bg-background border rounded-lg shadow-lg z-50 animate-in fade-in-0 zoom-in-95 duration-200">
+          <div className="absolute right-3 top-full w-0 h-0 border-l-[6px] border-r-[6px] border-b-[6px] border-l-transparent border-r-transparent border-b-border z-[70]" />
+          <div className="absolute right-0 top-full mt-1 w-80 bg-background border rounded-lg shadow-lg z-[70] animate-in fade-in-0 zoom-in-95 duration-200">
             <div className="p-3 border-b">
               <h3 className="font-semibold text-sm">Notifications</h3>
             </div>

@@ -1,18 +1,16 @@
 import { useState, useRef, useEffect } from 'react'
-import { useQuery } from '@tanstack/react-query'
+import { createPortal } from 'react-dom'
 import { useNavigate } from '@tanstack/react-router'
 import { Button } from '@/components/ui/button'
 import { StandardAvatar } from '@/components/ui/standard-avatar'
-import { ChevronDown, Plus, Users, FileText } from 'lucide-react'
+import { ChevronDown, Plus, FileText } from 'lucide-react'
 import { TeamBlogDropdown } from './team-blog-dropdown'
 import { CreateTeamModal } from './create-team-modal'
 import { CreateBlogModal } from './create-blog-modal'
 import { TeamSettingsModal } from './team-settings-modal'
 import { BlogSettingsModal } from './blog-settings-modal'
-import { useTeamBlog } from '@/hooks/use-team-blog'
 import { useTeamBlogContext } from '@/contexts/team-blog-context'
-import { getTeamsClient } from '@/lib/appwrite'
-import { cn, truncateText } from '@/lib/utils'
+import { truncateText } from '@/lib/utils'
 
 interface TeamBlogSelectorProps {
   userId: string
@@ -27,11 +25,31 @@ export function TeamBlogSelector({ userId }: TeamBlogSelectorProps) {
   const [selectedTeam, setSelectedTeam] = useState<any>(null)
   const [selectedBlog, setSelectedBlog] = useState<any>(null)
   const [selectedTeamForBlog, setSelectedTeamForBlog] = useState<string>('')
+  const [buttonPosition, setButtonPosition] = useState({ top: 0, left: 0 })
   const containerRef = useRef<HTMLDivElement>(null)
+  const buttonRef = useRef<HTMLButtonElement>(null)
   const { currentTeam, currentBlog, setCurrentTeam, setCurrentBlog, teams } = useTeamBlogContext()
   const navigate = useNavigate()
 
-  // Teams data now comes from shared context
+  // Update button position when dropdown opens or on scroll
+  useEffect(() => {
+    const updatePosition = () => {
+      if (buttonRef.current) {
+        const rect = buttonRef.current.getBoundingClientRect()
+        setButtonPosition({
+          top: rect.bottom + window.scrollY,
+          left: rect.left + window.scrollX
+        })
+      }
+    }
+
+    if (isOpen) {
+      updatePosition()
+      const handleScroll = () => updatePosition()
+      window.addEventListener('scroll', handleScroll, true)
+      return () => window.removeEventListener('scroll', handleScroll, true)
+    }
+  }, [isOpen])
 
   // Close dropdown when clicking outside
   useEffect(() => {
@@ -113,9 +131,35 @@ export function TeamBlogSelector({ userId }: TeamBlogSelectorProps) {
     setIsOpen(!isOpen)
   }
 
+  const dropdownContent = isOpen && createPortal(
+    <div className="fixed z-[100]" style={{ top: `${buttonPosition.top}px`, left: `${buttonPosition.left}px` }}>
+      {/* Arrow pointing to the button */}
+      <div className="absolute left-6 sm:left-6 top-[-6px] w-0 h-0 border-l-[6px] border-r-[6px] border-b-[6px] border-l-transparent border-r-transparent border-b-border" />
+      <div className="mt-1 w-[80vw] sm:w-[600px] max-w-[600px] bg-background border rounded-lg shadow-lg animate-in fade-in-0 zoom-in-95 duration-200">
+        <TeamBlogDropdown
+          userId={userId}
+          onClose={() => setIsOpen(false)}
+          onCreateTeam={() => {
+            setShowCreateTeamModal(true)
+            setIsOpen(false)
+          }}
+          onCreateBlog={handleCreateBlog}
+          onTeamSettings={handleTeamSettings}
+          onBlogSettings={handleBlogSettings}
+          setCurrentTeam={setCurrentTeam}
+          setCurrentBlog={setCurrentBlog}
+          onBlogSelect={handleBlogSelect}
+          isOpen={isOpen}
+        />
+      </div>
+    </div>,
+    document.body
+  )
+
   return (
     <div ref={containerRef} className="relative">
       <Button
+        ref={buttonRef}
         variant="ghost"
         size="sm"
         onClick={handleButtonClick}
@@ -129,39 +173,17 @@ export function TeamBlogSelector({ userId }: TeamBlogSelectorProps) {
         <ChevronDown className="h-4 w-4" />
       </Button>
       
-      {isOpen && (
-        <>
-          {/* Arrow pointing to the button */}
-          <div className="absolute left-6 sm:left-6 top-full w-0 h-0 border-l-[6px] border-r-[6px] border-b-[6px] border-l-transparent border-r-transparent border-b-border z-50" />
-          <div className="absolute left-0 sm:left-0 top-full mt-1 w-[80vw] sm:w-[600px] max-w-[600px] bg-background border rounded-lg shadow-lg z-50 animate-in fade-in-0 zoom-in-95 duration-200">
-                    <TeamBlogDropdown
-                      userId={userId}
-                      onClose={() => setIsOpen(false)}
-                      onCreateTeam={() => {
-                        setShowCreateTeamModal(true)
-                        setIsOpen(false)
-                      }}
-                      onCreateBlog={handleCreateBlog}
-                      onTeamSettings={handleTeamSettings}
-                      onBlogSettings={handleBlogSettings}
-                      setCurrentTeam={setCurrentTeam}
-                      setCurrentBlog={setCurrentBlog}
-                      onBlogSelect={handleBlogSelect}
-                      isOpen={isOpen}
-                    />
-          </div>
-        </>
-      )}
+      {dropdownContent}
 
-              <CreateTeamModal
-                isOpen={showCreateTeamModal}
-                onClose={() => setShowCreateTeamModal(false)}
-                userId={userId}
-                onTeamCreated={(team, blog) => {
-                  setCurrentTeam(team)
-                  setCurrentBlog(blog)
-                }}
-              />
+      <CreateTeamModal
+        isOpen={showCreateTeamModal}
+        onClose={() => setShowCreateTeamModal(false)}
+        userId={userId}
+        onTeamCreated={(team, blog) => {
+          setCurrentTeam(team)
+          setCurrentBlog(blog)
+        }}
+      />
 
       <CreateBlogModal
         isOpen={showCreateBlogModal}

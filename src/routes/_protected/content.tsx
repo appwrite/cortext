@@ -24,7 +24,7 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { Separator } from '@/components/ui/separator'
 import { toast } from '@/hooks/use-toast'
-import { Image as ImageIcon, Plus, Trash2, Save, Video, MapPin, Type as TypeIcon, Upload, ArrowLeft, LogOut, GripVertical, Brain, Loader2, Heading1, Quote, Pin as PinIcon, FileText, Quote as QuoteIcon, Code, Bug, ChevronLeft, ChevronRight, MoreHorizontal, Copy, MessageCircle, Eye, EyeOff, Archive, BookOpen, FileDown, ExternalLink, ChevronUp, ChevronDown } from 'lucide-react'
+import { Image as ImageIcon, Plus, Trash2, Save, Video, MapPin, Type as TypeIcon, Upload, ArrowLeft, LogOut, GripVertical, Brain, Loader2, Heading1, Quote, Pin as PinIcon, FileText, Quote as QuoteIcon, Code, Bug, ChevronLeft, ChevronRight, MoreHorizontal, Copy, MessageCircle, Eye, EyeOff, Archive, BookOpen, FileDown, ExternalLink, ChevronUp, ChevronDown, Bold, Italic, Underline, Strikethrough, Link as LinkIcon, Unlink, List, ListOrdered } from 'lucide-react'
 import { AgentChat } from '@/components/agent/agent-chat'
 import { AuthorSelector } from '@/components/author'
 import { CategorySelector } from '@/components/category'
@@ -277,7 +277,7 @@ function RouteComponent() {
 
     return (
         <TeamBlogProvider userId={userId}>
-            <div className="h-dvh overflow-y-auto overscroll-none flex flex-col">
+            <div className="h-dvh overflow-y-auto overscroll-contain flex flex-col">
                 <Header userId={userId} onSignOut={() => signOut.mutate()} user={user} />
                 <Content userId={userId} user={user} />
             </div>
@@ -289,7 +289,7 @@ function Header({ userId, onSignOut, user }: { userId: string; onSignOut: () => 
     const { isDebugMode, toggleDebugMode } = useDebugMode()
     
     return (
-        <header className="sticky top-0 z-20 border-b bg-background/80 backdrop-blur supports-[backdrop-filter]:bg-background/70">
+        <header className="sticky top-0 z-[60] border-b bg-background/80 backdrop-blur supports-[backdrop-filter]:bg-background/70">
             <div className="px-6 h-16 flex items-center justify-between">
                 {/* Left side - Team/Blog Selector */}
                 <div className="flex items-center gap-6 -ml-2">
@@ -1563,12 +1563,77 @@ function ArticleEditor({ articleId, userId, user, onBack }: { articleId: string;
     const [isInRevertMode, setIsInRevertMode] = useState(false)
     const isRevertingRef = useRef(false)
 
+    // Auto-scroll during drag near viewport edges
+    const scrollIntervalRef = useRef<number | null>(null)
+    
+    const clearScrollInterval = useCallback(() => {
+        if (scrollIntervalRef.current !== null) {
+            clearInterval(scrollIntervalRef.current)
+            scrollIntervalRef.current = null
+        }
+    }, [])
+    
+    useEffect(() => {
+        if (!draggingId) {
+            clearScrollInterval()
+            return
+        }
+        
+        const handleGlobalDrag = (e: DragEvent) => {
+            const viewportHeight = window.innerHeight
+            const scrollThreshold = 100 // pixels from edge to trigger scroll
+            const scrollSpeed = 8
+            
+            // Check if near top or bottom of viewport and scroll accordingly
+            if (e.clientY < scrollThreshold) {
+                if (!scrollIntervalRef.current) {
+                    scrollIntervalRef.current = window.setInterval(() => {
+                        // Try to find and use the scrollable container
+                        const scrollContainer = document.querySelector('.h-dvh.overflow-y-auto') as HTMLElement
+                        if (scrollContainer) {
+                            scrollContainer.scrollBy({ top: -scrollSpeed, behavior: 'auto' })
+                        } else {
+                            window.scrollBy({ top: -scrollSpeed, behavior: 'auto' })
+                        }
+                    }, 16)
+                }
+            } else if (e.clientY > viewportHeight - scrollThreshold) {
+                if (!scrollIntervalRef.current) {
+                    scrollIntervalRef.current = window.setInterval(() => {
+                        // Try to find and use the scrollable container
+                        const scrollContainer = document.querySelector('.h-dvh.overflow-y-auto') as HTMLElement
+                        if (scrollContainer) {
+                            scrollContainer.scrollBy({ top: scrollSpeed, behavior: 'auto' })
+                        } else {
+                            window.scrollBy({ top: scrollSpeed, behavior: 'auto' })
+                        }
+                    }, 16)
+                }
+            } else {
+                clearScrollInterval()
+            }
+        }
+        
+        document.addEventListener('dragover', handleGlobalDrag)
+        
+        return () => {
+            clearScrollInterval()
+            document.removeEventListener('dragover', handleGlobalDrag)
+        }
+    }, [draggingId, clearScrollInterval])
+
     const onDragStart = (id: string, e: React.DragEvent) => {
         dragIdRef.current = id
         setDraggingId(id)
         e.dataTransfer.effectAllowed = 'move'
         try { e.dataTransfer.setData('text/plain', id) } catch { }
     }
+    
+    const onDragEnd = useCallback(() => {
+        setDraggingId(null)
+        setOverInfo({ id: null, where: 'below' })
+        clearScrollInterval()
+    }, [clearScrollInterval])
 
     const onDragOverRow = (id: string, e: React.DragEvent) => {
         e.preventDefault()
@@ -2460,7 +2525,7 @@ function ArticleEditor({ articleId, userId, user, onBack }: { articleId: string;
                     onToggle={() => setIsCommentsOpen(!isCommentsOpen)}
                     sections={localSections}
                 />
-                <div className="sticky top-[4.0625rem] z-5 bg-background/80 backdrop-blur supports-[backdrop-filter]:bg-background/70 border-b h-12">
+                <div className="sticky top-[4.0625rem] z-[50] bg-background/80 backdrop-blur supports-[backdrop-filter]:bg-background/70 border-b h-12">
                     <div 
                         className="px-4 sm:px-6 h-12 flex items-center justify-between"
                         style={{ 
@@ -2485,7 +2550,7 @@ function ArticleEditor({ articleId, userId, user, onBack }: { articleId: string;
                 </div>
 
                 <div 
-                    className="main-content-area flex justify-center px-6 sm:px-12 lg:px-20 py-8 pb-24"
+                    className="main-content-area flex justify-center px-6 sm:px-12 lg:px-20 py-8 pb-32"
                     style={{ 
                         marginLeft: !isMobile 
                             ? (isMinimized ? '60px' : `${chatWidth}px`) 
@@ -2575,7 +2640,7 @@ function ArticleEditor({ articleId, userId, user, onBack }: { articleId: string;
                 onToggle={() => setIsCommentsOpen(!isCommentsOpen)}
                 sections={localSections}
             />
-            <div className="sticky top-[4.0625rem] z-5 bg-background/80 backdrop-blur supports-[backdrop-filter]:bg-background/70 border-b h-12">
+            <div className="sticky top-[4.0625rem] z-[50] bg-background/80 backdrop-blur supports-[backdrop-filter]:bg-background/70 border-b h-12">
                     <div 
                         className="px-4 sm:px-6 h-12 flex items-center justify-between"
                         style={{ 
@@ -2602,7 +2667,7 @@ function ArticleEditor({ articleId, userId, user, onBack }: { articleId: string;
                             <MessageCircle className="h-4 w-4" />
                         </Button>
                         
-                        <div ref={menuRef} className="relative">
+                        <div ref={menuRef} className="relative z-[100]">
                             <Button 
                                 variant="ghost" 
                                 size="sm" 
@@ -2859,7 +2924,7 @@ function ArticleEditor({ articleId, userId, user, onBack }: { articleId: string;
             </div>
 
             <div 
-                className="main-content-area py-8 pb-24"
+                className="main-content-area py-8 pb-32"
                 style={{ 
                     marginLeft: !isMobile 
                         ? (isMinimized ? '60px' : `${chatWidth}px`) 
@@ -3352,7 +3417,7 @@ function ArticleEditor({ articleId, userId, user, onBack }: { articleId: string;
                             </div>
                         </div>
                     ) : (
-                        <div className="relative sections-table-container">
+                        <div className="relative sections-table-container pb-4">
                             {/* Sticky Add Section button positioned to the left of the table */}
                             <div 
                                 className="sticky left-0 z-10 w-0"
@@ -3462,7 +3527,7 @@ function ArticleEditor({ articleId, userId, user, onBack }: { articleId: string;
                                                             aria-label="Drag to reorder"
                                                             draggable={!isInRevertMode}
                                                             onDragStart={(e) => onDragStart(s.id, e)}
-                                                            onDragEnd={() => { setDraggingId(null); setOverInfo({ id: null, where: 'below' }) }}
+                                                            onDragEnd={onDragEnd}
                                                             className={`p-1 rounded hover:bg-accent text-muted-foreground hidden [@media(hover:hover)]:block ${isInRevertMode ? 'cursor-not-allowed opacity-50' : 'cursor-grab active:cursor-grabbing'} ${draggingId === s.id ? 'opacity-60 ring-2 ring-primary/40' : ''}`}
                                                             title={isInRevertMode ? "Disabled in revert mode" : "Drag to reorder"}
                                                             disabled={isInRevertMode}
@@ -3789,7 +3854,31 @@ function SectionEditor({ section, onLocalChange, isDragging = false, userId, dis
         return <QuoteEditor section={section} onLocalChange={onLocalChange} disabled={disabled} />
     }
     if (section.type === 'text' || section.type === 'paragraph') {
-        return <TextEditor section={section} onLocalChange={onLocalChange} disabled={disabled} />
+        return <TextEditor 
+            section={section} 
+            onLocalChange={onLocalChange} 
+            disabled={disabled}
+            toolbarConfig={{
+                toolbar: {
+                    bold: true,
+                    italic: true,
+                    underline: false,
+                    strikethrough: true,
+                    link: true,
+                    code: true,
+                    heading: false,
+                    blockquote: false,
+                    unorderedList: true,
+                    orderedList: true
+                },
+                floatingToolbar: {
+                    bold: true,
+                    italic: true,
+                    strikethrough: true,
+                    link: true
+                }
+            }}
+        />
     }
     if (section.type === 'image') {
         return <ImageEditor section={section} onLocalChange={onLocalChange} userId={userId} disabled={disabled} />
@@ -3995,79 +4084,370 @@ const QuoteEditor = memo(({ section, onLocalChange, disabled = false }: { sectio
     )
 })
 
-const TextEditor = memo(({ section, onLocalChange, disabled = false }: { section: any; onLocalChange: (data: Partial<any>) => void; disabled?: boolean }) => {
+// Helper functions for markdown conversion
+const htmlToMarkdown = (html: string): string => {
+    if (!html || html.trim() === '') return ''
+    
+    const tempDiv = document.createElement('div')
+    tempDiv.innerHTML = html
+    
+    // Extract text content with formatting
+    const extractText = (node: Node, inList = false, listPrefix = ''): string => {
+        if (node.nodeType === Node.TEXT_NODE) {
+            return node.textContent || ''
+        }
+        
+        const element = node as HTMLElement
+        const tagName = element.tagName.toLowerCase()
+        const childrenStr = Array.from(element.childNodes)
+            .map(n => extractText(n, inList, listPrefix))
+            .join('')
+        
+        switch (tagName) {
+            case 'ul':
+                const ulItems = Array.from(element.childNodes)
+                    .filter(n => (n as HTMLElement).tagName === 'LI')
+                    .map(n => {
+                        const text = Array.from((n as HTMLElement).childNodes)
+                            .map(c => extractText(c, false, ''))
+                            .join('')
+                        return '- ' + text.trim()
+                    })
+                    .filter(text => text.trim())
+                return ulItems.join('\n') + '\n\n'
+                
+            case 'ol':
+                const olItems = Array.from(element.childNodes)
+                    .filter(n => (n as HTMLElement).tagName === 'LI')
+                    .map((n, idx) => {
+                        const text = Array.from((n as HTMLElement).childNodes)
+                            .map(c => extractText(c, false, ''))
+                            .join('')
+                        return `${idx + 1}. ${text.trim()}`
+                    })
+                    .filter(text => text.trim())
+                return olItems.join('\n') + '\n\n'
+                
+            case 'li':
+                return inList ? listPrefix + childrenStr.trim() + '\n' : '- ' + childrenStr.trim()
+                
+            case 'strong':
+            case 'b':
+                return `**${childrenStr}**`
+            case 'em':
+            case 'i':
+                return `*${childrenStr}*`
+            case 'u':
+                return `<u>${childrenStr}</u>`
+            case 's':
+            case 'del':
+                return `~~${childrenStr}~~`
+            case 'code':
+                return `\`${childrenStr}\``
+            case 'a':
+                const href = element.getAttribute('href') || ''
+                return `[${childrenStr}](${href})`
+            case 'blockquote':
+                return `> ${childrenStr.replace(/\n/g, '\n> ')}`
+            case 'br':
+                return '\n'
+            case 'p':
+            case 'div':
+                return inList ? childrenStr : childrenStr + '\n\n'
+            default:
+                return childrenStr
+        }
+    }
+    
+    const text = extractText(tempDiv)
+    return text.trim()
+}
+
+const markdownToHtml = (markdown: string): string => {
+    if (!markdown || markdown.trim() === '') return '<p><br></p>'
+    
+    const lines = markdown.split('\n')
+    const processedLines: string[] = []
+    
+    let inList = false
+    let listTag = ''
+    
+    for (let i = 0; i < lines.length; i++) {
+        const line = lines[i]
+        
+        // Headers
+        if (line.startsWith('#### ')) {
+            if (inList) {
+                processedLines.push('</' + listTag + '>')
+                inList = false
+            }
+            processedLines.push(line.replace(/^#### (.+)$/, '<h4>$1</h4>'))
+        } else if (line.startsWith('### ')) {
+            if (inList) {
+                processedLines.push('</' + listTag + '>')
+                inList = false
+            }
+            processedLines.push(line.replace(/^### (.+)$/, '<h3>$1</h3>'))
+        } else if (line.startsWith('## ')) {
+            if (inList) {
+                processedLines.push('</' + listTag + '>')
+                inList = false
+            }
+            processedLines.push(line.replace(/^## (.+)$/, '<h2>$1</h2>'))
+        } else if (line.startsWith('# ')) {
+            if (inList) {
+                processedLines.push('</' + listTag + '>')
+                inList = false
+            }
+            processedLines.push(line.replace(/^# (.+)$/, '<h1>$1</h1>'))
+        } 
+        // Blockquotes
+        else if (line.startsWith('> ')) {
+            if (inList) {
+                processedLines.push('</' + listTag + '>')
+                inList = false
+            }
+            processedLines.push(line.replace(/^> (.+)$/, '<blockquote>$1</blockquote>'))
+        }
+        // Lists
+        else if (line.startsWith('- ')) {
+            if (!inList) {
+                processedLines.push('<ul>')
+                inList = true
+                listTag = 'ul'
+            }
+            processedLines.push(`<li>${line.slice(2)}</li>`)
+        } else if (line.match(/^\d+\. /)) {
+            if (!inList) {
+                processedLines.push('<ol>')
+                inList = true
+                listTag = 'ol'
+            }
+            processedLines.push(line.replace(/^\d+\. (.+)$/, '<li>$1</li>'))
+        } 
+        // Regular text
+        else if (line.trim()) {
+            if (inList) {
+                processedLines.push('</' + listTag + '>')
+                inList = false
+            }
+            processedLines.push(`<p>${line}</p>`)
+        }
+    }
+    
+    if (inList) {
+        processedLines.push('</' + listTag + '>')
+    }
+    
+    let html = processedLines.join('')
+    
+    // Inline formatting
+    html = html.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>')
+    html = html.replace(/(?<!\*)\*([^*]+)\*(?!\*)/g, '<em>$1</em>')
+    html = html.replace(/~~(.+?)~~/g, '<s>$1</s>')
+    html = html.replace(/`([^`]+)`/g, '<code>$1</code>')
+    html = html.replace(/\[(.+?)\]\((.+?)\)/g, '<a href="$2">$1</a>')
+    
+    return html || '<p><br></p>'
+}
+
+interface TextEditorToolbarConfig {
+    toolbar?: {
+        bold?: boolean
+        italic?: boolean
+        underline?: boolean
+        strikethrough?: boolean
+        link?: boolean
+        code?: boolean
+        heading?: boolean
+        blockquote?: boolean
+        unorderedList?: boolean
+        orderedList?: boolean
+    }
+    floatingToolbar?: {
+        bold?: boolean
+        italic?: boolean
+        strikethrough?: boolean
+        link?: boolean
+    }
+}
+
+const LinkEditPopup = ({ linkElement, position, onClose, onUpdate, onUnlink }: { 
+    linkElement: HTMLAnchorElement
+    position: { x: number; y: number }
+    onClose: () => void
+    onUpdate: (newUrl: string) => void
+    onUnlink?: () => void
+}) => {
+    const [url, setUrl] = useState(linkElement.href)
+    const inputRef = useRef<HTMLInputElement>(null)
+
+    useEffect(() => {
+        inputRef.current?.focus()
+        inputRef.current?.select()
+    }, [])
+
+    const handleSubmit = (e: React.FormEvent) => {
+        e.preventDefault()
+        if (url && url !== linkElement.href) {
+            onUpdate(url)
+        }
+        onClose()
+    }
+
+    const handleUnlink = () => {
+        if (linkElement.parentNode) {
+            const textNode = document.createTextNode(linkElement.textContent || '')
+            linkElement.parentNode.replaceChild(textNode, linkElement)
+            onUnlink?.()
+        }
+        onClose()
+    }
+
+    const linkText = linkElement.textContent || linkElement.innerText
+
+    return (
+        <div
+            className="link-popup fixed z-50 bg-popover border border-border rounded-md shadow-md p-3 w-80"
+            style={{ left: position.x, top: position.y }}
+            onClick={(e) => e.stopPropagation()}
+        >
+            <div className="space-y-2">
+                <div className="text-xs font-medium mb-1">Edit Link</div>
+                <form onSubmit={handleSubmit} className="space-y-2">
+                    <Input
+                        ref={inputRef}
+                        value={url}
+                        onChange={(e) => setUrl(e.target.value)}
+                        className="text-xs"
+                        placeholder="Enter URL"
+                    />
+                    <div className="flex gap-1">
+                        <Button
+                            type="submit"
+                            variant="default"
+                            size="sm"
+                            className="h-7 px-3 text-xs"
+                        >
+                            Update
+                        </Button>
+                        <Button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            className="h-7 px-3 text-xs"
+                            onClick={handleUnlink}
+                        >
+                            Unlink
+                        </Button>
+                        <Button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            className="h-7 px-3 text-xs"
+                            onClick={onClose}
+                        >
+                            Cancel
+                        </Button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    )
+}
+
+const TextEditor = memo(({ 
+    section, 
+    onLocalChange, 
+    disabled = false,
+    toolbarConfig = {
+        toolbar: {
+            bold: true,
+            italic: true,
+            underline: true,
+            strikethrough: true,
+            link: true,
+            code: true,
+            heading: true,
+            blockquote: true,
+            unorderedList: true,
+            orderedList: true
+        },
+        floatingToolbar: {
+            bold: true,
+            italic: true,
+            link: true
+        }
+    }
+}: { 
+    section: any; 
+    onLocalChange: (data: Partial<any>) => void; 
+    disabled?: boolean;
+    toolbarConfig?: TextEditorToolbarConfig;
+}) => {
     const [value, setValue] = useState(section.content ?? '')
-    const ref = useRef<HTMLTextAreaElement | null>(null)
+    const [linkPopup, setLinkPopup] = useState<{ element: HTMLAnchorElement; x: number; y: number } | null>(null)
+    const [floatingToolbar, setFloatingToolbar] = useState<{ x: number; y: number } | null>(null)
+    const editorRef = useRef<HTMLDivElement | null>(null)
     const onLocalChangeRef = useRef(onLocalChange)
     const isInternalUpdate = useRef(false)
     const debounceTimeoutRef = useRef<NodeJS.Timeout | null>(null)
     onLocalChangeRef.current = onLocalChange
 
-    // Function to adjust textarea height (optimized)
-    const adjustHeight = useCallback(() => {
-        if (!ref.current) return
-        // Reset height to auto to get accurate scrollHeight
-        ref.current.style.height = 'auto'
-        const scrollHeight = ref.current.scrollHeight
-        ref.current.style.height = `${scrollHeight}px`
+    // Merge config with defaults
+    const config = {
+        toolbar: {
+            bold: true,
+            italic: true,
+            underline: true,
+            strikethrough: true,
+            link: true,
+            code: true,
+            heading: true,
+            blockquote: true,
+            unorderedList: true,
+            orderedList: true,
+            ...toolbarConfig?.toolbar
+        },
+        floatingToolbar: {
+            bold: true,
+            italic: true,
+            strikethrough: true,
+            link: true,
+            ...toolbarConfig?.floatingToolbar
+        }
+    }
+
+    // Initialize editor content
+    useEffect(() => {
+        if (editorRef.current && section.content && !editorRef.current.innerHTML) {
+            editorRef.current.innerHTML = markdownToHtml(section.content)
+        }
     }, [])
 
-    // Debounced height adjustment
-    const debouncedAdjustHeight = useCallback(() => {
-        if (debounceTimeoutRef.current) {
-            clearTimeout(debounceTimeoutRef.current)
-        }
-        debounceTimeoutRef.current = setTimeout(() => {
-            adjustHeight()
-        }, 16) // ~60fps
-    }, [adjustHeight])
-
-    // Adjust height when value changes (debounced)
-    useEffect(() => {
-        debouncedAdjustHeight()
-    }, [value])
-
-    // Sync external changes to local state (when section content changes externally)
+    // Sync external changes to local state
     useEffect(() => {
         if (section.content !== value && !isInternalUpdate.current) {
             setValue(section.content ?? '')
+            if (editorRef.current) {
+                editorRef.current.innerHTML = markdownToHtml(section.content ?? '')
+            }
         }
     }, [section.content, value])
-
-    // Adjust height on initial render and window resize
-    useEffect(() => {
-        const handleResize = () => adjustHeight()
-        
-        // Initial adjustment
-        const timer = setTimeout(() => {
-            adjustHeight()
-        }, 0)
-        
-        // Add resize listener
-        window.addEventListener('resize', handleResize)
-        
-        return () => {
-            clearTimeout(timer)
-            window.removeEventListener('resize', handleResize)
-        }
-    }, [adjustHeight])
 
     // Debounced parent notification (only on internal changes)
     useEffect(() => {
         if (isInternalUpdate.current) {
-            // Clear any pending debounced update
             if (debounceTimeoutRef.current) {
                 clearTimeout(debounceTimeoutRef.current)
             }
-            // Debounce the parent notification
             debounceTimeoutRef.current = setTimeout(() => {
                 onLocalChangeRef.current({ content: value, type: 'text' })
                 isInternalUpdate.current = false
-            }, 300) // 300ms debounce for parent updates
+            }, 300)
         }
     }, [value])
 
-    // Cleanup timeout on unmount
     useEffect(() => {
         return () => {
             if (debounceTimeoutRef.current) {
@@ -4076,25 +4456,484 @@ const TextEditor = memo(({ section, onLocalChange, disabled = false }: { section
         }
     }, [])
 
-    const handleChange = useCallback((e: React.ChangeEvent<HTMLTextAreaElement>) => {
+    // Track selection changes for floating toolbar
+    useEffect(() => {
+        const handleSelectionChange = () => {
+            const selection = window.getSelection()
+            if (selection && selection.rangeCount > 0 && !selection.isCollapsed) {
+                const range = selection.getRangeAt(0)
+                const rect = range.getBoundingClientRect()
+                
+                // Check if selection is within editor
+                if (editorRef.current && editorRef.current.contains(range.commonAncestorContainer)) {
+                    setFloatingToolbar({
+                        x: rect.left + (rect.width / 2),
+                        y: rect.top - 40
+                    })
+                }
+            } else {
+                setFloatingToolbar(null)
+            }
+        }
+
+        document.addEventListener('selectionchange', handleSelectionChange)
+        return () => document.removeEventListener('selectionchange', handleSelectionChange)
+    }, [])
+
+    const handleContentChange = useCallback(() => {
+        if (!editorRef.current) return
+        const html = editorRef.current.innerHTML
+        const markdown = htmlToMarkdown(html)
         isInternalUpdate.current = true
-        setValue(e.target.value)
+        setValue(markdown)
+    }, [])
+
+    const handlePaste = useCallback((e: React.ClipboardEvent) => {
+        e.preventDefault()
+        const paste = e.clipboardData.getData('text/plain')
+        document.execCommand('insertText', false, paste)
+        handleContentChange()
+    }, [handleContentChange])
+
+    const execCommand = useCallback((command: string, valueArg?: string) => {
+        document.execCommand(command, false, valueArg)
+        editorRef.current?.focus()
+        handleContentChange()
+    }, [handleContentChange])
+
+    const handleKeyDown = useCallback((e: React.KeyboardEvent) => {
+        // Handle Enter key to exit blockquote
+        if (e.key === 'Enter' && !e.shiftKey) {
+            const selection = window.getSelection()
+            if (selection && selection.rangeCount > 0) {
+                const range = selection.getRangeAt(0)
+                let node: Node | null = range.commonAncestorContainer
+                while (node && node.nodeType !== Node.ELEMENT_NODE && node.parentNode) {
+                    node = node.parentNode
+                }
+                
+                if (node) {
+                    let element = node as HTMLElement
+                    let blockquote: HTMLElement | null = null
+                    while (element && element.parentElement) {
+                        if (element.tagName === 'BLOCKQUOTE') {
+                            blockquote = element
+                            break
+                        }
+                        element = element.parentElement
+                    }
+                    
+                    // If we're inside a blockquote, create paragraph after it
+                    if (blockquote) {
+                        e.preventDefault()
+                        
+                        // Move cursor after the blockquote
+                        const pTag = document.createElement('p')
+                        pTag.innerHTML = '<br>'
+                        
+                        if (blockquote.parentNode) {
+                            blockquote.parentNode.insertBefore(pTag, blockquote.nextSibling)
+                            
+                            // Set cursor in new paragraph
+                            const newRange = document.createRange()
+                            newRange.selectNodeContents(pTag)
+                            newRange.collapse(true)
+                            selection.removeAllRanges()
+                            selection.addRange(newRange)
+                            handleContentChange()
+                        }
+                        return
+                    }
+                }
+            }
+        }
+        
+        // Allow Shift+Enter for line breaks inside blockquotes
+        if (e.key === 'Enter' && e.shiftKey) {
+            // Let the default behavior happen (inserts <br> tag)
+            return
+        }
+        
+        // Handle keyboard shortcuts
+        if (e.ctrlKey || e.metaKey) {
+            switch (e.key) {
+                case 'b':
+                    e.preventDefault()
+                    execCommand('bold')
+                    break
+                case 'u':
+                    e.preventDefault()
+                    execCommand('underline')
+                    break
+                case 'i':
+                    e.preventDefault()
+                    execCommand('italic')
+                    break
+                case 'k':
+                    e.preventDefault()
+                    const url = prompt('Enter URL:')
+                    if (url) {
+                        execCommand('createLink', url)
+                    }
+                    break
+            }
+        }
+    }, [execCommand, handleContentChange])
+
+    const handleClick = useCallback((e: React.MouseEvent) => {
+        e.stopPropagation()
+        
+        // Check if clicking on a link
+        const target = e.target as HTMLElement
+        if (target.tagName === 'A') {
+            e.preventDefault()
+            const rect = target.getBoundingClientRect()
+            setLinkPopup({ element: target as HTMLAnchorElement, x: rect.left, y: rect.top + rect.height + 4 })
+        } else {
+            setLinkPopup(null)
+        }
+    }, [])
+
+    // Close popup when clicking outside
+    useEffect(() => {
+        const handleClickOutside = (e: MouseEvent) => {
+            const target = e.target as HTMLElement
+            if (target.tagName !== 'A' && !target.closest('.link-popup')) {
+                setLinkPopup(null)
+            }
+        }
+        document.addEventListener('mousedown', handleClickOutside)
+        return () => document.removeEventListener('mousedown', handleClickOutside)
     }, [])
 
     return (
         <div className="space-y-1 w-full min-w-0">
             <Label htmlFor={`text-${section.id}`}>Text</Label>
-            <Textarea
-                id={`text-${section.id}`}
-                ref={ref}
-                value={value}
-                onChange={handleChange}
-                placeholder="Write text…"
-                rows={1}
-                className="min-h-[40px] text-sm w-full min-w-0"
-                style={{ overflow: 'hidden', resize: 'none', width: '100%', maxWidth: '100%' }}
+            {/* Toolbar */}
+            <div className="border border-input rounded-md">
+                <div className="flex items-center gap-0.5 p-1 border-b border-input bg-muted/20 rounded-t-md">
+                    {config.toolbar.bold && (
+                        <Button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            className="h-8 w-8 p-0"
+                            onClick={() => execCommand('bold')}
                 disabled={disabled}
+                        >
+                            <Bold className="h-4 w-4" />
+                        </Button>
+                    )}
+                    {config.toolbar.italic && (
+                        <Button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            className="h-8 w-8 p-0"
+                            onClick={() => execCommand('italic')}
+                            disabled={disabled}
+                        >
+                            <Italic className="h-4 w-4" />
+                        </Button>
+                    )}
+                    {config.toolbar.underline && (
+                        <Button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            className="h-8 w-8 p-0"
+                            onClick={() => execCommand('underline')}
+                            disabled={disabled}
+                        >
+                            <Underline className="h-4 w-4" />
+                        </Button>
+                    )}
+                    {config.toolbar.strikethrough && (
+                        <Button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            className="h-8 w-8 p-0"
+                            onClick={() => execCommand('strikeThrough')}
+                            disabled={disabled}
+                        >
+                            <Strikethrough className="h-4 w-4" />
+                        </Button>
+                    )}
+                    {(config.toolbar.bold || config.toolbar.italic || config.toolbar.underline || config.toolbar.strikethrough) && 
+                     (config.toolbar.link || config.toolbar.code) && 
+                     <div className="h-6 w-px bg-border mx-1" />}
+                    {config.toolbar.link && (
+                        <Button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            className="h-8 w-8 p-0"
+                            onClick={() => {
+                                const url = prompt('Enter URL:')
+                                if (url) execCommand('createLink', url)
+                            }}
+                            disabled={disabled}
+                        >
+                            <LinkIcon className="h-4 w-4" />
+                        </Button>
+                    )}
+                    {config.toolbar.code && (
+                        <Button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            className="h-8 w-8 p-0"
+                            onClick={() => {
+                                const selection = window.getSelection()
+                                if (selection && selection.rangeCount > 0) {
+                                    const range = selection.getRangeAt(0)
+                                    const selectedText = range.toString()
+                                    
+                                    if (selectedText) {
+                                        // Check if already in a code tag
+                                        let node: Node | null = range.commonAncestorContainer
+                                        while (node && node.nodeType !== Node.ELEMENT_NODE) {
+                                            node = node.parentNode
+                                        }
+                                        let element = node as HTMLElement | null
+                                        while (element && element.tagName !== 'CODE' && element.parentElement) {
+                                            element = element.parentElement
+                                        }
+                                        
+                                        if (element && element.tagName === 'CODE' && element.parentNode) {
+                                            // Unwrap: replace code element with its text content
+                                            const textNode = document.createTextNode(selectedText)
+                                            element.parentNode.replaceChild(textNode, element)
+                                            handleContentChange()
+                                        } else {
+                                            // Wrap: create code element
+                                            const codeElement = document.createElement('code')
+                                            codeElement.textContent = selectedText
+                                            range.deleteContents()
+                                            range.insertNode(codeElement)
+                                            handleContentChange()
+                                        }
+                                    } else {
+                                        // No selection, prompt for text
+                                        const code = prompt('Enter code:')
+                                        if (code) {
+                                            const codeElement = document.createElement('code')
+                                            codeElement.textContent = code
+                                            range.insertNode(codeElement)
+                                            handleContentChange()
+                                        }
+                                    }
+                                }
+                            }}
+                            disabled={disabled}
+                        >
+                            <Code className="h-4 w-4" />
+                        </Button>
+                    )}
+                    {(config.toolbar.link || config.toolbar.code) && 
+                     (config.toolbar.heading || config.toolbar.blockquote) && 
+                     <div className="h-6 w-px bg-border mx-1" />}
+                    {config.toolbar.heading && (
+                        <Button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            className="h-8 w-8 p-0"
+                            onClick={() => {
+                                const heading = prompt('Enter heading text:')
+                                if (heading) {
+                                    document.execCommand('formatBlock', false, 'h2')
+                                    editorRef.current?.focus()
+                                }
+                            }}
+                            disabled={disabled}
+                        >
+                            <Heading1 className="h-4 w-4" />
+                        </Button>
+                    )}
+                    {config.toolbar.blockquote && (
+                        <Button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            className="h-8 w-8 p-0"
+                            onClick={() => {
+                                execCommand('formatBlock', 'blockquote')
+                            }}
+                            disabled={disabled}
+                        >
+                            <Quote className="h-4 w-4" />
+                        </Button>
+                    )}
+                    {(config.toolbar.heading || config.toolbar.blockquote) && 
+                     (config.toolbar.unorderedList || config.toolbar.orderedList) && 
+                     <div className="h-6 w-px bg-border mx-1" />}
+                    {config.toolbar.unorderedList && (
+                        <Button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            className="h-8 w-8 p-0"
+                            onClick={() => execCommand('insertUnorderedList')}
+                            disabled={disabled}
+                        >
+                            <List className="h-4 w-4" />
+                        </Button>
+                    )}
+                    {config.toolbar.orderedList && (
+                        <Button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            className="h-8 w-8 p-0"
+                            onClick={() => execCommand('insertOrderedList')}
+                            disabled={disabled}
+                        >
+                            <ListOrdered className="h-4 w-4" />
+                        </Button>
+                    )}
+                </div>
+                {/* Editor */}
+                <div
+                    ref={editorRef}
+                    contentEditable={!disabled}
+                    onInput={handleContentChange}
+                    onKeyDown={handleKeyDown}
+                    onPaste={handlePaste}
+                    onClick={handleClick}
+                    className="min-h-[120px] p-3 text-sm focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1 [&:empty:before]:content-[attr(data-placeholder)] [&:empty:before]:text-muted-foreground prose prose-sm dark:prose-invert max-w-none [&_p]:mb-3 [&_h1]:mb-3 [&_h2]:mb-3 [&_h3]:mb-3 [&_h4]:mb-3 [&_blockquote]:border-l-4 [&_blockquote]:border-primary [&_blockquote]:pl-4 [&_blockquote]:mb-3 [&_ul]:mb-3 [&_ul]:list-disc [&_ul]:ml-6 [&_ol]:mb-3 [&_ol]:list-decimal [&_ol]:ml-6 [&_li]:ml-0 [&_a]:text-blue-600 [&_a]:underline [&_a]:hover:text-blue-700 [&_a]:dark:text-blue-400 [&_a]:dark:hover:text-blue-300 [&_a]:decoration-2 [&_code]:bg-muted [&_code]:px-1.5 [&_code]:py-0.5 [&_code]:rounded [&_code]:text-sm [&_code]:font-mono rounded-b-md"
+                    data-placeholder="Write text…"
+                    style={{
+                        fontFamily: 'inherit',
+                        lineHeight: '1.6',
+                    }}
+                />
+            </div>
+            {/* Hidden input for accessibility */}
+            <input
+                type="text"
+                value={value}
+                onChange={() => {}}
+                readOnly
+                className="sr-only"
+                tabIndex={-1}
+                aria-hidden="true"
             />
+            
+            {/* Link popup */}
+            {linkPopup && (
+                <LinkEditPopup
+                    linkElement={linkPopup.element}
+                    position={{ x: linkPopup.x, y: linkPopup.y }}
+                    onClose={() => setLinkPopup(null)}
+                    onUpdate={(newUrl) => {
+                        linkPopup.element.href = newUrl
+                        linkPopup.element.setAttribute('href', newUrl)
+                        handleContentChange()
+                    }}
+                    onUnlink={() => handleContentChange()}
+                />
+            )}
+            
+            {/* Floating toolbar */}
+            {floatingToolbar && (
+                <div
+                    className="fixed z-50 bg-popover border border-border rounded-md shadow-lg p-1 flex items-center gap-0.5"
+                    style={{ 
+                        left: `${floatingToolbar.x}px`, 
+                        top: `${floatingToolbar.y}px`,
+                        transform: 'translateX(-50%)'
+                    }}
+                    onMouseDown={(e) => {
+                        e.preventDefault()
+                        e.stopPropagation()
+                    }}
+                    onClick={(e) => e.stopPropagation()}
+                >
+                    {config.floatingToolbar.bold && (
+                        <Button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            className="h-7 w-7 p-0"
+                            onMouseDown={(e) => {
+                                e.preventDefault()
+                                execCommand('bold')
+                                setFloatingToolbar(null)
+                                // Restore focus and selection
+                                setTimeout(() => {
+                                    editorRef.current?.focus()
+                                }, 0)
+                            }}
+                            disabled={disabled}
+                        >
+                            <Bold className="h-4 w-4" />
+                        </Button>
+                    )}
+                    {config.floatingToolbar.italic && (
+                        <Button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            className="h-7 w-7 p-0"
+                            onMouseDown={(e) => {
+                                e.preventDefault()
+                                execCommand('italic')
+                                setFloatingToolbar(null)
+                                setTimeout(() => {
+                                    editorRef.current?.focus()
+                                }, 0)
+                            }}
+                            disabled={disabled}
+                        >
+                            <Italic className="h-4 w-4" />
+                        </Button>
+                    )}
+                    {config.floatingToolbar.strikethrough && (
+                        <Button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            className="h-7 w-7 p-0"
+                            onMouseDown={(e) => {
+                                e.preventDefault()
+                                execCommand('strikeThrough')
+                                setFloatingToolbar(null)
+                                setTimeout(() => {
+                                    editorRef.current?.focus()
+                                }, 0)
+                            }}
+                            disabled={disabled}
+                        >
+                            <Strikethrough className="h-4 w-4" />
+                        </Button>
+                    )}
+                    {(config.floatingToolbar.bold || config.floatingToolbar.italic || config.floatingToolbar.strikethrough) && config.floatingToolbar.link && 
+                     <div className="h-5 w-px bg-border mx-0.5" />}
+                    {config.floatingToolbar.link && (
+                        <Button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            className="h-7 px-2 text-xs"
+                            onMouseDown={(e) => {
+                                e.preventDefault()
+                                const url = prompt('Add link:')
+                                if (url) execCommand('createLink', url)
+                                setFloatingToolbar(null)
+                                setTimeout(() => {
+                                    editorRef.current?.focus()
+                                }, 0)
+                            }}
+                            disabled={disabled}
+                        >
+                            <LinkIcon className="h-3 w-3 mr-1" />
+                            Link
+                        </Button>
+                    )}
+                </div>
+            )}
         </div>
     )
 })
