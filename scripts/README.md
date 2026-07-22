@@ -32,7 +32,7 @@ Create a `.env` file in your project root:
 
 ```bash
 # Appwrite Configuration (ALL REQUIRED - NO FALLBACKS)
-APPWRITE_ENDPOINT=https://stage.cloud.appwrite.io/v1
+APPWRITE_ENDPOINT=https://cloud.staging.appwrite.io/v1
 APPWRITE_PROJECT_ID=your-project-id-here
 APPWRITE_API_KEY=your-api-key-here
 APPWRITE_DATABASE_ID=your-database-id-here
